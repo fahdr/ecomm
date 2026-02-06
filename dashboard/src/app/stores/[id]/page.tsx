@@ -203,6 +203,17 @@ export default function StoreSettingsPage({
       </header>
 
       <main className="mx-auto max-w-2xl space-y-6 p-6">
+        {/* Quick Links */}
+        <Card>
+          <CardContent className="pt-6">
+            <Link href={`/stores/${id}/products`}>
+              <Button variant="outline" className="w-full justify-start">
+                Manage Products
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
         {/* Store Info */}
         <Card>
           <CardHeader>

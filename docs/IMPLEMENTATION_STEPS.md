@@ -136,43 +136,41 @@ Public-facing storefront that resolves stores by slug and renders store-branded 
 
 ## Feature 5: Product Management (Manual CRUD)
 
-**Status:** Not started
+**Status:** Complete
 
-### Backend steps
-1. Create `app/models/product.py` — `Product` model: id, store_id (FK), title, slug, description, price, compare_at_price, cost, images (JSON array), status (draft/active/archived), seo_title, seo_description, created_at, updated_at
-2. Create `app/models/product_variant.py` — `ProductVariant` model: id, product_id (FK), name, sku, price, inventory_count
-3. Generate and apply Alembic migration
-4. Create `app/schemas/product.py` — Pydantic schemas: CreateProduct, UpdateProduct, ProductResponse, VariantRequest, VariantResponse
-5. Create `app/services/product_service.py` — CRUD scoped to store:
-   - `create_product(db, store_id, data)` — auto-generate slug from title
-   - `list_products(db, store_id, page, per_page, search, status_filter)` — paginated
-   - `get_product(db, store_id, product_id)`
-   - `update_product(db, store_id, product_id, data)`
-   - `delete_product(db, store_id, product_id)` — soft-delete (set archived)
-6. Create `app/api/products.py` — product router (all require auth + store ownership):
-   - `POST /api/v1/stores/{store_id}/products`
-   - `GET /api/v1/stores/{store_id}/products` — with `?page=&per_page=&search=&status=`
-   - `GET /api/v1/stores/{store_id}/products/{product_id}`
-   - `PATCH /api/v1/stores/{store_id}/products/{product_id}`
-   - `DELETE /api/v1/stores/{store_id}/products/{product_id}`
-7. Create image upload endpoint: `POST /api/v1/stores/{store_id}/products/upload` — save to local filesystem (`/uploads/`), return URL
-8. Add public product endpoints to `app/api/public.py`:
-   - `GET /api/v1/public/stores/{slug}/products` — paginated list (active only)
-   - `GET /api/v1/public/stores/{slug}/products/{product_slug}` — single product detail
-9. Register product router in `app/main.py`
-10. Write `tests/test_products.py` — CRUD, pagination, search, store scoping, public listing
+### What was built
+Full product CRUD with variants, image upload, pagination, search, and status filtering. Dashboard pages for creating, listing, and editing products. Storefront pages for browsing and viewing product details. Public API endpoints for unauthenticated product access.
 
-### Frontend steps (Dashboard)
-1. Build product form component (`dashboard/src/components/features/product-form.tsx`) — reusable for create and edit
-2. Build product list page (`dashboard/src/app/stores/[id]/products/page.tsx`) — DataTable with search, status filter, pagination
-3. Build product create page (`dashboard/src/app/stores/[id]/products/new/page.tsx`)
-4. Build product edit page (`dashboard/src/app/stores/[id]/products/[productId]/page.tsx`)
-5. Build image uploader component (`dashboard/src/components/features/image-uploader.tsx`)
+### Backend steps completed
+1. Created `app/models/product.py` — `Product` model (id, store_id FK, title, slug, description, price, compare_at_price, cost, images JSON, status enum, seo_title, seo_description, timestamps) + `ProductVariant` model (id, product_id FK, name, sku, price, inventory_count, timestamps) with UniqueConstraint on (store_id, slug)
+2. Generated and applied Alembic migration for `products` and `product_variants` tables
+3. Created `app/schemas/product.py` — CreateProductRequest, UpdateProductRequest, ProductResponse, VariantRequest, VariantResponse, PaginatedProductResponse
+4. Created `app/services/product_service.py` — CRUD with store ownership verification, store-scoped slug generation, paginated listing with search/filter, variant management (create/replace)
+5. Created `app/api/products.py` — product router with all endpoints (POST, GET list, GET by ID, PATCH, DELETE) + image upload (POST /upload)
+6. Added public product endpoints to `app/api/public.py` — paginated list (active only) + single product detail by slug
+7. Updated `app/schemas/public.py` with PublicProductResponse, PublicVariantResponse, PaginatedPublicProductResponse (excludes cost, store_id)
+8. Registered product router in `app/main.py`
+9. Added `python-multipart` dependency for file upload support
+10. Created `tests/test_products.py` — 24 tests covering CRUD, variants, slug collision, pagination, search, status filter, archived exclusion, auth, tenant isolation, image upload (valid/invalid types), public endpoints (list, detail, cost exclusion, draft 404, unknown store 404, no auth required)
 
-### Frontend steps (Storefront)
-1. Build product grid component (`storefront/src/components/product-grid.tsx`)
-2. Build product listing page (`storefront/src/app/products/page.tsx`) — grid with pagination
-3. Build product detail page (`storefront/src/app/products/[slug]/page.tsx`) — image gallery, description, variants, price
+### Frontend steps completed (Dashboard)
+1. Added `upload()` method to dashboard API client (`dashboard/src/lib/api.ts`) for multipart file uploads
+2. Built product list page (`dashboard/src/app/stores/[id]/products/page.tsx`) — card grid with search, status filter, pagination
+3. Built product create page (`dashboard/src/app/stores/[id]/products/new/page.tsx`) — form with title, pricing, status, variants, SEO
+4. Built product edit page (`dashboard/src/app/stores/[id]/products/[productId]/page.tsx`) — full editor with image upload, variant management, delete dialog
+5. Added "Manage Products" link to store settings page
+
+### Frontend steps completed (Storefront)
+1. Updated `storefront/src/lib/types.ts` with Product, ProductVariant, PaginatedProducts interfaces
+2. Built product grid component (`storefront/src/components/product-grid.tsx`) — responsive grid with image/title/price cards
+3. Updated homepage (`storefront/src/app/page.tsx`) — replaced placeholder grid with real products from API
+4. Built product listing page (`storefront/src/app/products/page.tsx`) — paginated grid with Previous/Next navigation
+5. Built product detail page (`storefront/src/app/products/[slug]/page.tsx`) — image gallery, pricing, description, variants, dynamic SEO metadata
+
+### Verification
+- `pytest` — 66 tests pass (16 auth + 1 health + 6 public + 19 stores + 24 products)
+- `npm run build` (dashboard) — compiles without errors, new routes: `/stores/[id]/products`, `/stores/[id]/products/new`, `/stores/[id]/products/[productId]`
+- `npm run build` (storefront) — compiles without errors, new routes: `/products`, `/products/[slug]`
 
 ---
 

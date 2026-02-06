@@ -2,20 +2,21 @@
  * Storefront homepage.
  *
  * Displays the store's hero section with name, description, and niche,
- * plus an empty product grid placeholder (products will be added in
- * Feature 5).
+ * plus a grid of active products fetched from the public API.
  *
  * If no store is resolved (missing ``?store=`` param or unknown slug),
- * a "Store not found" message is shown.
+ * a "Store not found" message is shown via the not-found page.
  *
  * **For Developers:**
  *   This is a server component. Store data is read from the
  *   ``x-store-slug`` header set by middleware, then fetched from the API.
+ *   Products are fetched server-side for SEO.
  *
  * **For QA Engineers:**
- *   - With a valid slug: shows store name, description, niche, product placeholder.
+ *   - With a valid slug: shows store name, description, niche, and products.
  *   - Without a slug: shows "Store not found" with instructions.
  *   - With an invalid slug: shows "Store not found".
+ *   - Only active products are displayed.
  *
  * **For End Users:**
  *   This is the main page of your store. Customers see your store name,
@@ -24,12 +25,16 @@
 
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { fetchStore } from "@/lib/store";
+import { api } from "@/lib/api";
+import { ProductGrid } from "@/components/product-grid";
+import type { PaginatedProducts } from "@/lib/types";
 
 /**
  * Homepage server component.
  *
- * @returns The store homepage with hero section and product grid placeholder.
+ * @returns The store homepage with hero section and product grid.
  */
 export default async function HomePage() {
   const headersList = await headers();
@@ -44,6 +49,13 @@ export default async function HomePage() {
   if (!store) {
     notFound();
   }
+
+  // Fetch active products for this store
+  const { data: productsData } = await api.get<PaginatedProducts>(
+    `/api/v1/public/stores/${encodeURIComponent(slug)}/products?per_page=12`
+  );
+
+  const products = productsData?.items ?? [];
 
   return (
     <div>
@@ -66,23 +78,21 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Product Grid Placeholder */}
+      {/* Product Grid */}
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h3 className="text-2xl font-bold tracking-tight mb-8">Products</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-6 flex flex-col items-center justify-center h-64"
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-bold tracking-tight">Products</h3>
+            {productsData && productsData.total > 12 && (
+              <Link
+                href="/products"
+                className="text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
               >
-                <div className="w-16 h-16 rounded-full bg-zinc-200 dark:bg-zinc-700 mb-4" />
-                <p className="text-sm text-zinc-400 dark:text-zinc-500">
-                  Coming soon
-                </p>
-              </div>
-            ))}
+                View all &rarr;
+              </Link>
+            )}
           </div>
+          <ProductGrid products={products} />
         </div>
       </section>
     </div>

@@ -122,6 +122,47 @@ class ApiClient {
   delete<T>(path: string) {
     return this.request<T>(path, { method: "DELETE" });
   }
+
+  /**
+   * Upload a file via multipart form data.
+   * @param path - API path to upload to.
+   * @param file - The File object to upload.
+   * @param fieldName - The form field name (default "file").
+   * @returns An ApiResponse with either data or error populated.
+   */
+  async upload<T>(
+    path: string,
+    file: File,
+    fieldName = "file"
+  ): Promise<ApiResponse<T>> {
+    const formData = new FormData();
+    formData.append(fieldName, file);
+
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      return {
+        data: null,
+        error: {
+          code: String(response.status),
+          message: errorBody.detail || response.statusText,
+        },
+      };
+    }
+
+    const data = await response.json();
+    return { data, error: null };
+  }
 }
 
 /** Pre-configured API client instance pointing to the backend. */

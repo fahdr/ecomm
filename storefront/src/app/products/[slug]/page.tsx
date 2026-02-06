@@ -1,0 +1,244 @@
+/**
+ * Product detail page for the storefront.
+ *
+ * Displays a single product with images, title, description, price,
+ * variants, and SEO metadata. Fetched server-side from the public API.
+ *
+ * **For Developers:**
+ *   This is a server component. The product slug comes from the URL
+ *   parameter. Dynamic SEO metadata is generated via ``generateMetadata``.
+ *
+ * **For QA Engineers:**
+ *   - Only active products are shown; draft/archived return 404.
+ *   - Compare-at price shows with a strikethrough if present.
+ *   - Variants are listed with name, price override, and stock.
+ *   - ``<title>`` and ``<meta description>`` are set from product data.
+ *   - Product images display in a gallery layout.
+ *
+ * **For End Users:**
+ *   View product details including images, description, price, and
+ *   available variants before purchasing.
+ */
+
+import { headers } from "next/headers";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { fetchStore } from "@/lib/store";
+import { api } from "@/lib/api";
+import type { Product } from "@/lib/types";
+
+/**
+ * Generate dynamic metadata for the product detail page.
+ *
+ * @param props - Page props containing the product slug parameter.
+ * @returns Metadata object with product title and description.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const headersList = await headers();
+  const storeSlug = headersList.get("x-store-slug");
+
+  if (!storeSlug) {
+    return { title: "Product Not Found" };
+  }
+
+  const { slug: productSlug } = await params;
+  const { data: product } = await api.get<Product>(
+    `/api/v1/public/stores/${encodeURIComponent(storeSlug)}/products/${encodeURIComponent(productSlug)}`
+  );
+
+  if (!product) {
+    return { title: "Product Not Found" };
+  }
+
+  return {
+    title: product.seo_title || product.title,
+    description:
+      product.seo_description ||
+      product.description?.slice(0, 160) ||
+      `Buy ${product.title}`,
+    openGraph: {
+      title: product.seo_title || product.title,
+      description:
+        product.seo_description ||
+        product.description?.slice(0, 160) ||
+        `Buy ${product.title}`,
+      images: product.images?.[0] ? [product.images[0]] : [],
+    },
+  };
+}
+
+/**
+ * Product detail page server component.
+ *
+ * @param props - Page props containing the product slug parameter.
+ * @returns The product detail layout with images, info, and variants.
+ */
+export default async function ProductDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const headersList = await headers();
+  const storeSlug = headersList.get("x-store-slug");
+
+  if (!storeSlug) {
+    notFound();
+  }
+
+  const store = await fetchStore(storeSlug);
+  if (!store) {
+    notFound();
+  }
+
+  const { slug: productSlug } = await params;
+  const { data: product } = await api.get<Product>(
+    `/api/v1/public/stores/${encodeURIComponent(storeSlug)}/products/${encodeURIComponent(productSlug)}`
+  );
+
+  if (!product) {
+    notFound();
+  }
+
+  return (
+    <div className="py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Breadcrumb */}
+        <nav className="mb-8 text-sm text-zinc-500 dark:text-zinc-400">
+          <Link href="/" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+            Home
+          </Link>
+          <span className="mx-2">/</span>
+          <Link
+            href="/products"
+            className="hover:text-zinc-900 dark:hover:text-zinc-100"
+          >
+            Products
+          </Link>
+          <span className="mx-2">/</span>
+          <span className="text-zinc-900 dark:text-zinc-100">
+            {product.title}
+          </span>
+        </nav>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Image Gallery */}
+          <div className="space-y-4">
+            {product.images && product.images.length > 0 ? (
+              <>
+                {/* Main image */}
+                <div className="aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                  <img
+                    src={product.images[0]}
+                    alt={product.title}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                {/* Thumbnails */}
+                {product.images.length > 1 && (
+                  <div className="grid grid-cols-4 gap-3">
+                    {product.images.slice(1).map((img, i) => (
+                      <div
+                        key={i}
+                        className="aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+                      >
+                        <img
+                          src={img}
+                          alt={`${product.title} image ${i + 2}`}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="aspect-square rounded-lg bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+              </div>
+            )}
+          </div>
+
+          {/* Product Info */}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {product.title}
+            </h1>
+
+            {/* Price */}
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-3xl font-bold">
+                ${Number(product.price).toFixed(2)}
+              </span>
+              {product.compare_at_price && (
+                <span className="text-xl text-zinc-400 line-through">
+                  ${Number(product.compare_at_price).toFixed(2)}
+                </span>
+              )}
+            </div>
+
+            {/* Description */}
+            {product.description && (
+              <div className="mt-8">
+                <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
+                  Description
+                </h3>
+                <div className="prose prose-zinc dark:prose-invert max-w-none text-zinc-600 dark:text-zinc-400">
+                  <p>{product.description}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Variants */}
+            {product.variants.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
+                  Options
+                </h3>
+                <div className="space-y-2">
+                  {product.variants.map((variant) => (
+                    <div
+                      key={variant.id}
+                      className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-3"
+                    >
+                      <div>
+                        <span className="font-medium">{variant.name}</span>
+                        {variant.sku && (
+                          <span className="ml-2 text-xs text-zinc-400">
+                            SKU: {variant.sku}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4">
+                        {variant.price && (
+                          <span className="font-semibold">
+                            ${Number(variant.price).toFixed(2)}
+                          </span>
+                        )}
+                        <span
+                          className={`text-sm ${
+                            variant.inventory_count > 0
+                              ? "text-green-600 dark:text-green-400"
+                              : "text-red-500"
+                          }`}
+                        >
+                          {variant.inventory_count > 0
+                            ? `${variant.inventory_count} in stock`
+                            : "Out of stock"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
