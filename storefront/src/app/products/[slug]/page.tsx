@@ -27,6 +27,7 @@ import Link from "next/link";
 import { fetchStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import type { Product } from "@/lib/types";
+import { AddToCart } from "@/components/add-to-cart";
 
 /**
  * Generate dynamic metadata for the product detail page.
@@ -193,49 +194,15 @@ export default async function ProductDetailPage({
               </div>
             )}
 
-            {/* Variants */}
-            {product.variants.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
-                  Options
-                </h3>
-                <div className="space-y-2">
-                  {product.variants.map((variant) => (
-                    <div
-                      key={variant.id}
-                      className="flex items-center justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 px-4 py-3"
-                    >
-                      <div>
-                        <span className="font-medium">{variant.name}</span>
-                        {variant.sku && (
-                          <span className="ml-2 text-xs text-zinc-400">
-                            SKU: {variant.sku}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {variant.price && (
-                          <span className="font-semibold">
-                            ${Number(variant.price).toFixed(2)}
-                          </span>
-                        )}
-                        <span
-                          className={`text-sm ${
-                            variant.inventory_count > 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-500"
-                          }`}
-                        >
-                          {variant.inventory_count > 0
-                            ? `${variant.inventory_count} in stock`
-                            : "Out of stock"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Add to Cart */}
+            <AddToCart
+              productId={product.id}
+              title={product.title}
+              slug={product.slug}
+              price={product.price}
+              image={product.images?.[0] || null}
+              variants={product.variants}
+            />
           </div>
         </div>
       </div>

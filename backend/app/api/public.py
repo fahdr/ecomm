@@ -27,13 +27,17 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.order import Order
 from app.models.product import Product, ProductStatus
 from app.models.store import Store, StoreStatus
+from app.schemas.order import CheckoutRequest, CheckoutResponse, OrderResponse
 from app.schemas.public import (
     PaginatedPublicProductResponse,
     PublicProductResponse,
     PublicStoreResponse,
 )
+from app.services import order_service
+from app.services.stripe_service import create_checkout_session
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -187,3 +191,127 @@ async def get_public_product(
         )
 
     return PublicProductResponse.model_validate(product)
+
+
+@router.post(
+    "/stores/{slug}/checkout",
+    response_model=CheckoutResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_checkout(
+    slug: str,
+    body: CheckoutRequest,
+    db: AsyncSession = Depends(get_db),
+) -> CheckoutResponse:
+    """Create a checkout session for a store.
+
+    Validates cart items, creates a pending order, and returns a Stripe
+    Checkout URL for the customer to complete payment. No authentication
+    required — this is a public endpoint for store customers.
+
+    Args:
+        slug: The store's URL slug.
+        body: Checkout request with customer email and cart items.
+        db: Async database session injected by FastAPI.
+
+    Returns:
+        CheckoutResponse with the checkout URL, session ID, and order ID.
+
+    Raises:
+        HTTPException: 404 if the store doesn't exist or is not active.
+        HTTPException: 400 if any cart item is invalid or out of stock.
+    """
+    store = await _get_active_store(db, slug)
+
+    items = [
+        {
+            "product_id": item.product_id,
+            "variant_id": item.variant_id,
+            "quantity": item.quantity,
+        }
+        for item in body.items
+    ]
+
+    try:
+        order_items, total = await order_service.validate_and_build_order_items(
+            db, store.id, items
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    stripe_data = create_checkout_session(
+        order_id=None,  # Will be set after order creation
+        items=order_items,
+        customer_email=body.customer_email,
+        store_name=store.name,
+    )
+
+    order = await order_service.create_order_from_checkout(
+        db=db,
+        store_id=store.id,
+        customer_email=body.customer_email,
+        items_data=order_items,
+        total=total,
+        stripe_session_id=stripe_data["session_id"],
+    )
+
+    return CheckoutResponse(
+        checkout_url=stripe_data["checkout_url"],
+        session_id=stripe_data["session_id"],
+        order_id=order.id,
+    )
+
+
+@router.get(
+    "/stores/{slug}/orders/{order_id}",
+    response_model=OrderResponse,
+)
+async def get_public_order(
+    slug: str,
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> OrderResponse:
+    """Retrieve an order by ID for the order confirmation page.
+
+    This public endpoint allows customers to view their order status
+    after checkout without requiring authentication.
+
+    Args:
+        slug: The store's URL slug.
+        order_id: The order's UUID.
+        db: Async database session injected by FastAPI.
+
+    Returns:
+        OrderResponse with the order data and items.
+
+    Raises:
+        HTTPException: 404 if the store or order doesn't exist.
+    """
+    store = await _get_active_store(db, slug)
+
+    import uuid as uuid_mod
+    try:
+        oid = uuid_mod.UUID(order_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
+
+    result = await db.execute(
+        select(Order).where(
+            Order.id == oid,
+            Order.store_id == store.id,
+        )
+    )
+    order = result.scalar_one_or_none()
+    if order is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
+
+    return OrderResponse.model_validate(order)

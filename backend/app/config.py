@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
+    # Stripe
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_success_url: str = "http://localhost:3001/checkout/success?session_id={CHECKOUT_SESSION_ID}"
+    stripe_cancel_url: str = "http://localhost:3001/cart"
+
     # JWT
     jwt_secret_key: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"

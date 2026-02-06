@@ -176,36 +176,43 @@ Full product CRUD with variants, image upload, pagination, search, and status fi
 
 ## Feature 6: Shopping Cart & Customer Checkout
 
-**Status:** Not started
+**Status:** Complete
 
-### Backend steps
-1. Create `app/models/order.py` — `Order` model: id, store_id, customer_email, items (JSON), total, status (pending/paid/shipped/delivered/cancelled), stripe_session_id, created_at
-2. Create `app/models/order_item.py` — `OrderItem` model: id, order_id, product_id, variant_id, quantity, unit_price
-3. Generate and apply Alembic migration
-4. Create `app/services/stripe_service.py` — Stripe Checkout integration:
-   - `create_checkout_session(store, cart_items)` — create Stripe session, return URL
-   - `handle_checkout_completed(event)` — create order from webhook payload
-5. Create `app/api/public.py` additions:
-   - `POST /api/v1/public/stores/{slug}/checkout` — validate cart, create Stripe Checkout session
-6. Create `app/api/webhooks.py`:
-   - `POST /api/v1/webhooks/stripe` — verify signature, handle `checkout.session.completed`
-7. Create `app/services/order_service.py` — create order from webhook, list orders for store owner
-8. Create `app/api/orders.py` (auth required):
-   - `GET /api/v1/stores/{store_id}/orders` — paginated list
-   - `GET /api/v1/stores/{store_id}/orders/{order_id}` — detail
-9. Register routers in `app/main.py`
-10. Write `tests/test_orders.py` and `tests/test_checkout.py`
+### What was built
+Client-side shopping cart with localStorage persistence, Stripe Checkout integration (with mock mode for local dev), order management for store owners, and public checkout/order confirmation endpoints.
 
-### Frontend steps (Storefront)
-1. Create cart context/hook (`storefront/src/contexts/cart-context.tsx`) — localStorage persistence, add/remove/update quantity
-2. Add "Add to Cart" button to product detail page
-3. Build cart drawer or page (`storefront/src/app/cart/page.tsx`) — item list, quantities, total
-4. Build checkout redirect — call backend to create Stripe session, redirect to Stripe
-5. Build order confirmation page (`storefront/src/app/checkout/success/page.tsx`)
+### Backend steps completed
+1. Created `app/models/order.py` — `Order` model (id, store_id, customer_email, status enum, total, stripe_session_id, shipping_address, timestamps) + `OrderItem` model (id, order_id, product_id, variant_id, product_title, variant_name, quantity, unit_price) with price/title snapshots at purchase time
+2. Generated and applied Alembic migration for `orders` and `order_items` tables
+3. Created `app/schemas/order.py` — CheckoutItemRequest, CheckoutRequest, CheckoutResponse, OrderItemResponse, OrderResponse, PaginatedOrderResponse, UpdateOrderStatusRequest
+4. Created `app/services/order_service.py` — validate_and_build_order_items (checks active products, stock), create_order_from_checkout, confirm_order (pending→paid + inventory decrement), list_orders (paginated with status filter), get_order, update_order_status
+5. Created `app/services/stripe_service.py` — create_checkout_session (real Stripe or mock mode when no key configured), construct_webhook_event (signature verification)
+6. Added to `app/api/public.py` — POST checkout endpoint (validates cart, creates order, returns Stripe URL), GET order by ID (for confirmation page)
+7. Created `app/api/webhooks.py` — POST /webhooks/stripe (verifies signature, handles checkout.session.completed)
+8. Created `app/api/orders.py` — GET list (paginated, filterable), GET detail, PATCH status update (all auth-required, store-scoped)
+9. Registered orders and webhooks routers in `app/main.py`
+10. Added Stripe config to `app/config.py` (stripe_secret_key, stripe_webhook_secret, success/cancel URLs)
+11. Added `stripe>=8.0.0` to pyproject.toml dependencies
+12. Created `tests/test_orders.py` — 21 tests covering checkout (valid, with variant, insufficient stock, invalid product, draft rejected, unknown store, empty cart, no auth, multiple items), order list (empty, after checkout, status filter), order detail, not found, status update, auth required, tenant isolation, public order lookup, total calculation, variant price capture
 
-### Frontend steps (Dashboard)
-1. Build orders list page (`dashboard/src/app/stores/[id]/orders/page.tsx`)
-2. Build order detail page (`dashboard/src/app/stores/[id]/orders/[orderId]/page.tsx`)
+### Frontend steps completed (Storefront)
+1. Created `storefront/src/contexts/cart-context.tsx` — CartProvider with localStorage persistence, add/remove/updateQuantity/clearCart, cartCount and cartTotal computed values
+2. Created `storefront/src/components/cart-badge.tsx` — Cart icon with item count badge for header
+3. Created `storefront/src/components/add-to-cart.tsx` — Variant selector, quantity controls, Add to Cart button with "Added!" feedback
+4. Updated `storefront/src/app/products/[slug]/page.tsx` — Replaced static variants display with interactive AddToCart component
+5. Created `storefront/src/app/cart/page.tsx` — Cart page with item list, quantity controls, remove buttons, email input, checkout button
+6. Created `storefront/src/app/checkout/success/page.tsx` — Order confirmation page with success icon and continue shopping links
+7. Updated `storefront/src/app/layout.tsx` — Added CartProvider, updated header with Products nav link and CartBadge
+
+### Frontend steps completed (Dashboard)
+1. Built orders list page (`dashboard/src/app/stores/[id]/orders/page.tsx`) — Card list with status badges, status filter, pagination
+2. Built order detail page (`dashboard/src/app/stores/[id]/orders/[orderId]/page.tsx`) — Full order info, items, status update dropdown
+3. Added "View Orders" link to store settings page
+
+### Verification
+- `pytest` — 87 tests pass (15 auth + 1 health + 21 orders + 24 products + 6 public + 20 stores)
+- `npm run build` (storefront) — compiles without errors, new routes: `/cart`, `/checkout/success`
+- `npm run build` (dashboard) — compiles without errors, new routes: `/stores/[id]/orders`, `/stores/[id]/orders/[orderId]`
 
 ---
 

@@ -10,9 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.orders import router as orders_router
 from app.api.products import router as products_router
 from app.api.public import router as public_router
 from app.api.stores import router as stores_router
+from app.api.webhooks import router as webhooks_router
 from app.config import settings
 
 app = FastAPI(title=settings.app_name)
@@ -29,7 +31,9 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(stores_router, prefix="/api/v1")
 app.include_router(products_router, prefix="/api/v1")
+app.include_router(orders_router, prefix="/api/v1")
 app.include_router(public_router, prefix="/api/v1")
+app.include_router(webhooks_router, prefix="/api/v1")
 
 
 @app.get("/")

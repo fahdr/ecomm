@@ -206,11 +206,18 @@ export default function StoreSettingsPage({
         {/* Quick Links */}
         <Card>
           <CardContent className="pt-6">
-            <Link href={`/stores/${id}/products`}>
-              <Button variant="outline" className="w-full justify-start">
-                Manage Products
-              </Button>
-            </Link>
+            <div className="space-y-2">
+              <Link href={`/stores/${id}/products`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Manage Products
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/orders`}>
+                <Button variant="outline" className="w-full justify-start">
+                  View Orders
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
 

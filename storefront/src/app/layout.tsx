@@ -26,8 +26,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { fetchStore } from "@/lib/store";
+import Link from "next/link";
 import type { Store } from "@/lib/types";
 import { StoreProvider } from "@/contexts/store-context";
+import { CartProvider } from "@/contexts/cart-context";
+import { CartBadge } from "@/components/cart-badge";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -105,9 +108,11 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <StoreProvider store={store}>
-          {store && <StoreHeader store={store} />}
-          <main className="flex-1">{children}</main>
-          {store && <StoreFooter store={store} />}
+          <CartProvider>
+            {store && <StoreHeader store={store} />}
+            <main className="flex-1">{children}</main>
+            {store && <StoreFooter store={store} />}
+          </CartProvider>
         </StoreProvider>
       </body>
     </html>
@@ -126,12 +131,25 @@ function StoreHeader({ store }: { store: Store }) {
     <header className="border-b border-zinc-200 dark:border-zinc-800">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <h1 className="text-xl font-bold tracking-tight">{store.name}</h1>
-          <nav className="flex items-center gap-6">
+          <div className="flex items-center gap-6">
+            <Link href="/">
+              <h1 className="text-xl font-bold tracking-tight">{store.name}</h1>
+            </Link>
+            <nav className="flex items-center gap-4">
+              <Link
+                href="/products"
+                className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+              >
+                Products
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center gap-4">
             <span className="text-sm text-zinc-500 dark:text-zinc-400">
               {store.niche}
             </span>
-          </nav>
+            <CartBadge />
+          </div>
         </div>
       </div>
     </header>
