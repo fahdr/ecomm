@@ -21,6 +21,7 @@ by the Next.js storefront app via server-side rendering.
 """
 
 import math
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -242,8 +243,10 @@ async def create_checkout(
             detail=str(e),
         )
 
+    # Generate a unique ID for the mock/real Stripe session.
+    checkout_id = uuid.uuid4()
     stripe_data = create_checkout_session(
-        order_id=None,  # Will be set after order creation
+        order_id=checkout_id,
         items=order_items,
         customer_email=body.customer_email,
         store_name=store.name,
