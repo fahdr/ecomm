@@ -14,6 +14,8 @@
  *   - A loading spinner shows while the auth state is being resolved.
  *   - The logout button clears tokens and redirects to `/login`.
  *   - The "Stores" link navigates to `/stores`.
+ *   - The "Billing" link navigates to `/billing`.
+ *   - The "Pricing" link navigates to `/pricing`.
  */
 
 "use client";
@@ -44,6 +46,18 @@ export default function Home() {
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Stores
+            </Link>
+            <Link
+              href="/billing"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Billing
+            </Link>
+            <Link
+              href="/pricing"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
             </Link>
           </nav>
         </div>

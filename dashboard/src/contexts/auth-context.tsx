@@ -41,6 +41,7 @@ interface User {
   id: string;
   email: string;
   is_active: boolean;
+  plan: string;
   created_at: string;
 }
 

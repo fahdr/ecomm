@@ -14,8 +14,10 @@ from app.api.orders import router as orders_router
 from app.api.products import router as products_router
 from app.api.public import router as public_router
 from app.api.stores import router as stores_router
+from app.api.subscriptions import router as subscriptions_router
 from app.api.webhooks import router as webhooks_router
 from app.config import settings
+from app.constants.plans import init_price_ids
 
 app = FastAPI(title=settings.app_name)
 
@@ -33,7 +35,15 @@ app.include_router(stores_router, prefix="/api/v1")
 app.include_router(products_router, prefix="/api/v1")
 app.include_router(orders_router, prefix="/api/v1")
 app.include_router(public_router, prefix="/api/v1")
+app.include_router(subscriptions_router, prefix="/api/v1")
 app.include_router(webhooks_router, prefix="/api/v1")
+
+# Inject Stripe Price IDs into plan constants at startup.
+init_price_ids(
+    starter_price_id=settings.stripe_starter_price_id,
+    growth_price_id=settings.stripe_growth_price_id,
+    pro_price_id=settings.stripe_pro_price_id,
+)
 
 
 @app.get("/")

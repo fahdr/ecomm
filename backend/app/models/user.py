@@ -15,10 +15,11 @@ Each user has a unique email address and a bcrypt-hashed password.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import Boolean, DateTime, Enum, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.constants.plans import PlanTier
 from app.database import Base
 
 
@@ -30,6 +31,10 @@ class User(Base):
         email: User's email address, unique and indexed for fast lookups.
         hashed_password: Bcrypt hash of the user's password.
         is_active: Whether the account is enabled. Defaults to True.
+        stripe_customer_id: Stripe Customer ID for billing. Null until
+            the user initiates a subscription checkout.
+        plan: Current subscription plan tier. Defaults to ``free``.
+            Denormalised from the ``subscriptions`` table for fast lookups.
         created_at: Timestamp when the record was created (DB server time).
         updated_at: Timestamp of the last update (DB server time, auto-updated).
     """
@@ -44,6 +49,15 @@ class User(Base):
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    stripe_customer_id: Mapped[str | None] = mapped_column(
+        String(255), unique=True, index=True, nullable=True
+    )
+    plan: Mapped[PlanTier] = mapped_column(
+        Enum(PlanTier, name="plantier"),
+        default=PlanTier.free,
+        server_default="free",
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

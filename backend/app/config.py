@@ -46,11 +46,18 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
-    # Stripe
+    # Stripe (Checkout)
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     stripe_success_url: str = "http://localhost:3001/checkout/success?session_id={CHECKOUT_SESSION_ID}"
     stripe_cancel_url: str = "http://localhost:3001/cart"
+
+    # Stripe (Subscriptions) — Price IDs from Stripe Dashboard
+    stripe_starter_price_id: str = ""
+    stripe_growth_price_id: str = ""
+    stripe_pro_price_id: str = ""
+    stripe_billing_success_url: str = "http://localhost:3000/billing?success=true"
+    stripe_billing_cancel_url: str = "http://localhost:3000/billing?canceled=true"
 
     # JWT
     jwt_secret_key: str = "dev-secret-change-in-production"
