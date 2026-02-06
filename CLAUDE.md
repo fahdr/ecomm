@@ -6,3 +6,5 @@ Write docs for types of users.
 
 
 Every code and function/method should have a docstring explaining its purpose, parameters, and return values. This is crucial for maintaining code readability and helping other developers understand the functionality of the code. Additionally, comments should be used to explain complex logic or important decisions made in the code. This practice not only aids in collaboration but also ensures that the codebase remains maintainable and scalable as the project evolves.
+
+Add plan documentation and impltation steps
