@@ -1,0 +1,84 @@
+{
+  "name": "Dropshipping Platform",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/ecomm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:latest": {}
+  },
+
+  "forwardPorts": [
+    8000,
+    3000,
+    3001,
+    5432,
+    6379,
+    5555
+  ],
+  "portsAttributes": {
+    "8000": { "label": "Backend API (FastAPI)" },
+    "3000": { "label": "Dashboard (Next.js)" },
+    "3001": { "label": "Storefront (Next.js)" },
+    "5432": { "label": "PostgreSQL" },
+    "6379": { "label": "Redis" },
+    "5555": { "label": "Flower (Celery Monitor)" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "bradlc.vscode-tailwindcss",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "anthropic.claude-code"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["backend/tests"],
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true
+        },
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "sqltools.connections": [
+          {
+            "name": "Local Dev DB",
+            "driver": "PostgreSQL",
+            "server": "localhost",
+            "port": 5432,
+            "database": "dropshipping",
+            "username": "dropship",
+            "password": "dropship_dev"
+          }
+        ]
+      }
+    }
+  },
+
+  "mounts": [
+    {
+      "source": "/root/.claude",
+      "target": "/root/.claude",
+      "type": "bind"
+    }
+    ],
+
+  "postCreateCommand": "if [ -f backend/pyproject.toml ] || [ -f backend/setup.py ]; then cd backend && pip install -e '.[dev]'; cd ..; fi && if [ -f dashboard/package.json ]; then cd dashboard && npm install; cd ..; fi && if [ -f storefront/package.json ]; then cd storefront && npm install; cd ..; fi",
+
+  "remoteUser": "root"
+}

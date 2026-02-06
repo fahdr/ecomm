@@ -1,0 +1,49 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ..:/workspaces/ecomm:cached
+    command: sleep infinity
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dropship:dropship_dev@db:5432/dropshipping
+      DATABASE_URL_SYNC: postgresql://dropship:dropship_dev@db:5432/dropshipping
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: dropship
+      POSTGRES_PASSWORD: dropship_dev
+      POSTGRES_DB: dropshipping
+    healthcheck:
+      test: pg_isready -U dropship -d dropshipping
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:
