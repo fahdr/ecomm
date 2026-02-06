@@ -122,12 +122,21 @@ backend/
 dashboard/
 ├── src/
 │   ├── app/                 # App Router pages
-│   │   ├── layout.tsx       # Root layout (Geist fonts)
-│   │   ├── page.tsx         # Home page
-│   │   └── globals.css      # Tailwind + Shadcn/ui CSS vars
-│   └── lib/
-│       ├── api.ts           # API client (fetch wrapper with JWT)
-│       └── utils.ts         # cn() class merge utility
+│   │   ├── layout.tsx       # Root layout (Geist fonts + AuthProvider)
+│   │   ├── page.tsx         # Dashboard home (protected, shows user)
+│   │   ├── globals.css      # Tailwind + Shadcn/ui CSS vars
+│   │   └── (auth)/          # Auth route group (centered layout)
+│   │       ├── layout.tsx   # Centered card layout for auth pages
+│   │       ├── login/page.tsx    # Login form
+│   │       └── register/page.tsx # Registration form
+│   ├── components/ui/       # Shadcn/ui components (button, input, etc.)
+│   ├── contexts/
+│   │   └── auth-context.tsx # AuthProvider + useAuth() hook
+│   ├── lib/
+│   │   ├── api.ts           # API client (fetch wrapper with JWT)
+│   │   ├── auth.ts          # Token cookie helpers (get/set/clear)
+│   │   └── utils.ts         # cn() class merge utility
+│   └── proxy.ts             # Route protection (redirect if unauthenticated)
 ├── components.json          # Shadcn/ui config
 └── package.json
 

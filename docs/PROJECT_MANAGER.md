@@ -32,18 +32,18 @@ Supporting infrastructure:
 
 All three applications are scaffolded and runnable in the local development environment. The backend serves a health check endpoint, the database is connected, and the task queue is wired up.
 
-**Feature 2: User Authentication** — Backend complete, frontend pending
+**Feature 2: User Authentication** — Complete
 
-Backend API is fully implemented: user registration, login, JWT access/refresh tokens, password reset (stubbed), and a protected `/me` endpoint. 16 automated tests pass (1 health + 15 auth). The `users` table is created via Alembic migration. Dashboard login/register pages are the next step.
+Backend API and dashboard frontend are fully implemented. Backend: user registration, login, JWT access/refresh tokens, password reset (stubbed), and a protected `/me` endpoint (16 tests passing). Frontend: login page, register page, auth context with token refresh, cookie-based token storage, and route protection via Next.js proxy.
 
-**Next up: Feature 2 frontend (dashboard auth pages)**
+**Next up: Feature 3 (Store Creation)**
 
 ## Feature Roadmap
 
 | # | Feature | Priority | Effort | Status | Dependencies |
 |---|---------|----------|--------|--------|-------------|
 | 1 | Project Scaffolding & Local Dev | Must have | Small | **Done** | — |
-| 2 | User Authentication | Must have | Medium | **Backend done** | Feature 1 |
+| 2 | User Authentication | Must have | Medium | **Done** | Feature 1 |
 | 3 | Store Creation | Must have | Medium | Not started | Feature 2 |
 | 4 | Storefront (Public-Facing) | Must have | Medium | Not started | Feature 3 |
 | 5 | Product Management (CRUD) | Must have | Medium | Not started | Feature 3 |
