@@ -27,6 +27,9 @@ out/
 .DS_Store
 Thumbs.db
 
+# Core dumps
+core
+
 # Logs
 *.log
 *.pid

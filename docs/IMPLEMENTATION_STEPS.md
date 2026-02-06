@@ -104,24 +104,33 @@ Full CRUD for stores with tenant isolation — users can only access their own s
 
 ## Feature 4: Storefront (Public-Facing Store)
 
-**Status:** Not started
+**Status:** Complete
 
-### Backend steps
-1. Create `app/api/public.py` — public router (no auth required):
-   - `GET /api/v1/public/stores/{slug}` — return store by slug (name, description, niche)
-2. Register public router in `app/main.py`
-3. Write `tests/test_public.py` — test store lookup by slug, 404 for unknown slugs
+### What was built
+Public-facing storefront that resolves stores by slug and renders store-branded pages with dynamic SEO metadata. No authentication required — stores are accessed via their slug.
 
-### Frontend steps
-1. Create store resolution logic in `storefront/src/lib/store-context.ts`:
-   - Local dev: read store slug from `?store=` query param
-   - Production: extract slug from subdomain
-2. Create `storefront/src/middleware.ts` — resolve store slug on every request, fetch store data from backend, return 404 if not found
-3. Create store context provider (`storefront/src/contexts/store-context.tsx`) — makes resolved store data available to all pages
-4. Build storefront layout (`storefront/src/app/layout.tsx`) — header with store name, navigation, footer
-5. Build homepage (`storefront/src/app/page.tsx`) — hero section with store description, empty product grid placeholder
-6. Build 404 page (`storefront/src/app/not-found.tsx`) — "Store not found" messaging
-7. Add dynamic metadata generation in layout for SEO: `<title>`, `<meta description>`, Open Graph tags from store data
+### Backend steps completed
+1. Created `app/schemas/public.py` — `PublicStoreResponse` schema (excludes `user_id` for security)
+2. Created `app/api/public.py` — public router with `GET /api/v1/public/stores/{slug}` (only returns active stores)
+3. Registered public router in `app/main.py` under `/api/v1` prefix
+4. Created `tests/test_public.py` — 6 tests: slug lookup, user_id exclusion, unknown slug 404, paused store 404, deleted store 404, no auth required
+
+### Frontend steps completed
+1. Created `storefront/src/lib/types.ts` — TypeScript types mirroring backend public schemas
+2. Created `storefront/src/lib/store.ts` — `resolveSlug()` (query param for local dev, subdomain for prod) + `fetchStore()` API call
+3. Created `storefront/src/middleware.ts` — extracts store slug on every request, forwards via `x-store-slug` header
+4. Created `storefront/src/contexts/store-context.tsx` — `StoreProvider` + `useStore()` hook for client components
+5. Built storefront layout (`storefront/src/app/layout.tsx`) — dynamic header with store name/niche, footer with copyright, `generateMetadata()` for SEO
+6. Built homepage (`storefront/src/app/page.tsx`) — hero section with store name/description/niche badge, product grid placeholder (4 "Coming soon" cards)
+7. Built 404 page (`storefront/src/app/not-found.tsx`) — "Store not found" with explanation text
+8. Dynamic SEO metadata: `<title>` from store name (with template), `<meta description>`, Open Graph tags
+
+### Verification
+- `pytest` — 42 tests pass (16 auth + 1 health + 6 public + 20 stores - 1 = 42)
+- `npm run build` — compiles without errors, routes: `/` (dynamic), `/_not-found`
+- Local dev: `localhost:3001?store=my-slug` resolves store and renders branded page
+- Missing/invalid slug: shows 404 "Store not found" page
+- Public API: no auth required, `user_id` never exposed
 
 ---
 
