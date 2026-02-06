@@ -30,7 +30,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import check_product_limit, get_current_user
 from app.database import get_db
 from app.models.product import ProductStatus
 from app.models.user import User
@@ -55,15 +55,19 @@ router = APIRouter(prefix="/stores/{store_id}/products", tags=["products"])
 async def create_product_endpoint(
     store_id: uuid.UUID,
     request: CreateProductRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_product_limit),
     db: AsyncSession = Depends(get_db),
 ) -> ProductResponse:
     """Create a new product in a store.
 
+    Plan enforcement: the ``check_product_limit`` dependency verifies
+    the user has not exceeded their plan's per-store product limit.
+    Returns 403 if the limit is reached.
+
     Args:
         store_id: The UUID of the store to add the product to.
         request: Product creation payload.
-        current_user: The authenticated user, injected by dependency.
+        current_user: The authenticated user (verified within plan limits).
         db: Async database session injected by FastAPI.
 
     Returns:

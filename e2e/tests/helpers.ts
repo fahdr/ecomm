@@ -162,6 +162,29 @@ export async function createProductAPI(
 }
 
 /**
+ * Subscribe a user to a paid plan via the API (mock mode).
+ *
+ * In mock mode (no Stripe keys), the checkout endpoint creates the
+ * subscription record directly in the database and upgrades the
+ * user's plan immediately.
+ *
+ * @param token - JWT access token.
+ * @param plan - Plan tier to subscribe to (default "starter").
+ */
+export async function subscribeUserAPI(token: string, plan = "starter") {
+  const res = await fetch(`${API_BASE}/api/v1/subscriptions/checkout`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ plan }),
+  });
+  if (!res.ok) throw new Error(`Subscribe failed: ${res.status} ${await res.text()}`);
+  return await res.json();
+}
+
+/**
  * Login via the dashboard UI.
  *
  * Navigates to /login, fills credentials, and submits.

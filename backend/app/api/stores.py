@@ -25,7 +25,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import check_store_limit, get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.schemas.store import CreateStoreRequest, StoreResponse, UpdateStoreRequest
@@ -43,14 +43,18 @@ router = APIRouter(prefix="/stores", tags=["stores"])
 @router.post("", response_model=StoreResponse, status_code=status.HTTP_201_CREATED)
 async def create_store_endpoint(
     request: CreateStoreRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(check_store_limit),
     db: AsyncSession = Depends(get_db),
 ) -> StoreResponse:
     """Create a new store for the authenticated user.
 
+    Plan enforcement: the ``check_store_limit`` dependency verifies
+    the user has not exceeded their plan's store limit before allowing
+    creation. Returns 403 if the limit is reached.
+
     Args:
         request: Store creation payload with name, niche, and optional description.
-        current_user: The authenticated user, injected by dependency.
+        current_user: The authenticated user (verified within plan limits).
         db: Async database session injected by FastAPI.
 
     Returns:

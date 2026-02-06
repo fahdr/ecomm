@@ -83,6 +83,7 @@ class UserResponse(BaseModel):
         id: The user's unique identifier.
         email: The user's email address.
         is_active: Whether the account is enabled.
+        plan: The user's current subscription plan tier.
         created_at: When the account was created.
     """
 
@@ -91,6 +92,7 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     is_active: bool
+    plan: str
     created_at: datetime
 
 

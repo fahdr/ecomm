@@ -35,6 +35,22 @@ async def register_and_get_token(client, email: str = "owner@example.com") -> st
     return resp.json()["access_token"]
 
 
+async def upgrade_to_starter(client, token: str) -> None:
+    """Subscribe the user to the starter plan (allows 3 stores).
+
+    Used by tests that need to create more than 1 store.
+
+    Args:
+        client: The async HTTP test client.
+        token: JWT access token.
+    """
+    await client.post(
+        "/api/v1/subscriptions/checkout",
+        json={"plan": "starter"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+
 async def create_test_store(client, token: str, name: str = "My Store", niche: str = "electronics") -> dict:
     """Create a store and return the response data.
 
@@ -99,6 +115,7 @@ async def test_create_store_without_description(client):
 async def test_create_store_duplicate_name_gets_unique_slug(client):
     """Two stores with the same name get different slugs (suffix appended)."""
     token = await register_and_get_token(client)
+    await upgrade_to_starter(client, token)
 
     store1 = await create_test_store(client, token, name="Cool Store")
     store2 = await create_test_store(client, token, name="Cool Store")
@@ -139,6 +156,7 @@ async def test_create_store_missing_name(client):
 async def test_list_stores_success(client):
     """Listing stores returns all non-deleted stores for the user."""
     token = await register_and_get_token(client)
+    await upgrade_to_starter(client, token)
     await create_test_store(client, token, name="Store A")
     await create_test_store(client, token, name="Store B")
 

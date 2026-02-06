@@ -1,15 +1,21 @@
 """Shared FastAPI dependencies for API routes.
 
 Provides reusable dependencies such as ``get_current_user`` that can be
-injected into any route handler that requires an authenticated user.
+injected into any route handler that requires an authenticated user,
+and plan enforcement dependencies (``check_store_limit``,
+``check_product_limit``) that gate resource creation.
 
 **For Developers:**
     Use ``current_user: User = Depends(get_current_user)`` in route
     signatures to enforce authentication and receive the caller's User object.
+    Use ``Depends(check_store_limit)`` / ``Depends(check_product_limit)``
+    on create endpoints to enforce plan limits (returns 403 if exceeded).
 
 **For QA Engineers:**
-    Any request missing a valid ``Authorization: Bearer <token>`` header
-    will receive a 401 response with ``"Could not validate credentials"``.
+    - Any request missing a valid ``Authorization: Bearer <token>`` header
+      will receive a 401 response with ``"Could not validate credentials"``.
+    - Plan limit violations return 403 with a message indicating the limit
+      and suggesting an upgrade.
 """
 
 import uuid
@@ -17,9 +23,13 @@ import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.constants.plans import PlanTier, get_plan_limits
 from app.database import get_db
+from app.models.product import Product, ProductStatus
+from app.models.store import Store, StoreStatus
 from app.models.user import User
 from app.services.auth_service import decode_token, get_user_by_id
 
@@ -68,3 +78,90 @@ async def get_current_user(
         raise credentials_exception
 
     return user
+
+
+async def check_store_limit(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Verify the user has not exceeded their plan's store limit.
+
+    Inject this instead of ``get_current_user`` on store creation
+    endpoints. Returns the authenticated user on success.
+
+    Args:
+        current_user: The authenticated user (resolved via ``get_current_user``).
+        db: Async database session.
+
+    Returns:
+        The authenticated User if within limits.
+
+    Raises:
+        HTTPException: 403 if the user has reached their store limit.
+    """
+    limits = get_plan_limits(PlanTier(current_user.plan))
+    if limits.max_stores == -1:
+        return current_user
+
+    result = await db.execute(
+        select(func.count(Store.id)).where(
+            Store.user_id == current_user.id,
+            Store.status != StoreStatus.deleted,
+        )
+    )
+    count = result.scalar_one()
+
+    if count >= limits.max_stores:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Plan limit reached: {limits.max_stores} store(s) allowed "
+                f"on the {current_user.plan.value} plan. Upgrade to create more."
+            ),
+        )
+    return current_user
+
+
+async def check_product_limit(
+    store_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Verify the user has not exceeded their plan's per-store product limit.
+
+    Inject this instead of ``get_current_user`` on product creation
+    endpoints. Returns the authenticated user on success.
+
+    Args:
+        store_id: The store UUID (from the URL path).
+        current_user: The authenticated user.
+        db: Async database session.
+
+    Returns:
+        The authenticated User if within limits.
+
+    Raises:
+        HTTPException: 403 if the product limit for the store is reached.
+    """
+    limits = get_plan_limits(PlanTier(current_user.plan))
+    if limits.max_products_per_store == -1:
+        return current_user
+
+    result = await db.execute(
+        select(func.count(Product.id)).where(
+            Product.store_id == store_id,
+            Product.status != ProductStatus.archived,
+        )
+    )
+    count = result.scalar_one()
+
+    if count >= limits.max_products_per_store:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                f"Plan limit reached: {limits.max_products_per_store} product(s) "
+                f"per store allowed on the {current_user.plan.value} plan. "
+                f"Upgrade to add more."
+            ),
+        )
+    return current_user

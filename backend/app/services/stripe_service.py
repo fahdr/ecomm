@@ -1,23 +1,24 @@
 """Stripe integration service.
 
-Handles Stripe Checkout session creation and webhook event verification.
-Uses the Stripe Python SDK for all interactions.
+Handles Stripe Checkout session creation, subscription management,
+Customer Portal, and webhook event verification via the Stripe Python SDK.
 
 **For Developers:**
     ``create_checkout_session`` builds a Stripe Checkout session from
-    validated order items. ``construct_webhook_event`` verifies webhook
-    signatures. If ``STRIPE_SECRET_KEY`` is empty, checkout returns a
-    mock session for local development without Stripe.
+    validated order items. ``create_subscription_session`` creates a
+    subscription-mode checkout. ``construct_webhook_event`` verifies
+    webhook signatures. If ``STRIPE_SECRET_KEY`` is empty, all functions
+    return mock data for local development without Stripe.
 
 **For QA Engineers:**
     - Checkout creates a Stripe session with line items matching the cart.
     - Prices are converted to cents (Stripe uses smallest currency unit).
     - Webhook signature verification protects against spoofed events.
-    - In dev mode (no Stripe key), a mock checkout URL is returned.
+    - In dev mode (no Stripe key), mock checkout/portal URLs are returned.
 
 **For End Users:**
-    When you click "Checkout", you'll be redirected to a secure Stripe
-    payment page. After payment, you'll be redirected back to the store.
+    When you click "Checkout" or "Subscribe", you'll be redirected to a
+    secure Stripe payment page. After payment, you'll be redirected back.
 """
 
 import uuid
@@ -97,22 +98,29 @@ def create_checkout_session(
 def construct_webhook_event(
     payload: bytes,
     sig_header: str,
-) -> stripe.Event:
+) -> dict:
     """Verify and construct a Stripe webhook event from the raw payload.
+
+    In mock mode (no webhook secret configured), parses the JSON payload
+    directly without signature verification. This allows local development
+    and testing to work without real Stripe keys.
 
     Args:
         payload: Raw request body bytes.
         sig_header: The ``Stripe-Signature`` header value.
 
     Returns:
-        A verified Stripe Event object.
+        A dict (or Stripe Event) with ``type`` and ``data.object`` keys.
 
     Raises:
-        ValueError: If the webhook secret is not configured.
-        stripe.error.SignatureVerificationError: If the signature is invalid.
+        stripe.error.SignatureVerificationError: If the signature is invalid
+            (real mode only).
     """
+    import json
+
     if not settings.stripe_webhook_secret:
-        raise ValueError("Stripe webhook secret not configured")
+        # Mock mode: parse JSON directly without signature verification
+        return json.loads(payload)
 
     stripe.api_key = settings.stripe_secret_key
 
@@ -120,3 +128,107 @@ def construct_webhook_event(
         payload, sig_header, settings.stripe_webhook_secret
     )
     return event
+
+
+def create_stripe_customer(email: str, metadata: dict | None = None) -> str:
+    """Create a Stripe Customer object and return its ID.
+
+    In mock mode, returns a deterministic mock customer ID.
+
+    Args:
+        email: Customer email address.
+        metadata: Optional metadata to attach to the Customer.
+
+    Returns:
+        The Stripe Customer ID string.
+    """
+    if not settings.stripe_secret_key:
+        return f"cus_mock_{uuid.uuid4().hex[:12]}"
+
+    stripe.api_key = settings.stripe_secret_key
+    customer = stripe.Customer.create(
+        email=email,
+        metadata=metadata or {},
+    )
+    return customer.id
+
+
+def create_subscription_session(
+    customer_id: str,
+    price_id: str,
+    trial_days: int,
+    success_url: str,
+    cancel_url: str,
+    metadata: dict | None = None,
+) -> dict:
+    """Create a Stripe Checkout session in subscription mode.
+
+    In mock mode, returns a mock session that redirects directly to the
+    success URL, simulating a completed subscription checkout.
+
+    Args:
+        customer_id: Stripe Customer ID.
+        price_id: Stripe Price ID for the subscription plan.
+        trial_days: Number of free-trial days (0 for no trial).
+        success_url: URL to redirect to after successful payment.
+        cancel_url: URL to redirect to if the user cancels.
+        metadata: Optional metadata for the session.
+
+    Returns:
+        A dict with ``session_id`` and ``checkout_url``.
+    """
+    if not settings.stripe_secret_key:
+        mock_session_id = f"cs_sub_mock_{uuid.uuid4().hex[:12]}"
+        return {
+            "session_id": mock_session_id,
+            "checkout_url": success_url,
+        }
+
+    stripe.api_key = settings.stripe_secret_key
+
+    session_params: dict = {
+        "customer": customer_id,
+        "payment_method_types": ["card"],
+        "line_items": [{"price": price_id, "quantity": 1}],
+        "mode": "subscription",
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "metadata": metadata or {},
+    }
+
+    if trial_days > 0:
+        session_params["subscription_data"] = {
+            "trial_period_days": trial_days,
+        }
+
+    session = stripe.checkout.Session.create(**session_params)
+    return {
+        "session_id": session.id,
+        "checkout_url": session.url,
+    }
+
+
+def create_billing_portal_session(
+    customer_id: str,
+    return_url: str,
+) -> dict:
+    """Create a Stripe Customer Portal session for subscription management.
+
+    In mock mode, returns the ``return_url`` as the portal URL.
+
+    Args:
+        customer_id: Stripe Customer ID.
+        return_url: URL to redirect to when the user exits the portal.
+
+    Returns:
+        A dict with ``portal_url``.
+    """
+    if not settings.stripe_secret_key:
+        return {"portal_url": return_url}
+
+    stripe.api_key = settings.stripe_secret_key
+    session = stripe.billing_portal.Session.create(
+        customer=customer_id,
+        return_url=return_url,
+    )
+    return {"portal_url": session.url}

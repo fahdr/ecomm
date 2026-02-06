@@ -8,3 +8,4 @@ from app.models.user import User  # noqa: F401
 from app.models.store import Store, StoreStatus  # noqa: F401
 from app.models.product import Product, ProductStatus, ProductVariant  # noqa: F401
 from app.models.order import Order, OrderItem, OrderStatus  # noqa: F401
+from app.models.subscription import Subscription, SubscriptionStatus  # noqa: F401
