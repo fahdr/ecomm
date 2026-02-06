@@ -4,7 +4,12 @@ Each feature is a self-contained deliverable. We build one at a time, top to bot
 Features are ordered by dependency — each builds on what came before.
 Local dev via devcontainer (Docker Compose). K8s deployment at the end.
 
-**Legend:** `[P]` = Python backend, `[N]` = Next.js frontend, `[K]` = Kubernetes/infra
+**Legend:** `[P]` = Python backend, `[A]` = Automation service (separate Python/FastAPI service), `[N]` = Next.js frontend, `[K]` = Kubernetes/infra
+
+> **Note:** Features 8-11 belong to the **Automation Service** (`automation/`),
+> a standalone service that communicates with the core backend via HTTP API.
+> It is designed to be extractable as a separate product in the future.
+> See [ARCHITECTURE.md](ARCHITECTURE.md) for design principles and separation rules.
 
 ---
 
@@ -236,6 +241,7 @@ Platform billing. Users pick a plan (Starter/Growth/Pro) and subscribe via Strip
 
 ## Feature 8: Product Research Automation
 **Priority:** High | **Estimated effort:** Large
+**Service:** Automation (`automation/`) — standalone, extractable as separate product
 
 ### What we're building
 Automated daily product research: pull trends from AliExpress, Reddit, Google Trends. Score products with AI. Present recommendations to users.
@@ -245,30 +251,34 @@ Automated daily product research: pull trends from AliExpress, Reddit, Google Tr
 - [ ] Data pulled from at least 2 sources (AliExpress API + Reddit via PRAW)
 - [ ] Products scored with weighted algorithm
 - [ ] Top 20 products analyzed by Claude API
-- [ ] Results saved to `WatchlistItem` table
+- [ ] Results saved to `WatchlistItem` table (automation DB)
 - [ ] Dashboard: "Product Research" page showing daily results
 - [ ] Dashboard: one-click import from research results
 - [ ] Daily email report (summary of findings)
+- [ ] Automation service fetches store data via core backend API (no direct DB access)
 
 ### Tasks
-- [P] Create `WatchlistItem` model
-- [P] AliExpress research service (affiliate API)
-- [P] Reddit research service (PRAW)
-- [P] Google Trends service (pytrends) — optional, add if time allows
-- [P] Product scoring algorithm
-- [P] AI analysis service (Claude API)
-- [P] Celery task: daily_product_research (per store)
-- [P] Celery Beat schedule config
-- [P] Research results API endpoints
-- [P] Tests
+- [A] Create `WatchlistItem` model (automation service DB)
+- [A] AliExpress research service (affiliate API)
+- [A] Reddit research service (PRAW)
+- [A] Google Trends service (pytrends) — optional, add if time allows
+- [A] Product scoring algorithm
+- [A] AI analysis service (Claude API)
+- [A] Celery task: daily_product_research (per store)
+- [A] Celery Beat schedule config
+- [A] Research results API endpoints (`/api/v1/automation/stores/{store_id}/research`)
+- [A] Internal HTTP client to fetch store/user data from core backend
+- [A] Tests
 - [N] Dashboard: research results page (table with scores, AI reasoning, import button)
 - [N] Dashboard: watchlist page
 - [N] Dashboard: research settings (niche keywords, frequency)
+- [N] Dashboard: configure API client to call automation service (port 8001)
 
 ---
 
 ## Feature 9: Automated Product Import + AI Content
 **Priority:** High | **Estimated effort:** Medium
+**Service:** Automation (`automation/`) — standalone, extractable as separate product
 
 ### What we're building
 Import a researched product into the store with AI-generated title, description, SEO metadata, and optimized images.
@@ -278,17 +288,19 @@ Import a researched product into the store with AI-generated title, description,
 - [ ] AI generates: SEO title, product description, meta description, keywords
 - [ ] Images downloaded from source, optimized (WebP, resized), uploaded to storage
 - [ ] Pricing auto-calculated (configurable markup, psychological pricing)
-- [ ] Product created as draft (user reviews before publishing)
+- [ ] Product created as draft via core backend API (user reviews before publishing)
 - [ ] Celery task handles the full pipeline (retries on failure)
+- [ ] Automation service creates products by calling core backend's product API (not direct DB)
 
 ### Tasks
-- [P] Import service (orchestrates the full pipeline)
-- [P] AI content generation service (Claude API prompts for product copy)
-- [P] Image download + optimization service (Pillow)
-- [P] Pricing calculation utility
-- [P] Celery task: import_product (chain of steps)
-- [P] API endpoint: `POST /api/v1/stores/{store_id}/products/import`
-- [P] Tests
+- [A] Import service (orchestrates the full pipeline)
+- [A] AI content generation service (Claude API prompts for product copy)
+- [A] Image download + optimization service (Pillow)
+- [A] Pricing calculation utility
+- [A] Celery task: import_product (chain of steps)
+- [A] API endpoint: `POST /api/v1/automation/stores/{store_id}/products/import`
+- [A] Internal HTTP client to create products via core backend API
+- [A] Tests
 - [N] Dashboard: import progress indicator
 - [N] Dashboard: review imported product before publishing
 
@@ -296,6 +308,7 @@ Import a researched product into the store with AI-generated title, description,
 
 ## Feature 10: SEO Automation
 **Priority:** Medium | **Estimated effort:** Medium
+**Service:** Automation (`automation/`) — standalone, extractable as separate product
 
 ### What we're building
 Automated SEO: sitemaps, schema markup, meta tags, and AI-generated blog posts.
@@ -306,23 +319,27 @@ Automated SEO: sitemaps, schema markup, meta tags, and AI-generated blog posts.
 - [ ] AI-generated blog posts targeting keyword gaps (weekly Celery task)
 - [ ] Dashboard: SEO overview page (scores, suggestions)
 - [ ] Blog posts display on storefront at `/blog/{slug}`
+- [ ] Blog posts stored in automation service DB, served via automation API
+- [ ] Storefront fetches blog data from automation service API
 
 ### Tasks
-- [P] Create `BlogPost` model
-- [P] Sitemap generation service
-- [P] Schema markup generation service
-- [P] AI blog post generation (Claude API)
-- [P] Celery task: weekly_seo_optimization
-- [P] Public blog API endpoints
-- [N] Storefront: sitemap.xml route
+- [A] Create `BlogPost` model (automation service DB)
+- [A] Sitemap generation service (fetches product list from core backend API)
+- [A] Schema markup generation service
+- [A] AI blog post generation (Claude API)
+- [A] Celery task: weekly_seo_optimization
+- [A] Public blog API endpoints (`/api/v1/automation/public/stores/{slug}/blog`)
+- [A] Tests
+- [N] Storefront: sitemap.xml route (calls automation service API)
 - [N] Storefront: JSON-LD on product pages
-- [N] Storefront: blog listing + detail pages
-- [N] Dashboard: SEO overview page
+- [N] Storefront: blog listing + detail pages (data from automation API)
+- [N] Dashboard: SEO overview page (calls automation service API)
 
 ---
 
 ## Feature 11: Email Automation
 **Priority:** Medium | **Estimated effort:** Medium
+**Service:** Automation (`automation/`) — standalone, extractable as separate product
 
 ### What we're building
 Automated email flows: welcome series, abandoned cart, post-purchase. Via SendGrid.
@@ -334,14 +351,18 @@ Automated email flows: welcome series, abandoned cart, post-purchase. Via SendGr
 - [ ] Order confirmation email
 - [ ] Store owner: daily product research report email
 - [ ] Dashboard: email flow configuration page
+- [ ] Automation service receives order/cart events from core backend via Redis pub/sub or webhook
+- [ ] Email flows and events stored in automation service DB
 
 ### Tasks
-- [P] Email service (SendGrid SDK, Jinja2 templates)
-- [P] Create `EmailFlow` and `EmailEvent` models
-- [P] Celery tasks for each email flow
-- [P] Abandoned cart detection logic
-- [P] API endpoints for email flow CRUD
-- [N] Dashboard: email flow builder/configurator
+- [A] Email service (SendGrid SDK, Jinja2 templates)
+- [A] Create `EmailFlow` and `EmailEvent` models (automation service DB)
+- [A] Celery tasks for each email flow
+- [A] Abandoned cart detection logic (listens for cart events from core backend)
+- [A] API endpoints for email flow CRUD (`/api/v1/automation/stores/{store_id}/email-flows`)
+- [A] Event listener: subscribe to order/cart events from core backend (Redis pub/sub or webhook)
+- [A] Tests
+- [N] Dashboard: email flow builder/configurator (calls automation service API)
 
 ---
 
