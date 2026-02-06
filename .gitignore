@@ -35,5 +35,9 @@ core
 *.pid
 .devcontainer/logs/
 
+# Playwright
+e2e/playwright-report/
+e2e/test-results/
+
 # Claude Code
 .claude/
