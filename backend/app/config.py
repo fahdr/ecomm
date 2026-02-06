@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://redis:6379/1"
     celery_result_backend: str = "redis://redis:6379/2"
 
+    # CORS
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
+
     # JWT
     jwt_secret_key: str = "dev-secret-change-in-production"
     jwt_algorithm: str = "HS256"

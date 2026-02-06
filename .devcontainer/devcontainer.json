@@ -78,7 +78,7 @@
     }
     ],
 
-  "postCreateCommand": "if [ -f backend/pyproject.toml ] || [ -f backend/setup.py ]; then cd backend && pip install -e '.[dev]'; cd ..; fi && if [ -f dashboard/package.json ]; then cd dashboard && npm install; cd ..; fi && if [ -f storefront/package.json ]; then cd storefront && npm install; cd ..; fi",
+  "postStartCommand": "bash .devcontainer/start-services.sh",
 
   "remoteUser": "root"
 }

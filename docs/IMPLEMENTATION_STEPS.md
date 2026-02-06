@@ -71,35 +71,34 @@ Registration, login, JWT access/refresh tokens, a protected `/me` endpoint, dash
 
 ## Feature 3: Store Creation (Backend + Dashboard)
 
-**Status:** Not started
+**Status:** Complete
 
-### Backend steps
-1. Create `app/models/store.py` — `Store` model with fields: id (UUID), user_id (FK to users), name, slug, niche, description, status (enum: active/paused/deleted), created_at, updated_at
-2. Create `app/utils/slug.py` — slug generation utility: `name → slugify → check uniqueness → append suffix if needed`
-3. Generate Alembic migration: `alembic revision --autogenerate -m "create stores table"`
-4. Apply migration: `alembic upgrade head`
-5. Create `app/schemas/store.py` — Pydantic schemas: CreateStoreRequest (name, niche, description), UpdateStoreRequest (partial), StoreResponse
-6. Create `app/services/store_service.py` — business logic:
-   - `create_store(db, user_id, data)` — generate slug, insert store
-   - `list_stores(db, user_id)` — return user's stores only (tenant isolation)
-   - `get_store(db, user_id, store_id)` — return single store, verify ownership
-   - `update_store(db, user_id, store_id, data)` — partial update
-   - `delete_store(db, user_id, store_id)` — set status to deleted (soft-delete)
-7. Create `app/api/stores.py` — store router:
-   - `POST /api/v1/stores` — create (requires auth)
-   - `GET /api/v1/stores` — list user's stores (requires auth)
-   - `GET /api/v1/stores/{store_id}` — get detail (requires auth + ownership)
-   - `PATCH /api/v1/stores/{store_id}` — update (requires auth + ownership)
-   - `DELETE /api/v1/stores/{store_id}` — soft-delete (requires auth + ownership)
-8. Register store router in `app/main.py`
-9. Import Store model in `app/models/__init__.py` (so Alembic sees it)
-10. Write `tests/test_stores.py` — test all CRUD operations + tenant isolation (user A can't access user B's stores)
+### What was built
+Full CRUD for stores with tenant isolation — users can only access their own stores. Dashboard pages for creating, listing, editing, and deleting stores.
 
-### Frontend steps
-1. Build "Create Store" page at `dashboard/src/app/stores/new/page.tsx` — form with name, niche picker (dropdown), description textarea
-2. Build store list page at `dashboard/src/app/stores/page.tsx` — card grid showing all user's stores with status badge
-3. Build store settings page at `dashboard/src/app/stores/[id]/page.tsx` — edit form, delete button with confirmation
-4. Add stores link to dashboard sidebar/navigation
+### Backend steps completed
+1. Created `app/models/store.py` — `Store` model with id (UUID), user_id (FK), name, slug (unique), niche, description, status (enum: active/paused/deleted), created_at, updated_at, plus relationship to User
+2. Created `app/utils/slug.py` — `slugify()` for URL-safe strings + `generate_unique_slug()` with collision resolution (-2, -3, etc.)
+3. Generated and applied Alembic migration for `stores` table (with indexes on slug and user_id)
+4. Fixed `alembic/env.py` — added `import app.models` so all models register on `Base.metadata` for autogenerate
+5. Created `app/schemas/store.py` — CreateStoreRequest, UpdateStoreRequest (partial), StoreResponse
+6. Created `app/services/store_service.py` — create_store, list_stores (excludes deleted), get_store (ownership check), update_store (with slug regen), delete_store (soft-delete)
+7. Created `app/api/stores.py` — store router with POST, GET (list), GET/{id}, PATCH/{id}, DELETE/{id}
+8. Registered store router in `app/main.py`, imported Store in `app/models/__init__.py`
+9. Created `tests/test_stores.py` — 20 tests covering CRUD, slug uniqueness, auth, validation, soft-delete, and tenant isolation (4 cross-user tests)
+
+### Frontend steps completed
+1. Installed shadcn/ui components: select, textarea, badge, dialog
+2. Built store list page at `dashboard/src/app/stores/page.tsx` — card grid with status badges, empty state, "Create Store" button
+3. Built create store page at `dashboard/src/app/stores/new/page.tsx` — form with name, niche dropdown (11 categories), description textarea
+4. Built store settings page at `dashboard/src/app/stores/[id]/page.tsx` — edit form with all fields, status toggle, delete button with confirmation dialog
+5. Updated dashboard home page with "Stores" nav link and "Go to Stores" CTA button
+
+### Verification
+- `pytest` — 36 tests pass (16 auth + 1 health + 20 stores - 1 duplicate = 36)
+- `npm run build` — compiles without errors, all routes detected
+- CRUD operations: create → list → get → update → soft-delete all working
+- Tenant isolation: user A cannot see/edit/delete user B's stores
 
 ---
 

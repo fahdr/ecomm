@@ -2,21 +2,23 @@
  * Dashboard home page.
  *
  * The main landing page for authenticated users. Displays a welcome
- * message with the user's email and a logout button.
+ * message with the user's email, navigation links, and a logout button.
  *
  * **For End Users:**
- *   This is your dashboard home. You'll see your email and can log out
- *   using the button in the header.
+ *   This is your dashboard home. Navigate to your stores or log out
+ *   using the controls in the header.
  *
  * **For QA Engineers:**
  *   - This page is protected — unauthenticated users are redirected
  *     to `/login` by the middleware.
  *   - A loading spinner shows while the auth state is being resolved.
  *   - The logout button clears tokens and redirects to `/login`.
+ *   - The "Stores" link navigates to `/stores`.
  */
 
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 
@@ -34,7 +36,17 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       <header className="flex items-center justify-between border-b px-6 py-4">
-        <h1 className="text-lg font-semibold">Dropshipping Dashboard</h1>
+        <div className="flex items-center gap-6">
+          <h1 className="text-lg font-semibold">Dropshipping Dashboard</h1>
+          <nav className="flex items-center gap-4">
+            <Link
+              href="/stores"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Stores
+            </Link>
+          </nav>
+        </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-muted-foreground">{user?.email}</span>
           <Button variant="outline" size="sm" onClick={logout}>
@@ -49,6 +61,9 @@ export default function Home() {
         <p className="text-lg text-muted-foreground">
           Manage your stores, products, and orders.
         </p>
+        <Link href="/stores">
+          <Button size="lg">Go to Stores</Button>
+        </Link>
       </main>
     </div>
   );
