@@ -43,6 +43,7 @@ The devcontainer configures pytest in VS Code automatically:
 | Test File | Tests | What it covers |
 |-----------|-------|----------------|
 | `tests/test_health.py` | 1 | `GET /api/v1/health` returns 200 with `{"status": "ok"}` |
+| `tests/test_auth.py` | 15 | Registration (success, duplicate email, short password, invalid email), login (success, wrong password, nonexistent user), token refresh (success, invalid token, wrong token type), `/me` (success, no token, invalid token, wrong token type), forgot-password (stubbed) |
 
 ## Test Structure
 
@@ -51,22 +52,27 @@ The devcontainer configures pytest in VS Code automatically:
 ```
 backend/tests/
 ├── __init__.py
-├── conftest.py          # Shared fixtures (client)
-└── test_health.py       # Health endpoint tests
+├── conftest.py          # Shared fixtures (client, DB cleanup)
+├── test_health.py       # Health endpoint tests
+└── test_auth.py         # Auth endpoint tests (15 tests)
 ```
 
 ### Fixtures (`conftest.py`)
 
-The `client` fixture provides an async HTTP client wired directly to the FastAPI app (no network required):
+**`clean_tables`** (autouse) — Truncates all tables before each test to ensure isolation. Uses `NullPool` to avoid async connection conflicts with asyncpg.
+
+**`client`** — Provides an async HTTP client wired directly to the FastAPI app (no network required). Overrides the `get_db` dependency to use the test engine:
 
 ```python
 @pytest.fixture
 async def client():
+    app.dependency_overrides[get_db] = override_get_db
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test"
     ) as ac:
         yield ac
+    app.dependency_overrides.clear()
 ```
 
 Use this fixture in any test by adding `client` as a parameter.
@@ -164,6 +170,11 @@ Query: `?page=1&per_page=20`
 |--------|------|------|--------|
 | `GET` | `/` | No | Implemented — returns API info |
 | `GET` | `/api/v1/health` | No | Implemented — DB connectivity check |
+| `POST` | `/api/v1/auth/register` | No | Implemented — create user, return tokens (201) |
+| `POST` | `/api/v1/auth/login` | No | Implemented — validate credentials, return tokens |
+| `POST` | `/api/v1/auth/refresh` | No | Implemented — exchange refresh token for new token pair |
+| `POST` | `/api/v1/auth/forgot-password` | No | Implemented (stubbed) — always returns success message |
+| `GET` | `/api/v1/auth/me` | Bearer JWT | Implemented — return current user profile |
 
 ## Planned Test Areas by Feature
 

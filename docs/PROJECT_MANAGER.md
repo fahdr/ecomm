@@ -30,16 +30,20 @@ Supporting infrastructure:
 
 **Feature 1: Project Scaffolding** — Complete
 
-All three applications are scaffolded and runnable in the local development environment. The backend serves a health check endpoint, the database is connected, and the task queue is wired up. One automated test passes.
+All three applications are scaffolded and runnable in the local development environment. The backend serves a health check endpoint, the database is connected, and the task queue is wired up.
 
-**Next up: Feature 2 (User Authentication)**
+**Feature 2: User Authentication** — Backend complete, frontend pending
+
+Backend API is fully implemented: user registration, login, JWT access/refresh tokens, password reset (stubbed), and a protected `/me` endpoint. 16 automated tests pass (1 health + 15 auth). The `users` table is created via Alembic migration. Dashboard login/register pages are the next step.
+
+**Next up: Feature 2 frontend (dashboard auth pages)**
 
 ## Feature Roadmap
 
 | # | Feature | Priority | Effort | Status | Dependencies |
 |---|---------|----------|--------|--------|-------------|
 | 1 | Project Scaffolding & Local Dev | Must have | Small | **Done** | — |
-| 2 | User Authentication | Must have | Medium | Not started | Feature 1 |
+| 2 | User Authentication | Must have | Medium | **Backend done** | Feature 1 |
 | 3 | Store Creation | Must have | Medium | Not started | Feature 2 |
 | 4 | Storefront (Public-Facing) | Must have | Medium | Not started | Feature 3 |
 | 5 | Product Management (CRUD) | Must have | Medium | Not started | Feature 3 |

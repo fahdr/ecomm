@@ -17,7 +17,7 @@ The Dropshipping Platform is a multi-tenant SaaS application that lets users cre
 | Database | PostgreSQL | 16 |
 | Migrations | Alembic (async) | 1.14+ |
 | Task queue | Celery + Redis | 5.4+ |
-| Auth | python-jose (JWT) + passlib (bcrypt) | — |
+| Auth | python-jose (JWT) + bcrypt | — |
 | Frontend framework | Next.js (App Router) | 16 |
 | UI components | Shadcn/ui (dashboard only) | — |
 | Styling | Tailwind CSS | 4 |
@@ -98,10 +98,15 @@ backend/
 │   ├── config.py            # pydantic-settings (reads env vars)
 │   ├── database.py          # Async engine, session factory, Base
 │   ├── api/                 # FastAPI routers
-│   │   └── health.py        # GET /api/v1/health
+│   │   ├── health.py        # GET /api/v1/health
+│   │   ├── auth.py          # Auth endpoints (register, login, refresh, me)
+│   │   └── deps.py          # Shared dependencies (get_current_user)
 │   ├── models/              # SQLAlchemy models
+│   │   └── user.py          # User model
 │   ├── schemas/             # Pydantic request/response schemas
+│   │   └── auth.py          # Auth request/response schemas
 │   ├── services/            # Business logic
+│   │   └── auth_service.py  # Password hashing, JWT, user registration/login
 │   ├── tasks/               # Celery tasks
 │   │   └── celery_app.py    # Celery instance + config
 │   └── utils/               # Shared utilities
@@ -109,8 +114,9 @@ backend/
 │   ├── env.py               # Async migration environment
 │   └── versions/            # Migration files
 ├── tests/
-│   ├── conftest.py          # httpx AsyncClient fixture
-│   └── test_health.py       # Health endpoint test
+│   ├── conftest.py          # httpx AsyncClient fixture + DB isolation
+│   ├── test_health.py       # Health endpoint test
+│   └── test_auth.py         # Auth endpoint tests (15 tests)
 └── pyproject.toml           # Dependencies + pytest/ruff config
 
 dashboard/
@@ -171,7 +177,7 @@ pytest -v
 pytest tests/test_health.py
 ```
 
-Tests use `pytest-asyncio` with `asyncio_mode = "auto"`. The `client` fixture in `conftest.py` provides an `httpx.AsyncClient` wired to the FastAPI app via `ASGITransport`.
+Tests use `pytest-asyncio` with `asyncio_mode = "auto"`. The `client` fixture in `conftest.py` provides an `httpx.AsyncClient` wired to the FastAPI app via `ASGITransport`. A `clean_tables` autouse fixture truncates all tables between tests for isolation (uses `NullPool` to avoid async connection conflicts).
 
 ### Writing a new test
 
