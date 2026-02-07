@@ -98,6 +98,12 @@ class Order(Base):
     stripe_session_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True, unique=True, index=True
     )
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("customers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     shipping_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -110,6 +116,7 @@ class Order(Base):
     )
 
     store = relationship("Store", backref="orders", lazy="selectin")
+    customer = relationship("Customer", backref="orders", lazy="selectin")
     items = relationship(
         "OrderItem",
         back_populates="order",

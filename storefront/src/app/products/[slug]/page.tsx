@@ -28,6 +28,7 @@ import { fetchStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { AddToCart } from "@/components/add-to-cart";
+import { WishlistButton } from "@/components/wishlist-button";
 
 /**
  * Generate dynamic metadata for the product detail page.
@@ -194,15 +195,20 @@ export default async function ProductDetailPage({
               </div>
             )}
 
-            {/* Add to Cart */}
-            <AddToCart
-              productId={product.id}
-              title={product.title}
-              slug={product.slug}
-              price={product.price}
-              image={product.images?.[0] || null}
-              variants={product.variants}
-            />
+            {/* Add to Cart + Wishlist */}
+            <div className="flex items-start gap-3 mt-8">
+              <div className="flex-1">
+                <AddToCart
+                  productId={product.id}
+                  title={product.title}
+                  slug={product.slug}
+                  price={product.price}
+                  image={product.images?.[0] || null}
+                  variants={product.variants}
+                />
+              </div>
+              <WishlistButton productId={product.id} className="mt-0" />
+            </div>
           </div>
         </div>
       </div>

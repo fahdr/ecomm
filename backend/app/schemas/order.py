@@ -108,6 +108,7 @@ class OrderResponse(BaseModel):
     id: uuid.UUID
     store_id: uuid.UUID
     customer_email: str
+    customer_id: uuid.UUID | None = None
     status: OrderStatus
     total: Decimal
     stripe_session_id: str | None

@@ -30,7 +30,9 @@ import Link from "next/link";
 import type { Store } from "@/lib/types";
 import { StoreProvider } from "@/contexts/store-context";
 import { CartProvider } from "@/contexts/cart-context";
+import { CustomerAuthProvider } from "@/contexts/customer-auth-context";
 import { CartBadge } from "@/components/cart-badge";
+import { HeaderNav } from "@/components/header-nav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -109,9 +111,11 @@ export default async function RootLayout({
       >
         <StoreProvider store={store}>
           <CartProvider>
-            {store && <StoreHeader store={store} />}
-            <main className="flex-1">{children}</main>
-            {store && <StoreFooter store={store} />}
+            <CustomerAuthProvider>
+              {store && <StoreHeader store={store} />}
+              <main className="flex-1">{children}</main>
+              {store && <StoreFooter store={store} />}
+            </CustomerAuthProvider>
           </CartProvider>
         </StoreProvider>
       </body>
@@ -145,9 +149,7 @@ function StoreHeader({ store }: { store: Store }) {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">
-              {store.niche}
-            </span>
+            <HeaderNav />
             <CartBadge />
           </div>
         </div>

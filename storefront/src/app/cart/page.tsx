@@ -25,10 +25,11 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/contexts/cart-context";
 import { useStore } from "@/contexts/store-context";
+import { useCustomerAuth } from "@/contexts/customer-auth-context";
 import { api } from "@/lib/api";
 
 /**
@@ -39,9 +40,17 @@ import { api } from "@/lib/api";
 export default function CartPage() {
   const { items, removeItem, updateQuantity, cartTotal, clearCart } = useCart();
   const store = useStore();
+  const { customer } = useCustomerAuth();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pre-fill email when customer is logged in
+  useEffect(() => {
+    if (customer && !email) {
+      setEmail(customer.email);
+    }
+  }, [customer, email]);
 
   /**
    * Handle checkout by calling the public checkout API.

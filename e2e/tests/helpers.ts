@@ -203,3 +203,74 @@ export async function dashboardLogin(page: Page, email: string, password: string
   await page.waitForURL(/\/$/, { timeout: 10000 });
   await page.waitForLoadState("networkidle");
 }
+
+/**
+ * Register a customer on a storefront store via the API.
+ *
+ * @param storeSlug - The store slug to register on.
+ * @param email - Optional customer email; generated if not provided.
+ * @returns Object with customer email, password, and tokens.
+ */
+export async function registerCustomerAPI(storeSlug: string, email?: string) {
+  const customerEmail = email || uniqueEmail();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch(
+      `${API_BASE}/api/v1/public/stores/${encodeURIComponent(storeSlug)}/auth/register`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: customerEmail,
+          password: TEST_PASSWORD,
+          first_name: "Test",
+          last_name: "Customer",
+        }),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        email: customerEmail,
+        password: TEST_PASSWORD,
+        accessToken: data.access_token as string,
+        refreshToken: data.refresh_token as string,
+      };
+    }
+    if (res.status === 404 && attempt < 4) {
+      await new Promise((r) => setTimeout(r, 200));
+      continue;
+    }
+    throw new Error(`Customer register failed: ${res.status} ${await res.text()}`);
+  }
+  throw new Error("registerCustomerAPI: exhausted retries");
+}
+
+/**
+ * Create a checkout/order via the API for a logged-in customer.
+ *
+ * @param storeSlug - Store slug.
+ * @param customerToken - Customer access token.
+ * @param items - Array of checkout items with product_id, quantity.
+ * @param customerEmail - Customer email for the order.
+ * @returns The order response object.
+ */
+export async function checkoutAsCustomerAPI(
+  storeSlug: string,
+  customerToken: string,
+  items: Array<{ product_id: string; quantity: number; variant_id?: string }>,
+  customerEmail: string
+) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/public/stores/${encodeURIComponent(storeSlug)}/checkout`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${customerToken}`,
+      },
+      body: JSON.stringify({ customer_email: customerEmail, items }),
+    }
+  );
+  if (!res.ok) throw new Error(`Checkout failed: ${res.status} ${await res.text()}`);
+  return await res.json();
+}

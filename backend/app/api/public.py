@@ -27,10 +27,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_customer
+from app.api.store_lookup import get_active_store
 from app.database import get_db
+from app.models.customer import Customer
 from app.models.order import Order
 from app.models.product import Product, ProductStatus
-from app.models.store import Store, StoreStatus
 from app.schemas.order import CheckoutRequest, CheckoutResponse, OrderResponse
 from app.schemas.public import (
     PaginatedPublicProductResponse,
@@ -41,31 +43,6 @@ from app.services import order_service
 from app.services.stripe_service import create_checkout_session
 
 router = APIRouter(prefix="/public", tags=["public"])
-
-
-async def _get_active_store(db: AsyncSession, slug: str) -> Store:
-    """Retrieve an active store by slug or raise 404.
-
-    Args:
-        db: Async database session.
-        slug: The store's URL slug.
-
-    Returns:
-        The Store ORM instance.
-
-    Raises:
-        HTTPException: 404 if the store does not exist or is not active.
-    """
-    result = await db.execute(
-        select(Store).where(Store.slug == slug, Store.status == StoreStatus.active)
-    )
-    store = result.scalar_one_or_none()
-    if store is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Store not found",
-        )
-    return store
 
 
 @router.get("/stores/{slug}", response_model=PublicStoreResponse)
@@ -88,7 +65,7 @@ async def get_public_store(
     Raises:
         HTTPException: 404 if the store does not exist or is not active.
     """
-    store = await _get_active_store(db, slug)
+    store = await get_active_store(db, slug)
     return PublicStoreResponse.model_validate(store)
 
 
@@ -119,7 +96,7 @@ async def list_public_products(
     Raises:
         HTTPException: 404 if the store does not exist or is not active.
     """
-    store = await _get_active_store(db, slug)
+    store = await get_active_store(db, slug)
 
     base_filter = [
         Product.store_id == store.id,
@@ -174,7 +151,7 @@ async def get_public_product(
     Raises:
         HTTPException: 404 if the store or product does not exist or is not active.
     """
-    store = await _get_active_store(db, slug)
+    store = await get_active_store(db, slug)
 
     result = await db.execute(
         select(Product).where(
@@ -203,6 +180,7 @@ async def create_checkout(
     slug: str,
     body: CheckoutRequest,
     db: AsyncSession = Depends(get_db),
+    customer: Customer | None = Depends(get_current_customer),
 ) -> CheckoutResponse:
     """Create a checkout session for a store.
 
@@ -222,7 +200,7 @@ async def create_checkout(
         HTTPException: 404 if the store doesn't exist or is not active.
         HTTPException: 400 if any cart item is invalid or out of stock.
     """
-    store = await _get_active_store(db, slug)
+    store = await get_active_store(db, slug)
 
     items = [
         {
@@ -259,7 +237,11 @@ async def create_checkout(
         items_data=order_items,
         total=total,
         stripe_session_id=stripe_data["session_id"],
+        customer_id=customer.id if customer else None,
     )
+
+    # Commit now so the order is visible to subsequent requests.
+    await db.commit()
 
     return CheckoutResponse(
         checkout_url=stripe_data["checkout_url"],
@@ -293,7 +275,7 @@ async def get_public_order(
     Raises:
         HTTPException: 404 if the store or order doesn't exist.
     """
-    store = await _get_active_store(db, slug)
+    store = await get_active_store(db, slug)
 
     import uuid as uuid_mod
     try:

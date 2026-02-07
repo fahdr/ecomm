@@ -217,6 +217,11 @@ export default function StoreSettingsPage({
                   View Orders
                 </Button>
               </Link>
+              <Link href={`/stores/${id}/customers`}>
+                <Button variant="outline" className="w-full justify-start">
+                  View Customers
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

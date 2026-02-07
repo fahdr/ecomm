@@ -145,6 +145,7 @@ async def create_order_from_checkout(
     items_data: list[dict],
     total: Decimal,
     stripe_session_id: str | None = None,
+    customer_id: uuid.UUID | None = None,
 ) -> Order:
     """Create a pending order from validated checkout data.
 
@@ -155,6 +156,7 @@ async def create_order_from_checkout(
         items_data: Validated order item dicts from ``validate_and_build_order_items``.
         total: Pre-calculated total amount.
         stripe_session_id: Optional Stripe session ID.
+        customer_id: Optional customer UUID (None for guest checkout).
 
     Returns:
         The newly created Order ORM instance with items loaded.
@@ -162,6 +164,7 @@ async def create_order_from_checkout(
     order = Order(
         store_id=store_id,
         customer_email=customer_email,
+        customer_id=customer_id,
         status=OrderStatus.pending,
         total=total,
         stripe_session_id=stripe_session_id,
