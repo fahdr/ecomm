@@ -28,13 +28,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants.plans import PlanTier, get_plan_limits
 from app.database import get_db
+from app.models.customer import Customer
 from app.models.product import Product, ProductStatus
 from app.models.store import Store, StoreStatus
 from app.models.user import User
 from app.services.auth_service import decode_token, get_user_by_id
+from app.services.customer_auth_service import get_customer_by_id
 
 # OAuth2 scheme extracts the Bearer token from the Authorization header.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+# Optional OAuth2 scheme for customer tokens (auto_error=False so guests pass through)
+customer_oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/public/stores/{slug}/auth/login",
+    auto_error=False,
+)
 
 
 async def get_current_user(
@@ -165,3 +173,70 @@ async def check_product_limit(
             ),
         )
     return current_user
+
+
+async def get_current_customer(
+    token: str | None = Depends(customer_oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> Customer | None:
+    """Resolve the current customer from a JWT, or return None for guests.
+
+    Checks ``type == "customer_access"``, loads Customer from the database.
+    Returns None if no token is provided or the token is invalid (guest mode).
+
+    **For Developers:**
+        Use this dependency on endpoints that optionally support customers
+        (e.g. checkout). For required auth, use ``require_current_customer``.
+
+    Args:
+        token: Optional JWT access token extracted by the customer OAuth2 scheme.
+        db: Async database session.
+
+    Returns:
+        The Customer instance if authenticated, or None for guests.
+    """
+    if token is None:
+        return None
+
+    try:
+        payload = decode_token(token)
+        customer_id_str: str | None = payload.get("sub")
+        token_type: str | None = payload.get("type")
+        if customer_id_str is None or token_type != "customer_access":
+            return None
+        customer_id = uuid.UUID(customer_id_str)
+    except (JWTError, ValueError):
+        return None
+
+    customer = await get_customer_by_id(db, customer_id)
+    if customer is None or not customer.is_active:
+        return None
+
+    return customer
+
+
+async def require_current_customer(
+    customer: Customer | None = Depends(get_current_customer),
+) -> Customer:
+    """Like ``get_current_customer`` but raises 401 if not authenticated.
+
+    **For Developers:**
+        Use this on endpoints that require customer authentication
+        (order history, wishlist, profile).
+
+    Args:
+        customer: The optionally resolved customer.
+
+    Returns:
+        The authenticated Customer instance.
+
+    Raises:
+        HTTPException: 401 if no valid customer token was provided.
+    """
+    if customer is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return customer

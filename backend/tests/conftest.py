@@ -39,8 +39,10 @@ async def clean_tables():
         None: Control is passed to the test function.
     """
     async with test_engine.begin() as conn:
-        for table in reversed(Base.metadata.sorted_tables):
-            await conn.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
+        table_names = ", ".join(
+            table.name for table in reversed(Base.metadata.sorted_tables)
+        )
+        await conn.execute(text(f"TRUNCATE TABLE {table_names} CASCADE"))
     yield
 
 

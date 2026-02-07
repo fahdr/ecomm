@@ -9,6 +9,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.customer_account import router as customer_account_router
+from app.api.customer_auth import router as customer_auth_router
+from app.api.customers import router as customers_router
 from app.api.health import router as health_router
 from app.api.orders import router as orders_router
 from app.api.products import router as products_router
@@ -37,6 +40,9 @@ app.include_router(orders_router, prefix="/api/v1")
 app.include_router(public_router, prefix="/api/v1")
 app.include_router(subscriptions_router, prefix="/api/v1")
 app.include_router(webhooks_router, prefix="/api/v1")
+app.include_router(customer_auth_router, prefix="/api/v1")
+app.include_router(customer_account_router, prefix="/api/v1")
+app.include_router(customers_router, prefix="/api/v1")
 
 # Inject Stripe Price IDs into plan constants at startup.
 init_price_ids(

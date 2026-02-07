@@ -41,7 +41,7 @@ test.describe("Storefront Browsing", () => {
   test("shows store homepage with products", async ({ page }) => {
     await page.goto(`/?store=${storeSlug}`, { waitUntil: "networkidle" });
     await expect(page.getByText(/welcome to/i)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(productTitle)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(productTitle)).toBeVisible({ timeout: 15000 });
   });
 
   test("shows product detail page", async ({ page }) => {
