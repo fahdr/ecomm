@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Welcome to {{ store_name }}! &#128075;</h2>
+<p>Hi {{ customer_name | default("there") }},</p>
+<p>Thanks for creating an account. You now have access to:</p>
+<ul>
+  <li>Order tracking and history</li>
+  <li>Saved wishlist items</li>
+  <li>Faster checkout</li>
+  <li>Exclusive offers and updates</li>
+</ul>
+<p style="text-align: center; margin-top: 24px;">
+  <a href="{{ store_url }}" class="btn">Start Shopping</a>
+</p>
+{% endblock %}

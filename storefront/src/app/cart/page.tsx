@@ -30,6 +30,7 @@ import Link from "next/link";
 import { useCart } from "@/contexts/cart-context";
 import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import type { GiftCardValidation } from "@/lib/types";
 
 /**
  * Cart page client component.
@@ -42,6 +43,9 @@ export default function CartPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [giftCardCode, setGiftCardCode] = useState("");
+  const [giftCardResult, setGiftCardResult] = useState<GiftCardValidation | null>(null);
+  const [giftCardLoading, setGiftCardLoading] = useState(false);
 
   /**
    * Handle checkout by calling the public checkout API.
@@ -215,6 +219,17 @@ export default function CartPage() {
             <span className="text-2xl font-bold">${cartTotal.toFixed(2)}</span>
           </div>
 
+          {/* Gift Card Code Input */}
+          <GiftCardInput
+            storeSlug={store?.slug || ""}
+            code={giftCardCode}
+            onCodeChange={setGiftCardCode}
+            result={giftCardResult}
+            onResult={setGiftCardResult}
+            loading={giftCardLoading}
+            onLoadingChange={setGiftCardLoading}
+          />
+
           {/* Email Input */}
           <div className="mb-4">
             <label
@@ -253,6 +268,121 @@ export default function CartPage() {
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Gift Card sub-component
+// ---------------------------------------------------------------------------
+
+/**
+ * Props for the GiftCardInput component.
+ */
+interface GiftCardInputProps {
+  /** The store's URL slug for the validation API. */
+  storeSlug: string;
+  /** Current gift card code value. */
+  code: string;
+  /** Callback when the code input changes. */
+  onCodeChange: (code: string) => void;
+  /** Current validation result, or null if not yet validated. */
+  result: GiftCardValidation | null;
+  /** Callback when validation result changes. */
+  onResult: (result: GiftCardValidation | null) => void;
+  /** Whether validation is currently in progress. */
+  loading: boolean;
+  /** Callback when loading state changes. */
+  onLoadingChange: (loading: boolean) => void;
+}
+
+/**
+ * Gift card code input with validation.
+ *
+ * Allows customers to enter a gift card code and check the balance
+ * before proceeding to checkout.
+ *
+ * @param props - Gift card state and callbacks.
+ * @returns A form section with code input, validate button, and result display.
+ */
+function GiftCardInput({
+  storeSlug,
+  code,
+  onCodeChange,
+  result,
+  onResult,
+  loading,
+  onLoadingChange,
+}: GiftCardInputProps) {
+  /**
+   * Validate the gift card code against the public API.
+   */
+  async function handleValidate() {
+    if (!code.trim() || !storeSlug) return;
+
+    onLoadingChange(true);
+    onResult(null);
+
+    const { data, error } = await api.post<GiftCardValidation>(
+      `/api/v1/public/stores/${encodeURIComponent(storeSlug)}/gift-cards/validate`,
+      { code: code.trim() }
+    );
+
+    if (error) {
+      onResult({
+        valid: false,
+        balance: null,
+        message: error.message || "Could not validate gift card.",
+      });
+    } else if (data) {
+      onResult(data);
+    }
+
+    onLoadingChange(false);
+  }
+
+  return (
+    <div className="mb-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
+      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+        Gift Card Code
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => {
+            onCodeChange(e.target.value);
+            if (result) onResult(null);
+          }}
+          placeholder="Enter code"
+          className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 uppercase tracking-wider"
+        />
+        <button
+          onClick={handleValidate}
+          disabled={loading || !code.trim()}
+          className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+        >
+          {loading ? "Checking..." : "Apply"}
+        </button>
+      </div>
+
+      {/* Validation result */}
+      {result && (
+        <div
+          className={`mt-2 rounded-md px-3 py-2 text-sm ${
+            result.valid
+              ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+              : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
+          }`}
+        >
+          <p>{result.message}</p>
+          {result.valid && result.balance && (
+            <p className="mt-1 font-medium">
+              Available balance: ${Number(result.balance).toFixed(2)}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -38,6 +38,9 @@ core
 # Playwright
 e2e/playwright-report/
 e2e/test-results/
+test-results/
+storefront/test-results/
 
 # Claude Code
 .claude/
+.claude_local/

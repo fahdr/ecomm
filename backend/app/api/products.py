@@ -310,7 +310,9 @@ async def upload_product_image(
             detail=f"File type not allowed. Allowed: {', '.join(allowed_types)}",
         )
 
-    upload_dir = f"/uploads/{store_id}"
+    import tempfile
+    base_dir = os.environ.get("UPLOAD_DIR", os.path.join(tempfile.gettempdir(), "uploads"))
+    upload_dir = os.path.join(base_dir, str(store_id))
     os.makedirs(upload_dir, exist_ok=True)
 
     ext = os.path.splitext(file.filename or "image.png")[1]

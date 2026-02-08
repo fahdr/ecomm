@@ -98,7 +98,7 @@ dropshipping-platform/
 │   ├── Dockerfile
 │   └── next.config.js
 │
-├── automation/                  # Python (Automation Service — Features 8-11)
+├── automation/                  # Python (Automation Service — Phase 2: Features A1-A8)
 │   │                            # Standalone service: can be extracted as a
 │   │                            # separate product in the future.
 │   ├── app/
@@ -109,26 +109,38 @@ dropshipping-platform/
 │   │   │   ├── watchlist_item.py    # Product research results
 │   │   │   ├── blog_post.py         # AI-generated blog posts
 │   │   │   ├── email_flow.py        # Email automation flows
-│   │   │   └── email_event.py       # Email event tracking
+│   │   │   ├── email_event.py       # Email event tracking
+│   │   │   ├── competitor.py        # Competitor monitoring
+│   │   │   ├── social_post.py       # Social media posts
+│   │   │   └── ad_campaign.py       # Ad campaign tracking
 │   │   ├── schemas/             # Pydantic request/response schemas
 │   │   ├── api/                 # FastAPI routers
 │   │   │   ├── research.py      # Product research endpoints
 │   │   │   ├── import_.py       # Product import endpoints
 │   │   │   ├── seo.py           # SEO automation endpoints
-│   │   │   └── email.py         # Email automation endpoints
+│   │   │   ├── email.py         # Email automation endpoints
+│   │   │   ├── competitors.py   # Competitor monitoring endpoints
+│   │   │   ├── social.py        # Social media automation endpoints
+│   │   │   └── ads.py           # Ad campaign management endpoints
 │   │   ├── services/            # Business logic
 │   │   │   ├── research_service.py      # AliExpress, Reddit, Trends
 │   │   │   ├── ai_service.py            # Claude API for content generation
 │   │   │   ├── import_service.py        # Product import pipeline
 │   │   │   ├── seo_service.py           # Sitemap, schema, blog generation
 │   │   │   ├── email_service.py         # SendGrid integration
-│   │   │   └── image_service.py         # Image download + optimization
+│   │   │   ├── image_service.py         # Image download + optimization
+│   │   │   ├── competitor_service.py    # Competitor scraping + analysis
+│   │   │   ├── social_service.py        # Social media posting (Meta, TikTok)
+│   │   │   └── ads_service.py           # Google/Meta ads management
 │   │   ├── tasks/               # Celery tasks
 │   │   │   ├── celery_app.py    # Own Celery instance + config
 │   │   │   ├── research_tasks.py    # Daily product research
 │   │   │   ├── import_tasks.py      # Product import pipeline
 │   │   │   ├── seo_tasks.py         # Weekly SEO optimization
-│   │   │   └── email_tasks.py       # Email flow execution
+│   │   │   ├── email_tasks.py       # Email flow execution
+│   │   │   ├── competitor_tasks.py  # Daily competitor scanning
+│   │   │   ├── social_tasks.py      # Social media scheduling/posting
+│   │   │   └── ads_tasks.py         # Ad performance sync + optimization
 │   │   └── utils/               # Shared utilities
 │   ├── alembic/                 # Own database migrations
 │   │   └── versions/
@@ -188,48 +200,98 @@ dropshipping-platform/
                        │ has many
                        ▼
                  ┌──────────┐
-                 │  Store    │
-                 └──────────┘
-                   │       │
-          has many │       │ has many
-                   ▼       ▼
-            ┌─────────┐ ┌───────┐
-            │ Product  │ │ Order │
-            └─────────┘ └───────┘
-                │
-                │ has many
+                 │  Store    │──────────────────────────────────────────────┐
+                 └──────────┘                                              │
+                   │       │       │        │         │         │           │
+          has many │       │       │        │         │         │           │
+                   ▼       ▼       ▼        ▼         ▼         ▼           ▼
+            ┌─────────┐ ┌───────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐
+            │ Product  │ │ Order │ │Discount│ │Customer│ │Category│ │ Supplier │
+            └─────────┘ └───────┘ └────────┘ └────────┘ └────────┘ └──────────┘
+                │           │                     │          │           │
+                │           │                     │          │           │
+                ▼           ▼                     ▼          ▼           ▼
+          ┌───────────┐ ┌────────────┐ ┌──────────┐ ┌──────────┐ ┌────────────┐
+          │ Variant    │ │Fulfillment │ │ Wishlist │ │Collection│ │ Supplier   │
+          └───────────┘ │+ Refund    │ │ Review   │ └──────────┘ │ Product    │
+                │       └────────────┘ └──────────┘              └────────────┘
                 ▼
-          ┌───────────┐
-          │ Variant    │
-          └───────────┘
+          ┌───────────┐     ┌──────┐
+          │  Review    │     │Theme │
+          └───────────┘     └──────┘
 ```
 
-**Core tables (backend):** `tenants`, `users`, `stores`, `products`, `product_variants`, `orders`, `order_items`, `subscriptions`, `invoices`
+> **Dropshipping-specific:** The `Supplier` and `SupplierProduct` models are core
+> to the business model — they link each product to its source supplier, track
+> supplier costs (for profit calculation), and enable auto-fulfillment. The
+> `Fulfillment` model tracks supplier order placement and shipping (distinct from
+> traditional ecommerce shipping management — store owners never touch the product).
+
+### Core Tables (Backend)
+
+**Existing tables (Features 1-7.5):**
+`users`, `stores`, `products`, `product_variants`, `orders`, `order_items`,
+`subscriptions`, `customers`, `wishlist_items`
+
+**New tables by feature:**
+
+| Feature | New Tables |
+|---------|-----------|
+| F8: Discount Codes & Promotions | `discounts`, `discount_rules` |
+| F9: Product Categories & Collections | `categories`, `collections`, `product_categories`, `product_collections` |
+| F10: Supplier Management & Order Fulfillment | `suppliers`, `supplier_products`, `fulfillments` |
+| F11: Transactional Email Notifications | `email_templates`, `email_logs` |
+| F12: Product Reviews & Ratings | `reviews` |
+| F13: Profit & Performance Analytics | `analytics_events` |
+| F14: Refunds & Customer Disputes | `refund_requests`, `refunds`, `store_credits` |
+| F15: Store Customization & Themes | `store_themes`, `custom_pages`, `navigation_menus` |
+| F16: Tax Calculation | `tax_rates` |
+| F17: Advanced Search & Filtering | `search_queries` |
+| F18: Upsell, Cross-sell & Recommendations | `product_relations` |
+| F19: Customer Segmentation & Groups | `customer_segments` |
+| F20: Gift Cards | `gift_cards`, `gift_card_transactions` |
+| F21: Multi-Currency & International | `store_currencies` |
+| F22: Custom Domains | `store_domains` |
+| F23: Webhooks & Public API | `api_keys`, `webhook_endpoints`, `webhook_deliveries` |
+| F24: Multi-User & Team Access | `store_team_members`, `team_invites`, `activity_logs` |
+| F25: Notifications & Alerts Center | `notifications`, `notification_preferences` |
+| F26: Bulk Operations & Import/Export | `import_jobs` |
+| F28: Fraud Detection | `fraud_checks` |
+| A8: AI Shopping Assistant | `chat_conversations` |
+| F29: A/B Testing | `ab_tests`, `ab_test_assignments`, `ab_test_conversions` |
 
 ## Data Model (Automation Service)
 
 ```
-                 ┌──────────┐
-                 │  Store    │  (referenced by store_id, owned by backend)
-                 └──────────┘
-                   │       │
-          has many │       │ has many
-                   ▼       ▼
-      ┌────────────────┐  ┌───────────┐
-      │ WatchlistItem   │  │ BlogPost  │
-      │ (research       │  │ (SEO      │
-      │  results)       │  │  content) │
-      └────────────────┘  └───────────┘
+                          ┌──────────┐
+                          │  Store    │  (referenced by store_id, owned by backend)
+                          └──────────┘
+                    ┌─────────┼──────────┬──────────────┐
+           has many │         │          │              │
+                    ▼         ▼          ▼              ▼
+      ┌────────────────┐ ┌───────────┐ ┌────────────┐ ┌────────────┐
+      │ WatchlistItem   │ │ BlogPost  │ │ Competitor  │ │ SocialPost │
+      │ (research       │ │ (SEO      │ │ (monitor    │ │ (social    │
+      │  results)       │ │  content) │ │  rivals)    │ │  marketing)│
+      └────────────────┘ └───────────┘ └────────────┘ └────────────┘
+                                            │
+                                   has many │
+                                            ▼
+                                   ┌──────────────────┐
+                                   │ CompetitorProduct │
+                                   └──────────────────┘
 
-                 ┌──────────┐
-                 │  Store    │
-                 └──────────┘
-                   │
-          has many │
-                   ▼
-            ┌───────────┐
-            │ EmailFlow  │
-            └───────────┘
+                          ┌──────────┐
+                          │  Store    │
+                          └──────────┘
+                    ┌─────────┼──────────┐
+           has many │         │          │
+                    ▼         ▼          ▼
+            ┌───────────────┐ ┌──────────┐ ┌────────────┐
+            │ EmailFlow      │ │AdCampaign│ │ AdAccount  │
+            │ EmailCampaign  │ └──────────┘ └────────────┘
+            │ EmailUnsubscribe│
+            └───────────────┘
                    │
           has many │
                    ▼
@@ -238,7 +300,9 @@ dropshipping-platform/
             └────────────┘
 ```
 
-**Automation tables:** `watchlist_items`, `blog_posts`, `email_flows`, `email_events`
+**Automation tables:** `watchlist_items`, `blog_posts`, `email_flows`, `email_campaigns`,
+`email_events`, `email_unsubscribes`, `competitors`, `competitor_products`, `social_posts`,
+`ad_campaigns`, `ad_accounts`
 
 > **Service boundary:** The automation service references `store_id` and `user_id`
 > from the core backend but does NOT own those tables. It communicates with the
@@ -400,9 +464,10 @@ cd backend && celery -A app.tasks.celery_app flower --port=5555
 
 ## Automation Service — Design Principles
 
-**Goal:** The automation service (Features 8-11) is designed as an independent,
-self-contained service that can be extracted into a standalone product in the
-future without requiring changes to the core platform.
+**Goal:** The automation service (Phase 2: Features A1-A8) is
+designed as an independent, self-contained service that can be extracted into a
+standalone product in the future without requiring changes to the core platform.
+Phase 2 is implemented after Phase 1 (core platform features) is stable.
 
 ### Separation Rules
 
@@ -446,7 +511,67 @@ To extract the automation service as a separate product:
 
 | Feature | Service Scope | Key Models | Celery Tasks |
 | ------- | ------------- | ---------- | ------------ |
-| F8: Product Research | Research endpoints + AI scoring | `WatchlistItem` | `daily_product_research` |
-| F9: Product Import   | Import pipeline + AI content | (creates products via backend API) | `import_product` |
-| F10: SEO Automation  | Sitemap, schema, blog | `BlogPost` | `weekly_seo_optimization` |
-| F11: Email Automation| Email flows + SendGrid | `EmailFlow`, `EmailEvent` | `send_email_flow`, `abandoned_cart` |
+| A1: Product Research Automation | Research endpoints + AI scoring | `WatchlistItem` | `daily_product_research`, `run_all_stores_research` |
+| A2: AI Product Import | Import pipeline + AI content | (creates products via backend API) | `import_product` |
+| A3: SEO Automation | Sitemap, schema, blog | `BlogPost` | `weekly_seo_optimization` |
+| A4: Marketing Email Automation | Email flows, campaigns, abandoned cart | `EmailFlow`, `EmailCampaign`, `EmailEvent`, `EmailUnsubscribe` | `evaluate_flow_triggers`, `execute_flow_step`, `send_broadcast` |
+| A5: Competitor Monitoring | Competitor store scraping + alerts | `Competitor`, `CompetitorProduct` | `daily_competitor_scan` |
+| A6: Social Media Automation | Auto-post products to social platforms | `SocialPost` | `schedule_social_posts`, `post_to_social` |
+| A7: Ad Campaign Management | Google/Meta ad automation | `AdCampaign`, `AdAccount` | `sync_ad_performance`, `optimize_campaigns` |
+
+---
+
+## Testing Strategy
+
+### Backend Unit/Integration Tests
+
+Backend tests use `pytest` with `httpx.AsyncClient` for API testing. Tests are located in `backend/tests/`.
+
+**Key patterns:**
+- Async test functions with `@pytest.mark.asyncio`
+- `conftest.py` provides `client` (AsyncClient) and `db` (async session) fixtures
+- DB cleanup via `TRUNCATE TABLE ... CASCADE` per test (not `drop_all`/`create_all`)
+- `NullPool` for test engine to avoid async connection-sharing issues
+- Tests create their own data via API calls (register user → create store → create resource)
+
+**Test files:** `test_discounts.py`, `test_categories.py`, `test_suppliers.py`, `test_reviews.py`, `test_analytics.py`, `test_refunds.py`, `test_tax.py`, `test_search.py`, `test_upsells.py`, `test_segments.py`, `test_gift_cards.py`, `test_currency.py`, `test_domains.py`, `test_store_webhooks.py`, `test_teams.py`, `test_notifications.py`, `test_bulk.py`, `test_fraud.py`, `test_ab_tests.py`
+
+### E2E Tests (Playwright)
+
+E2E tests use Playwright and are located in `e2e/tests/`. They test the full stack: dashboard (Next.js) → backend API (FastAPI) → database (PostgreSQL).
+
+**Key patterns:**
+- Each test file tests both **empty state** and **populated data** scenarios
+- Populated-data tests seed data via direct API calls (using helper functions in `helpers.ts`)
+- API helpers include retry logic for race conditions (async DB commit may not be visible immediately)
+- Tests use `page.reload()` + `waitForLoadState("networkidle")` after data mutations to ensure fresh data
+
+**Test helpers** (`e2e/tests/helpers.ts`):
+- `registerAndLogin()` — creates a new user + store, returns auth token and store info
+- `apiPost()` / `apiGet()` — authenticated API calls with retry on 400/401/404
+- `createProductAPI()`, `createOrderAPI()`, `createCategoryAPI()`, etc. — resource creation helpers
+- `createRefundAPI()`, `createReviewAPI()` — complex resource creation (requires order/product chain)
+
+**E2E test files (119 tests total):**
+
+| File | Covers |
+|------|--------|
+| `dashboard/discounts.spec.ts` | Discount CRUD, populated table with formatting |
+| `dashboard/categories.spec.ts` | Category CRUD, nested subcategories |
+| `dashboard/suppliers.spec.ts` | Supplier CRUD, populated table with linked products |
+| `dashboard/gift-cards.spec.ts` | Gift card CRUD, formatted balances |
+| `dashboard/tax-refunds.spec.ts` | Tax rates + refunds, Decimal formatting |
+| `dashboard/teams-webhooks.spec.ts` | Team invites + webhook config |
+| `dashboard/reviews-analytics.spec.ts` | Reviews + analytics pages |
+| `dashboard/currency-domain.spec.ts` | Currency settings + domain config |
+| `dashboard/advanced-features.spec.ts` | Segments, upsells, A/B tests, bulk ops |
+| `dashboard/themes-email.spec.ts` | Theme settings + email templates |
+| `storefront/categories-search.spec.ts` | Storefront category nav + search |
+
+### Common Frontend Bug Patterns (Caught by E2E Tests)
+
+1. **Paginated response unwrapping**: Backend returns `{ items: [...], total, ... }`, frontend expects array. Fix: `Array.isArray(raw) ? raw : raw.items ?? []`
+2. **Decimal string serialization**: SQLAlchemy Decimal → JSON string (`"25.00"` not `25`). Fix: `Number(value).toFixed(2)`
+3. **String reduce concatenation**: `reduce((sum, r) => sum + r.amount, 0)` with string amounts produces `"049.99"`. Fix: `Number(r.amount)`
+4. **Field name mismatches**: Frontend uses `order_number` but backend returns `order_id`. Fix: Align interfaces with backend schemas
+5. **HTML5 step validation**: `<input step="0.01">` blocks values like 8.875. Fix: `step="any"`

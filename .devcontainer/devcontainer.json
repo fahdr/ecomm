@@ -72,13 +72,13 @@
 
   "mounts": [
     {
-      "source": "/root/.claude",
-      "target": "/root/.claude",
+      "source": "${localWorkspaceFolder}/.claude_local",
+      "target": "/home/vscode/.claude",
       "type": "bind"
     }
-    ],
+  ],
 
   "postStartCommand": "bash .devcontainer/start-services.sh",
-
-  "remoteUser": "root"
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude /workspaces/${localWorkspaceFolderBasename}",
+  "remoteUser": "vscode"
 }

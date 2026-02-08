@@ -14,6 +14,8 @@ management with per-test isolation, and authentication helpers.
     database is real (PostgreSQL) but data is cleaned between tests.
 """
 
+import asyncio
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
@@ -29,24 +31,13 @@ test_engine = create_async_engine(settings.database_url, echo=False, poolclass=N
 TestSessionFactory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
-@pytest.fixture(autouse=True)
-async def clean_tables():
-    """Truncate all table data before each test for isolation.
-
-    Tables are assumed to exist (created by Alembic). Only data is cleared.
-
-    Yields:
-        None: Control is passed to the test function.
-    """
-    async with test_engine.begin() as conn:
-        for table in reversed(Base.metadata.sorted_tables):
-            await conn.execute(text(f"TRUNCATE TABLE {table.name} CASCADE"))
-    yield
-
-
 @pytest.fixture
 async def client():
     """Yield an async HTTP client wired to the FastAPI app with DB override.
+
+    Disposes engine pools and truncates all tables before yielding to
+    ensure test isolation. Uses a dedicated cleanup engine and terminates
+    stale connections to avoid TRUNCATE deadlocks across test runs.
 
     Overrides the ``get_db`` dependency so each request uses a fresh
     database session from the test engine.
@@ -54,6 +45,41 @@ async def client():
     Yields:
         AsyncClient: An httpx client that sends requests to the FastAPI app.
     """
+    # Dispose engine pools to release any lingering connections from the
+    # previous test that could block the TRUNCATE AccessExclusiveLock.
+    from app.database import engine as app_engine
+    await app_engine.dispose()
+    await test_engine.dispose()
+
+    # Brief pause to let async connection cleanup complete.
+    await asyncio.sleep(0.1)
+
+    # Use a dedicated one-shot engine for cleanup so it never conflicts
+    # with lingering test_engine connections.
+    cleanup_engine = create_async_engine(
+        settings.database_url, echo=False, poolclass=NullPool
+    )
+    try:
+        # Terminate any stale connections from previous test runs that
+        # could hold locks and block TRUNCATE.
+        async with cleanup_engine.begin() as conn:
+            await conn.execute(text(
+                "SELECT pg_terminate_backend(pid) "
+                "FROM pg_stat_activity "
+                "WHERE datname = current_database() "
+                "AND pid != pg_backend_pid() "
+                "AND state != 'active'"
+            ))
+
+        # Now truncate all tables for test isolation.
+        async with cleanup_engine.begin() as conn:
+            table_names = ", ".join(
+                table.name for table in Base.metadata.sorted_tables
+            )
+            if table_names:
+                await conn.execute(text(f"TRUNCATE {table_names} CASCADE"))
+    finally:
+        await cleanup_engine.dispose()
 
     async def override_get_db():
         """Yield a test database session.

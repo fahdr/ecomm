@@ -36,6 +36,11 @@ echo "==> Starting Storefront on port 3001..."
 nohup npm run dev -- -p 3001 > "$LOG_DIR/storefront.log" 2>&1 &
 echo $! > "$LOG_DIR/storefront.pid"
 
+echo "==> Installing e2e test dependencies..."
+cd /workspaces/ecomm/e2e
+npm install --silent 2>&1 | tail -1
+npx playwright install --with-deps chromium 2>&1 | tail -1
+
 echo ""
 echo "All services started:"
 echo "  Backend API:  http://localhost:8000"

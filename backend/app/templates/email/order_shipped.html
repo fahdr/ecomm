@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Your Order Has Shipped! &#128230;</h2>
+<p>Hi {{ customer_name | default(customer_email) }},</p>
+<p>Great news! Your order <strong>#{{ order_id_short }}</strong> is on its way.</p>
+
+{% if tracking_number %}
+<div class="highlight-box">
+  <strong>Tracking Number:</strong> {{ tracking_number }}<br>
+  {% if tracking_url %}
+  <a href="{{ tracking_url }}">Track your package</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<table class="order-table">
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Qty</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.product_title }}{% if item.variant_name %} ({{ item.variant_name }}){% endif %}</td>
+      <td>{{ item.quantity }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p style="text-align: center; margin-top: 24px;">
+  <a href="{{ order_url }}" class="btn">View Order Details</a>
+</p>
+{% endblock %}

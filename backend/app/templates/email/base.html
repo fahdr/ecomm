@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ subject }}</title>
+  <style>
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f7; color: #333; }
+    .wrapper { width: 100%; background-color: #f4f4f7; padding: 40px 0; }
+    .container { max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .header { background-color: #1a1a2e; padding: 24px 32px; text-align: center; }
+    .header h1 { color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.3px; }
+    .content { padding: 32px; line-height: 1.6; }
+    .content h2 { font-size: 18px; margin: 0 0 16px; color: #1a1a2e; }
+    .content p { margin: 0 0 16px; font-size: 15px; }
+    .btn { display: inline-block; padding: 12px 28px; background-color: #e94560; color: #ffffff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; }
+    .footer { padding: 24px 32px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }
+    .order-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    .order-table th { text-align: left; padding: 8px 12px; background-color: #f8f9fa; font-size: 13px; color: #666; border-bottom: 1px solid #eee; }
+    .order-table td { padding: 8px 12px; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
+    .total-row td { font-weight: 700; border-top: 2px solid #1a1a2e; }
+    .highlight-box { background-color: #f8f9fa; border-left: 4px solid #e94560; padding: 16px; margin: 16px 0; border-radius: 0 4px 4px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>{{ store_name | default("Dropshipping Platform") }}</h1>
+      </div>
+      <div class="content">
+        {% block content %}{% endblock %}
+      </div>
+      <div class="footer">
+        <p>&copy; {{ current_year | default("2026") }} {{ store_name | default("Dropshipping Platform") }}. All rights reserved.</p>
+        {% block footer_extra %}{% endblock %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

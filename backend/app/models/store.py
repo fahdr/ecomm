@@ -7,22 +7,30 @@ subdomain-based routing on the public storefront.
 **For Developers:**
     Import this model via ``app.models`` so that Alembic picks up schema
     changes automatically. The ``user_id`` foreign key enforces ownership.
+    The ``theme``, ``logo_url``, ``favicon_url``, and ``custom_css`` fields
+    support storefront theming (Feature 15). The ``default_currency``
+    field enables multi-currency support (Feature 21).
 
 **For QA Engineers:**
     - Store slugs are unique across the platform and auto-generated from the name.
     - Soft-delete is implemented via the ``status`` field (set to ``deleted``).
     - The ``StoreStatus`` enum restricts status to ``active``, ``paused``, or ``deleted``.
+    - ``default_currency`` is a 3-letter ISO currency code (default "USD").
+    - ``theme`` identifies the active storefront theme (default "default").
+    - ``logo_url`` and ``favicon_url`` are optional URLs for store branding.
+    - ``custom_css`` allows store owners to inject custom CSS into the storefront.
 
 **For End Users:**
     Each store you create gets a unique URL based on its name. You can pause
-    or delete stores from the dashboard at any time.
+    or delete stores from the dashboard at any time. Customize your store
+    with a logo, favicon, theme, and custom CSS to match your brand.
 """
 
 import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -54,6 +62,11 @@ class Store(Base):
         niche: The product niche or category the store focuses on.
         description: Optional longer description of the store.
         status: Current status of the store (active, paused, or deleted).
+        default_currency: ISO 4217 currency code for the store (default "USD").
+        theme: Identifier for the active storefront theme (default "default").
+        logo_url: Optional URL for the store's logo image.
+        favicon_url: Optional URL for the store's favicon.
+        custom_css: Optional custom CSS injected into the storefront.
         created_at: Timestamp when the store was created (DB server time).
         updated_at: Timestamp of the last update (DB server time, auto-updated).
         owner: Relationship back to the User who owns this store.
@@ -71,6 +84,15 @@ class Store(Base):
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     niche: Mapped[str] = mapped_column(String(100), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="USD", server_default="USD"
+    )
+    theme: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="default", server_default="default"
+    )
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    favicon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    custom_css: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[StoreStatus] = mapped_column(
         Enum(StoreStatus), default=StoreStatus.active, nullable=False
     )

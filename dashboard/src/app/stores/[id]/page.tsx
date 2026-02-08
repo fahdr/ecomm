@@ -206,7 +206,7 @@ export default function StoreSettingsPage({
         {/* Quick Links */}
         <Card>
           <CardContent className="pt-6">
-            <div className="space-y-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               <Link href={`/stores/${id}/products`}>
                 <Button variant="outline" className="w-full justify-start">
                   Manage Products
@@ -215,6 +215,46 @@ export default function StoreSettingsPage({
               <Link href={`/stores/${id}/orders`}>
                 <Button variant="outline" className="w-full justify-start">
                   View Orders
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/discounts`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Discounts
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/categories`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Categories
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/suppliers`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Suppliers
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/reviews`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Reviews
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/analytics`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Analytics
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/refunds`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Refunds
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/email`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Email Settings
+                </Button>
+              </Link>
+              <Link href={`/stores/${id}/themes`}>
+                <Button variant="outline" className="w-full justify-start">
+                  Themes
                 </Button>
               </Link>
             </div>
