@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Order Confirmed! &#127881;</h2>
+<p>Hi {{ customer_name | default(customer_email) }},</p>
+<p>Thank you for your order. We're processing it now and will notify you when it ships.</p>
+
+<div class="highlight-box">
+  <strong>Order #{{ order_id_short }}</strong><br>
+  Placed on {{ order_date }}
+</div>
+
+<table class="order-table">
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Qty</th>
+      <th>Price</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in items %}
+    <tr>
+      <td>{{ item.product_title }}{% if item.variant_name %} ({{ item.variant_name }}){% endif %}</td>
+      <td>{{ item.quantity }}</td>
+      <td>${{ "%.2f" | format(item.unit_price * item.quantity) }}</td>
+    </tr>
+    {% endfor %}
+    {% if discount_amount and discount_amount > 0 %}
+    <tr>
+      <td colspan="2">Discount{% if discount_code %} ({{ discount_code }}){% endif %}</td>
+      <td>-${{ "%.2f" | format(discount_amount) }}</td>
+    </tr>
+    {% endif %}
+    {% if tax_amount and tax_amount > 0 %}
+    <tr>
+      <td colspan="2">Tax</td>
+      <td>${{ "%.2f" | format(tax_amount) }}</td>
+    </tr>
+    {% endif %}
+    <tr class="total-row">
+      <td colspan="2">Total</td>
+      <td>${{ "%.2f" | format(total) }}</td>
+    </tr>
+  </tbody>
+</table>
+
+{% if shipping_address %}
+<div class="highlight-box">
+  <strong>Shipping to:</strong><br>
+  {{ shipping_address }}
+</div>
+{% endif %}
+
+<p style="text-align: center; margin-top: 24px;">
+  <a href="{{ order_url }}" class="btn">View Your Order</a>
+</p>
+{% endblock %}

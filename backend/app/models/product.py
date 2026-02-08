@@ -8,6 +8,9 @@ variants (e.g. sizes, colors).
     Import these models via ``app.models`` so that Alembic picks up schema
     changes automatically. The ``store_id`` foreign key enforces store scoping.
     Products use soft-delete via the ``status`` field (set to ``archived``).
+    The ``avg_rating`` and ``review_count`` are denormalized from the
+    ``reviews`` table for fast product listing queries. The ``tags`` JSON
+    column stores free-form tag strings for search and filtering.
 
 **For QA Engineers:**
     - Product slugs are unique per store (enforced via database unique constraint
@@ -17,6 +20,10 @@ variants (e.g. sizes, colors).
     - ``images`` is a JSON array of image URL strings.
     - ``compare_at_price`` is the "was" price shown with a strikethrough.
     - ``cost`` is the supplier cost (private, never exposed publicly).
+    - ``avg_rating`` is a denormalized average of approved review ratings
+      (null if no reviews).
+    - ``review_count`` is a denormalized count of approved reviews.
+    - ``tags`` is a JSON array of tag strings for search filtering.
 
 **For End Users:**
     Products are the items you sell in your store. Each product has a title,
@@ -74,6 +81,9 @@ class Product(Base):
         cost: Supplier cost (private, not exposed in public API).
         images: JSON array of image URL strings.
         status: Current product status (draft, active, or archived).
+        avg_rating: Denormalized average star rating from approved reviews.
+        review_count: Denormalized count of approved reviews.
+        tags: JSON array of tag strings for search and filtering.
         seo_title: Optional custom SEO title for search engines.
         seo_description: Optional custom SEO meta description.
         created_at: Timestamp when the product was created (DB server time).
@@ -112,6 +122,9 @@ class Product(Base):
     status: Mapped[ProductStatus] = mapped_column(
         Enum(ProductStatus), default=ProductStatus.draft, nullable=False
     )
+    avg_rating: Mapped[Decimal | None] = mapped_column(Numeric(3, 2), nullable=True)
+    review_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    tags: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
     seo_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     seo_description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

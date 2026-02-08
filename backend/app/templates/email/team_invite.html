@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>You're Invited to Join a Team &#129309;</h2>
+<p>Hi there,</p>
+<p>You've been invited to join <strong>{{ store_name }}</strong> as a <strong>{{ role }}</strong>.</p>
+<p>{{ inviter_email }} has invited you to collaborate on their store. Click below to accept the invitation.</p>
+
+<p style="text-align: center; margin-top: 24px;">
+  <a href="{{ invite_url }}" class="btn">Accept Invitation</a>
+</p>
+
+<p style="font-size: 13px; color: #999; margin-top: 24px;">This invitation expires on {{ expires_at }}. If you don't recognize this invitation, you can safely ignore this email.</p>
+{% endblock %}

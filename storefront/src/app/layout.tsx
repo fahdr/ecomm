@@ -31,6 +31,7 @@ import type { Store } from "@/lib/types";
 import { StoreProvider } from "@/contexts/store-context";
 import { CartProvider } from "@/contexts/cart-context";
 import { CartBadge } from "@/components/cart-badge";
+import { HeaderSearch } from "@/components/header-search";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -135,19 +136,23 @@ function StoreHeader({ store }: { store: Store }) {
             <Link href="/">
               <h1 className="text-xl font-bold tracking-tight">{store.name}</h1>
             </Link>
-            <nav className="flex items-center gap-4">
+            <nav className="hidden sm:flex items-center gap-4">
               <Link
                 href="/products"
-                className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
               >
                 Products
               </Link>
+              <Link
+                href="/categories"
+                className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+              >
+                Categories
+              </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">
-              {store.niche}
-            </span>
+          <div className="flex items-center gap-3">
+            <HeaderSearch />
             <CartBadge />
           </div>
         </div>

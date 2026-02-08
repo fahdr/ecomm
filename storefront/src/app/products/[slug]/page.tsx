@@ -28,6 +28,8 @@ import { fetchStore } from "@/lib/store";
 import { api } from "@/lib/api";
 import type { Product } from "@/lib/types";
 import { AddToCart } from "@/components/add-to-cart";
+import { ProductReviews } from "@/components/product-reviews";
+import { ProductUpsells } from "@/components/product-upsells";
 
 /**
  * Generate dynamic metadata for the product detail page.
@@ -205,6 +207,12 @@ export default async function ProductDetailPage({
             />
           </div>
         </div>
+
+        {/* Reviews Section */}
+        <ProductReviews storeSlug={storeSlug} productSlug={productSlug} />
+
+        {/* Upsells / Cross-Sells Section */}
+        <ProductUpsells storeSlug={storeSlug} productSlug={productSlug} />
       </div>
     </div>
   );

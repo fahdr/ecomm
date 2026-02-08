@@ -6,6 +6,7 @@
 
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/anthropics/devcontainer-features/claude-code:latest": {}
   },
 
@@ -37,7 +38,8 @@
         "bradlc.vscode-tailwindcss",
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
-        "anthropic.claude-code"
+        "anthropic.claude-code",
+        "github.vscode-pull-request-github"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
@@ -72,13 +74,13 @@
 
   "mounts": [
     {
-      "source": "/root/.claude",
-      "target": "/root/.claude",
+      "source": "${localWorkspaceFolder}/.claude_local",
+      "target": "/home/vscode/.claude",
       "type": "bind"
     }
-    ],
+  ],
 
   "postStartCommand": "bash .devcontainer/start-services.sh",
-
-  "remoteUser": "root"
+  "postCreateCommand": "sudo chown -R vscode:vscode /home/vscode/.claude /workspaces/${localWorkspaceFolderBasename}",
+  "remoteUser": "vscode"
 }

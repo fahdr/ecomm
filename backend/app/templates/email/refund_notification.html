@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Refund {{ "Processed" if status == "completed" else "Update" }}</h2>
+<p>Hi {{ customer_name | default(customer_email) }},</p>
+
+{% if status == "completed" %}
+<p>Your refund of <strong>${{ "%.2f" | format(amount) }}</strong> for order <strong>#{{ order_id_short }}</strong> has been processed.</p>
+<p>The refund should appear in your account within 5-10 business days depending on your payment provider.</p>
+{% elif status == "approved" %}
+<p>Your refund request of <strong>${{ "%.2f" | format(amount) }}</strong> for order <strong>#{{ order_id_short }}</strong> has been approved and is being processed.</p>
+{% elif status == "rejected" %}
+<p>Unfortunately, your refund request for order <strong>#{{ order_id_short }}</strong> could not be approved.</p>
+{% if admin_notes %}
+<div class="highlight-box">
+  <strong>Reason:</strong> {{ admin_notes }}
+</div>
+{% endif %}
+{% endif %}
+
+<p style="text-align: center; margin-top: 24px;">
+  <a href="{{ order_url }}" class="btn">View Order</a>
+</p>
+{% endblock %}

@@ -8,6 +8,11 @@ linked to products and optional variants.
     Import these models via ``app.models`` so that Alembic picks up schema
     changes automatically. The ``store_id`` foreign key scopes orders to
     a store. ``stripe_session_id`` is used to correlate with Stripe Checkout.
+    The ``subtotal``, ``discount_amount``, ``tax_amount``, and
+    ``gift_card_amount`` fields support the full checkout calculation:
+    ``total = subtotal - discount_amount - gift_card_amount + tax_amount``.
+    The ``currency`` field defaults to USD and enables multi-currency
+    support (Feature 21).
 
 **For QA Engineers:**
     - ``OrderStatus`` enum restricts status to ``pending``, ``paid``,
@@ -17,10 +22,18 @@ linked to products and optional variants.
     - ``customer_email`` is collected during checkout for order confirmation.
     - ``OrderItem.unit_price`` captures the price at the time of purchase
       (not the current product price).
+    - ``discount_code`` stores the coupon code applied at checkout.
+    - ``discount_amount`` stores the monetary value of the discount applied.
+    - ``tax_amount`` stores the calculated tax for the order.
+    - ``subtotal`` is the sum of line items before discounts and tax.
+    - ``gift_card_amount`` stores any gift card balance applied.
+    - ``currency`` is a 3-letter ISO currency code (e.g. "USD", "EUR").
 
 **For End Users:**
     Orders are created when customers complete checkout. Store owners can
-    view and manage orders from the dashboard.
+    view and manage orders from the dashboard. Orders now show a full
+    price breakdown including subtotal, discounts, tax, and gift card
+    credits.
 """
 
 import enum
@@ -71,6 +84,12 @@ class Order(Base):
         customer_email: Email address of the customer who placed the order.
         status: Current order status (pending, paid, shipped, delivered, cancelled).
         total: Total order amount in the store's currency.
+        subtotal: Sum of line item prices before discounts and tax.
+        discount_code: Coupon code applied at checkout (nullable).
+        discount_amount: Monetary value deducted by the discount (default 0).
+        tax_amount: Calculated tax amount for the order (default 0).
+        gift_card_amount: Gift card balance applied to the order (default 0).
+        currency: ISO 4217 currency code (default "USD").
         stripe_session_id: Stripe Checkout session ID for payment tracking.
         shipping_address: Optional shipping address as free-text.
         created_at: Timestamp when the order was created (DB server time).
@@ -95,6 +114,20 @@ class Order(Base):
         Enum(OrderStatus), default=OrderStatus.pending, nullable=False
     )
     total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    subtotal: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    discount_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    discount_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True, default=0
+    )
+    tax_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True, default=0
+    )
+    gift_card_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True, default=0
+    )
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="USD", server_default="USD"
+    )
     stripe_session_id: Mapped[str | None] = mapped_column(
         String(255), nullable=True, unique=True, index=True
     )
