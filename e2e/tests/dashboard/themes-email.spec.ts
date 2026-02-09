@@ -28,51 +28,44 @@ test.describe("Dashboard Theme Customization", () => {
     await page.goto(`/stores/${storeId}/themes`);
     await page.waitForLoadState("networkidle");
 
-    // Should show the theme cards
-    await expect(page.getByText("Default")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("Modern")).toBeVisible();
-    await expect(page.getByText("Ocean")).toBeVisible();
+    // Should show the preset theme cards (7 presets seeded on store creation)
+    await expect(page.getByText("Frosted")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Midnight")).toBeVisible();
+    await expect(page.getByText("Botanical")).toBeVisible();
   });
 
-  test("selects a different theme", async ({ page }) => {
+  test("activates a different theme", async ({ page }) => {
     await page.goto(`/stores/${storeId}/themes`);
     await page.waitForLoadState("networkidle");
 
-    // Click on the "Midnight" theme card
-    await page.getByText("Midnight").click();
+    // Click the "Activate" button on the Midnight theme card
+    const midnightCard = page.locator('[data-slot="card"]').filter({ hasText: "Midnight" });
+    await midnightCard.getByRole("button", { name: /activate/i }).click();
 
-    // The active badge should appear on the selected theme
-    await expect(
-      page.locator("button").filter({ hasText: /midnight/i }).locator("..").getByText("Active")
-    ).toBeVisible({ timeout: 5000 });
+    // After activation, an "Active" badge should appear on the Midnight card
+    await expect(midnightCard.getByText("Active")).toBeVisible({ timeout: 10000 });
   });
 
-  test("saves theme settings", async ({ page }) => {
+  test("navigates to theme editor and shows branding inputs", async ({ page }) => {
     await page.goto(`/stores/${storeId}/themes`);
     await page.waitForLoadState("networkidle");
 
-    // Fill branding fields
-    await page.fill("#logo-url", "https://example.com/logo.png");
-    await page.fill("#favicon-url", "https://example.com/favicon.ico");
-
-    await page.getByRole("button", { name: /save theme/i }).click();
-    await expect(page.getByText(/saved successfully/i)).toBeVisible({
-      timeout: 10000,
-    });
-  });
-
-  test("shows branding input fields", async ({ page }) => {
-    await page.goto(`/stores/${storeId}/themes`);
+    // Click "Customize" on the active (Frosted) theme to go to the editor
+    const activeCard = page.locator('[data-slot="card"]').filter({ hasText: "Active" });
+    await activeCard.getByRole("link", { name: /customize/i }).click();
+    await page.waitForURL(/\/themes\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState("networkidle");
 
+    // Branding inputs should be on the editor page
     await expect(page.locator("#logo-url")).toBeVisible({ timeout: 10000 });
     await expect(page.locator("#favicon-url")).toBeVisible();
     await expect(page.locator("#custom-css")).toBeVisible();
   });
 
-  test("navigates from store settings to themes", async ({ page }) => {
+  test("navigates via sidebar to themes", async ({ page }) => {
     await page.goto(`/stores/${storeId}`);
-    await page.getByRole("button", { name: /themes/i }).click();
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("link", { name: "Themes" }).click();
     await expect(page).toHaveURL(new RegExp(`/stores/${storeId}/themes`), {
       timeout: 10000,
     });
@@ -119,9 +112,10 @@ test.describe("Dashboard Email Settings", () => {
     await expect(page.getByText("7", { exact: true })).toBeVisible({ timeout: 10000 });
   });
 
-  test("navigates from store settings to email", async ({ page }) => {
+  test("navigates via sidebar to email", async ({ page }) => {
     await page.goto(`/stores/${storeId}`);
-    await page.getByRole("button", { name: /email/i }).click();
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("link", { name: "Email" }).click();
     await expect(page).toHaveURL(new RegExp(`/stores/${storeId}/email`), {
       timeout: 10000,
     });

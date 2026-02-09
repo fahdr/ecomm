@@ -6,7 +6,7 @@
  *
  * **For End Users:**
  *   Fill in the product details and click "Create Product" to add it to
- *   your store. Products start as drafts by default — set status to
+ *   your store. Products start as drafts by default -- set status to
  *   "Active" when ready to publish.
  *
  * **For QA Engineers:**
@@ -15,14 +15,26 @@
  *   - Variants can be added dynamically with name, SKU, price, and inventory.
  *   - On success, redirects to the product edit page.
  *   - The submit button is disabled while the request is in flight.
+ *
+ * **For Developers:**
+ *   - Uses `useStore()` from the store context to obtain the store ID.
+ *   - Wrapped in `<PageTransition>` for consistent page entrance animations.
+ *   - The old breadcrumb header has been removed; navigation is handled
+ *     by the shell sidebar.
+ *
+ * **For Project Managers:**
+ *   Part of the product management CRUD flow. Creates a new product record
+ *   under the current store.
  */
 
 "use client";
 
-import { FormEvent, useState, use } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,12 +68,17 @@ interface ProductResponse {
   id: string;
 }
 
-export default function CreateProductPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+/**
+ * Create product page component.
+ *
+ * Renders a multi-section form for creating a new product with details,
+ * pricing, status, variants, and SEO fields.
+ *
+ * @returns The create product page wrapped in a PageTransition.
+ */
+export default function CreateProductPage() {
+  const { store } = useStore();
+  const storeId = store?.id ?? "";
   const router = useRouter();
 
   const [title, setTitle] = useState("");
@@ -77,7 +94,7 @@ export default function CreateProductPage({
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Add a new empty variant row.
+   * Add a new empty variant row to the variants list.
    */
   function addVariant() {
     setVariants([
@@ -87,14 +104,18 @@ export default function CreateProductPage({
   }
 
   /**
-   * Remove a variant by index.
+   * Remove a variant by its index in the list.
+   * @param index - The zero-based index of the variant to remove.
    */
   function removeVariant(index: number) {
     setVariants(variants.filter((_, i) => i !== index));
   }
 
   /**
-   * Update a variant field by index.
+   * Update a single field of a variant by index.
+   * @param index - The zero-based index of the variant to update.
+   * @param field - The field key to update.
+   * @param value - The new value for the field.
    */
   function updateVariant(index: number, field: keyof VariantInput, value: string) {
     const updated = [...variants];
@@ -103,7 +124,11 @@ export default function CreateProductPage({
   }
 
   /**
-   * Handle form submission — create the product via API.
+   * Handle form submission -- create the product via API.
+   *
+   * Constructs the request body from form state and sends a POST request.
+   * On success, redirects to the product edit page.
+   * @param e - The form submission event.
    */
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -148,23 +173,11 @@ export default function CreateProductPage({
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center gap-4 border-b px-6 py-4">
-        <Link href="/stores" className="text-lg font-semibold hover:underline">
-          Stores
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <Link
-          href={`/stores/${storeId}/products`}
-          className="text-lg font-semibold hover:underline"
-        >
-          Products
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <h1 className="text-lg font-semibold">New Product</h1>
-      </header>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading */}
+        <h1 className="text-2xl font-heading font-bold">New Product</h1>
 
-      <main className="mx-auto max-w-2xl p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Info */}
           <Card>
@@ -393,6 +406,6 @@ export default function CreateProductPage({
           </div>
         </form>
       </main>
-    </div>
+    </PageTransition>
   );
 }

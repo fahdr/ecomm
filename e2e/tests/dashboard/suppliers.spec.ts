@@ -92,9 +92,10 @@ test.describe("Dashboard Supplier Management", () => {
     await expect(page.getByText("Total Suppliers")).toBeVisible({ timeout: 10000 });
   });
 
-  test("navigates from store settings to suppliers", async ({ page }) => {
+  test("navigates via sidebar to suppliers", async ({ page }) => {
     await page.goto(`/stores/${storeId}`);
-    await page.getByRole("button", { name: /suppliers/i }).click();
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("link", { name: "Suppliers" }).click();
     await expect(page).toHaveURL(new RegExp(`/stores/${storeId}/suppliers`), {
       timeout: 10000,
     });

@@ -18,7 +18,8 @@
  *   - Shipping days shows average and max values.
  *
  * **For Developers:**
- *   - Follows the store sub-page pattern with breadcrumb header.
+ *   - Uses ``useStore()`` from store context for the store ID.
+ *   - Wrapped in ``PageTransition`` for consistent entrance animation.
  *   - Uses a single dialog component for both create and edit flows,
  *     differentiated by the ``editingSupplier`` state.
  *
@@ -29,10 +30,11 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState, use, useCallback } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -115,12 +117,18 @@ function reliabilityColor(score: number): string {
   return "text-red-600";
 }
 
-export default function SuppliersPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+/**
+ * SuppliersPage is the main page component for managing store suppliers.
+ *
+ * Fetches suppliers from the API, displays them in a table with summary
+ * stats, and provides create/edit dialogs. Uses the store context for
+ * the store ID and PageTransition for entrance animation.
+ *
+ * @returns The rendered suppliers management page.
+ */
+export default function SuppliersPage() {
+  const { store } = useStore();
+  const storeId = store!.id;
   const { user, loading: authLoading } = useAuth();
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -244,9 +252,9 @@ export default function SuppliersPage({
     fetchSuppliers();
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
           <p className="text-sm text-muted-foreground tracking-wide">Loading suppliers...</p>
@@ -256,36 +264,23 @@ export default function SuppliersPage({
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}`}
-            className="text-lg font-semibold hover:underline"
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading and action */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold font-heading">Suppliers</h1>
+          <Button
+            onClick={() => {
+              resetForm();
+              setDialogOpen(true);
+            }}
           >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Suppliers</h1>
+            Add Supplier
+          </Button>
         </div>
-        <Button
-          onClick={() => {
-            resetForm();
-            setDialogOpen(true);
-          }}
-        >
-          Add Supplier
-        </Button>
-      </header>
 
-      <main className="p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -293,7 +288,7 @@ export default function SuppliersPage({
         )}
 
         {/* Summary cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -352,7 +347,7 @@ export default function SuppliersPage({
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
               <span className="text-2xl text-muted-foreground">S</span>
             </div>
-            <h2 className="text-xl font-semibold">No suppliers yet</h2>
+            <h2 className="text-xl font-semibold font-heading">No suppliers yet</h2>
             <p className="max-w-sm text-muted-foreground">
               Add your suppliers to track their reliability, shipping times,
               and manage your supply chain effectively.
@@ -422,7 +417,7 @@ export default function SuppliersPage({
                             <p className="text-muted-foreground">{supplier.contact_phone}</p>
                           )}
                           {!supplier.contact_email && !supplier.contact_phone && (
-                            <span className="text-muted-foreground">\u2014</span>
+                            <span className="text-muted-foreground">{"\u2014"}</span>
                           )}
                         </div>
                       </TableCell>
@@ -442,145 +437,145 @@ export default function SuppliersPage({
             </CardContent>
           </Card>
         )}
-      </main>
 
-      {/* Create/Edit Supplier Dialog */}
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) resetForm();
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {editingSupplier ? "Edit Supplier" : "Add Supplier"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingSupplier
-                ? `Update details for "${editingSupplier.name}".`
-                : "Add a new supplier to your network."}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4 py-4">
-              {saveError && (
-                <p className="text-sm text-destructive">{saveError}</p>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="supplier-name">Supplier Name</Label>
-                <Input
-                  id="supplier-name"
-                  placeholder="e.g. AliExpress Store #42"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        {/* Create/Edit Supplier Dialog */}
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) resetForm();
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {editingSupplier ? "Edit Supplier" : "Add Supplier"}
+              </DialogTitle>
+              <DialogDescription>
+                {editingSupplier
+                  ? `Update details for "${editingSupplier.name}".`
+                  : "Add a new supplier to your network."}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-4 py-4">
+                {saveError && (
+                  <p className="text-sm text-destructive">{saveError}</p>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="supplier-email">Email</Label>
+                  <Label htmlFor="supplier-name">Supplier Name</Label>
                   <Input
-                    id="supplier-email"
-                    type="email"
-                    placeholder="supplier@example.com"
-                    value={formEmail}
-                    onChange={(e) => setFormEmail(e.target.value)}
+                    id="supplier-name"
+                    placeholder="e.g. AliExpress Store #42"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    required
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier-email">Email</Label>
+                    <Input
+                      id="supplier-email"
+                      type="email"
+                      placeholder="supplier@example.com"
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier-phone">Phone</Label>
+                    <Input
+                      id="supplier-phone"
+                      placeholder="+1 (555) 000-0000"
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="supplier-phone">Phone</Label>
+                  <Label htmlFor="supplier-website">Website</Label>
                   <Input
-                    id="supplier-phone"
-                    placeholder="+1 (555) 000-0000"
-                    value={formPhone}
-                    onChange={(e) => setFormPhone(e.target.value)}
+                    id="supplier-website"
+                    type="url"
+                    placeholder="https://supplier.example.com"
+                    value={formWebsite}
+                    onChange={(e) => setFormWebsite(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="supplier-status">Status</Label>
+                    <Select
+                      value={formStatus}
+                      onValueChange={(v) => setFormStatus(v as Supplier["status"])}
+                    >
+                      <SelectTrigger id="supplier-status">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="blocked">Blocked</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="avg-shipping">Avg Shipping (days)</Label>
+                    <Input
+                      id="avg-shipping"
+                      type="number"
+                      min="1"
+                      placeholder="7"
+                      value={formShippingDays}
+                      onChange={(e) => setFormShippingDays(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="max-shipping">Max Shipping (days)</Label>
+                    <Input
+                      id="max-shipping"
+                      type="number"
+                      min="1"
+                      placeholder="14"
+                      value={formMaxShippingDays}
+                      onChange={(e) => setFormMaxShippingDays(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supplier-notes">Notes</Label>
+                  <Textarea
+                    id="supplier-notes"
+                    placeholder="Internal notes about this supplier..."
+                    value={formNotes}
+                    onChange={(e) => setFormNotes(e.target.value)}
+                    rows={3}
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="supplier-website">Website</Label>
-                <Input
-                  id="supplier-website"
-                  type="url"
-                  placeholder="https://supplier.example.com"
-                  value={formWebsite}
-                  onChange={(e) => setFormWebsite(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="supplier-status">Status</Label>
-                  <Select
-                    value={formStatus}
-                    onValueChange={(v) => setFormStatus(v as Supplier["status"])}
-                  >
-                    <SelectTrigger id="supplier-status">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="blocked">Blocked</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="avg-shipping">Avg Shipping (days)</Label>
-                  <Input
-                    id="avg-shipping"
-                    type="number"
-                    min="1"
-                    placeholder="7"
-                    value={formShippingDays}
-                    onChange={(e) => setFormShippingDays(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="max-shipping">Max Shipping (days)</Label>
-                  <Input
-                    id="max-shipping"
-                    type="number"
-                    min="1"
-                    placeholder="14"
-                    value={formMaxShippingDays}
-                    onChange={(e) => setFormMaxShippingDays(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="supplier-notes">Notes</Label>
-                <Textarea
-                  id="supplier-notes"
-                  placeholder="Internal notes about this supplier..."
-                  value={formNotes}
-                  onChange={(e) => setFormNotes(e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving
-                  ? editingSupplier
-                    ? "Saving..."
-                    : "Adding..."
-                  : editingSupplier
-                    ? "Save Changes"
-                    : "Add Supplier"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving
+                    ? editingSupplier
+                      ? "Saving..."
+                      : "Adding..."
+                    : editingSupplier
+                      ? "Save Changes"
+                      : "Add Supplier"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </main>
+    </PageTransition>
   );
 }

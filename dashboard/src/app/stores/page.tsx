@@ -13,6 +13,7 @@
  *   - Deleted stores are excluded by the API (soft-delete filter).
  *   - An empty state message is shown when no stores exist.
  *   - The page redirects to `/login` if unauthenticated (via middleware).
+ *   - Cards have hover lift animation and staggered entrance.
  */
 
 "use client";
@@ -30,9 +31,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/empty-state";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { FadeIn } from "@/components/motion-wrappers";
+import { Store, Plus } from "lucide-react";
 
 /** Store data returned by the API. */
-interface Store {
+interface StoreData {
   id: string;
   name: string;
   slug: string;
@@ -44,14 +50,14 @@ interface Store {
 
 export default function StoresPage() {
   const { user, loading: authLoading } = useAuth();
-  const [stores, setStores] = useState<Store[]>([]);
+  const [stores, setStores] = useState<StoreData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading || !user) return;
 
     async function fetchStores() {
-      const result = await api.get<Store[]>("/api/v1/stores");
+      const result = await api.get<StoreData[]>("/api/v1/stores");
       if (result.data) {
         setStores(result.data);
       }
@@ -63,65 +69,85 @@ export default function StoresPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">Loading stores...</p>
+      <div className="min-h-screen bg-dot-pattern">
+        <header className="flex items-center justify-between border-b bg-background/80 backdrop-blur-sm px-6 py-3">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-9 w-28" />
+        </header>
+        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-36 rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
+    <div className="min-h-screen bg-dot-pattern">
+      <header className="flex items-center justify-between border-b bg-background/80 backdrop-blur-sm px-6 py-3">
         <div className="flex items-center gap-4">
-          <Link href="/" className="text-lg font-semibold hover:underline">
+          <Link href="/" className="font-heading text-lg font-semibold hover:text-primary transition-colors">
             Dashboard
           </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Stores</h1>
+          <span className="text-muted-foreground/60">/</span>
+          <h1 className="font-heading text-lg font-semibold">Stores</h1>
         </div>
-        <Link href="/stores/new">
-          <Button>Create Store</Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link href="/stores/new">
+            <Button>
+              <Plus className="size-4" />
+              Create Store
+            </Button>
+          </Link>
+        </div>
       </header>
 
       <main className="p-6">
         {stores.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 py-12 text-center">
-            <h2 className="text-xl font-semibold">No stores yet</h2>
-            <p className="text-muted-foreground">
-              Create your first store to get started with dropshipping.
-            </p>
-            <Link href="/stores/new">
-              <Button>Create your first store</Button>
-            </Link>
-          </div>
+          <EmptyState
+            icon={<Store className="size-6" />}
+            title="No stores yet"
+            description="Create your first store to get started with dropshipping."
+            action={
+              <Link href="/stores/new">
+                <Button>
+                  <Plus className="size-4" />
+                  Create your first store
+                </Button>
+              </Link>
+            }
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {stores.map((store) => (
-              <Link key={store.id} href={`/stores/${store.id}`}>
-                <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-base">{store.name}</CardTitle>
-                      <Badge
-                        variant={
-                          store.status === "active" ? "default" : "secondary"
-                        }
-                      >
-                        {store.status}
-                      </Badge>
-                    </div>
-                    <CardDescription>{store.niche}</CardDescription>
-                  </CardHeader>
-                  {store.description && (
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {store.description}
-                      </p>
-                    </CardContent>
-                  )}
-                </Card>
-              </Link>
+            {stores.map((store, index) => (
+              <FadeIn key={store.id} delay={index * 0.05}>
+                <Link href={`/stores/${store.id}`}>
+                  <Card className="cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <CardTitle className="font-heading text-base">{store.name}</CardTitle>
+                        <Badge
+                          variant={
+                            store.status === "active" ? "success" : "secondary"
+                          }
+                        >
+                          {store.status}
+                        </Badge>
+                      </div>
+                      <CardDescription>{store.niche}</CardDescription>
+                    </CardHeader>
+                    {store.description && (
+                      <CardContent>
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {store.description}
+                        </p>
+                      </CardContent>
+                    )}
+                  </Card>
+                </Link>
+              </FadeIn>
             ))}
           </div>
         )}

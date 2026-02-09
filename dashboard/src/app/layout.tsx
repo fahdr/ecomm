@@ -1,29 +1,42 @@
 /**
  * Root layout for the dashboard application.
  *
- * Sets up global fonts, styles, and the authentication provider that
- * wraps all pages. Every page in the dashboard has access to the
- * `useAuth()` hook via the `AuthProvider`.
+ * Sets up the design system fonts (Bricolage Grotesque for headings,
+ * Instrument Sans for body, IBM Plex Mono for code), theme provider
+ * for light/dark mode, toast notifications, and the authentication
+ * provider that wraps all pages.
  *
  * **For Developers:**
- *   The `AuthProvider` is a client component, but this layout remains
- *   a server component. The provider is imported and used as a wrapper
- *   around `{children}`.
+ *   - Fonts are loaded via next/font/google and exposed as CSS variables
+ *   - ThemeProvider from next-themes handles light/dark with class strategy
+ *   - Toaster from sonner provides toast notifications globally
+ *   - AuthProvider gives all pages access to useAuth() hook
  */
 
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Instrument_Sans, IBM_Plex_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
+import { Toaster } from "sonner";
 import { AuthProvider } from "@/contexts/auth-context";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const headingFont = Bricolage_Grotesque({
+  variable: "--font-heading",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const bodyFont = Instrument_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const monoFont = IBM_Plex_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -37,11 +50,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable} antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange={false}
+        >
+          <AuthProvider>{children}</AuthProvider>
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              className: "font-sans",
+            }}
+          />
+        </ThemeProvider>
       </body>
     </html>
   );

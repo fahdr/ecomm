@@ -10,12 +10,24 @@
  *   you no longer need.
  *
  * **For QA Engineers:**
- *   - The page loads the product by ID from the URL parameter.
+ *   - The page loads the product by product ID from the URL parameter.
+ *   - The store ID comes from the StoreProvider context.
  *   - If the product is not found (404), a "Product not found" message is shown.
  *   - Image upload uses multipart form data via the upload endpoint.
  *   - Delete shows a confirmation dialog before soft-deleting.
  *   - After deletion, the user is redirected to the products list.
  *   - Updating the title triggers slug regeneration on the backend.
+ *
+ * **For Developers:**
+ *   - Uses `useStore()` from the store context to obtain the store ID.
+ *   - Still reads `productId` from the URL params via `use(params)`.
+ *   - Wrapped in `<PageTransition>` for consistent page entrance animations.
+ *   - The old breadcrumb header has been removed; navigation is handled
+ *     by the shell sidebar.
+ *
+ * **For Project Managers:**
+ *   Core product editing flow. Allows store owners to modify any product
+ *   field, manage variants, upload images, and delete products.
  */
 
 "use client";
@@ -24,7 +36,9 @@ import { FormEvent, useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,12 +105,23 @@ interface Product {
   variants: Variant[];
 }
 
+/**
+ * Product edit page component.
+ *
+ * Renders the full product edit form including details, images, pricing,
+ * status, variants, SEO, and a danger zone for deletion.
+ *
+ * @param props - Page props containing the productId parameter.
+ * @returns The product edit page wrapped in a PageTransition.
+ */
 export default function ProductEditPage({
   params,
 }: {
   params: Promise<{ id: string; productId: string }>;
 }) {
-  const { id: storeId, productId } = use(params);
+  const { productId } = use(params);
+  const { store } = useStore();
+  const storeId = store?.id ?? "";
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -127,8 +152,11 @@ export default function ProductEditPage({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !storeId) return;
 
+    /**
+     * Fetch the product record from the API and populate form state.
+     */
     async function fetchProduct() {
       const result = await api.get<Product>(
         `/api/v1/stores/${storeId}/products/${productId}`
@@ -164,7 +192,8 @@ export default function ProductEditPage({
   }, [storeId, productId, user, authLoading]);
 
   /**
-   * Handle image upload.
+   * Handle image upload via multipart form data.
+   * @param e - The file input change event.
    */
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -184,7 +213,8 @@ export default function ProductEditPage({
   }
 
   /**
-   * Remove an image by index.
+   * Remove an image by its index in the images array.
+   * @param index - The zero-based index of the image to remove.
    */
   function removeImage(index: number) {
     setImages(images.filter((_, i) => i !== index));
@@ -201,14 +231,18 @@ export default function ProductEditPage({
   }
 
   /**
-   * Remove a variant by index.
+   * Remove a variant by its index.
+   * @param index - The zero-based index of the variant to remove.
    */
   function removeVariant(index: number) {
     setVariants(variants.filter((_, i) => i !== index));
   }
 
   /**
-   * Update a variant field by index.
+   * Update a single field of a variant by index.
+   * @param index - The zero-based index of the variant to update.
+   * @param field - The field key to update.
+   * @param value - The new value for the field.
    */
   function updateVariant(index: number, field: keyof VariantInput, value: string) {
     const updated = [...variants];
@@ -218,6 +252,9 @@ export default function ProductEditPage({
 
   /**
    * Handle the update form submission.
+   *
+   * Sends a PATCH request with the updated product data.
+   * @param e - The form submission event.
    */
   async function handleUpdate(e: FormEvent) {
     e.preventDefault();
@@ -266,6 +303,8 @@ export default function ProductEditPage({
 
   /**
    * Handle the delete confirmation.
+   *
+   * Sends a DELETE request and redirects to the products list.
    */
   async function handleDelete() {
     setDeleting(true);
@@ -274,9 +313,9 @@ export default function ProductEditPage({
     router.push(`/stores/${storeId}/products`);
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Loading product...</p>
       </div>
     );
@@ -284,7 +323,7 @@ export default function ProductEditPage({
 
   if (notFound) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
         <h2 className="text-xl font-semibold">Product not found</h2>
         <Link href={`/stores/${storeId}/products`}>
           <Button variant="outline">Back to products</Button>
@@ -294,21 +333,11 @@ export default function ProductEditPage({
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}/products`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Products
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">{product?.title}</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading */}
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-heading font-bold">{product?.title}</h1>
           {product && (
             <Badge
               variant={
@@ -323,9 +352,7 @@ export default function ProductEditPage({
             </Badge>
           )}
         </div>
-      </header>
 
-      <main className="mx-auto max-w-2xl space-y-6 p-6">
         <form onSubmit={handleUpdate} className="space-y-6">
           {/* Basic Info */}
           <Card>
@@ -633,6 +660,6 @@ export default function ProductEditPage({
           </CardContent>
         </Card>
       </main>
-    </div>
+    </PageTransition>
   );
 }

@@ -6,17 +6,22 @@
  *
  * **For Developers:**
  *   This is a client component. Order data is fetched from the
- *   authenticated orders API. Status updates use PATCH.
+ *   authenticated orders API. Status updates use PATCH. The store ID
+ *   comes from `useStore()` context; the order ID from URL params.
  *
  * **For QA Engineers:**
  *   - Shows order ID, customer email, status, and timestamps.
  *   - Lists all order items with title, variant, quantity, and price.
  *   - Status can be updated via a dropdown.
- *   - Back link returns to the orders list.
+ *   - "Order not found" state is shown for invalid order IDs.
  *
  * **For End Users:**
  *   View the details of a specific order. Update the status as you
  *   process and ship the order.
+ *
+ * **For Project Managers:**
+ *   Part of the core order management flow. Allows viewing details
+ *   and updating order status (pending -> paid -> shipped -> delivered).
  */
 
 "use client";
@@ -24,7 +29,9 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -64,7 +71,11 @@ interface Order {
   items: OrderItem[];
 }
 
-/** Map order status to badge variant. */
+/**
+ * Map order status to badge variant for visual differentiation.
+ * @param status - The order status string.
+ * @returns A badge variant suitable for the shadcn Badge component.
+ */
 function statusBadge(status: string) {
   const map: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     pending: "outline",
@@ -79,15 +90,20 @@ function statusBadge(status: string) {
 /**
  * Order detail page component.
  *
- * @param props - Page props containing the store ID and order ID.
- * @returns The order detail page with items and status controls.
+ * Renders full order information with items, totals, and a status
+ * update dropdown.
+ *
+ * @param props - Page props containing the orderId parameter.
+ * @returns The order detail page wrapped in a PageTransition.
  */
 export default function OrderDetailPage({
   params,
 }: {
   params: Promise<{ id: string; orderId: string }>;
 }) {
-  const { id: storeId, orderId } = use(params);
+  const { orderId } = use(params);
+  const { store } = useStore();
+  const storeId = store?.id ?? "";
   const { user, loading: authLoading } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,8 +112,11 @@ export default function OrderDetailPage({
   const [updateSuccess, setUpdateSuccess] = useState(false);
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !storeId) return;
 
+    /**
+     * Fetch the order record from the API.
+     */
     async function fetchOrder() {
       const result = await api.get<Order>(
         `/api/v1/stores/${storeId}/orders/${orderId}`
@@ -114,7 +133,7 @@ export default function OrderDetailPage({
   }, [storeId, orderId, user, authLoading]);
 
   /**
-   * Update the order status.
+   * Update the order status via PATCH request.
    *
    * @param newStatus - The new status string to set.
    */
@@ -136,9 +155,9 @@ export default function OrderDetailPage({
     setUpdating(false);
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Loading order...</p>
       </div>
     );
@@ -146,7 +165,7 @@ export default function OrderDetailPage({
 
   if (notFound || !order) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
         <h2 className="text-xl font-semibold">Order not found</h2>
         <Link href={`/stores/${storeId}/orders`}>
           <Button variant="outline">Back to orders</Button>
@@ -156,21 +175,16 @@ export default function OrderDetailPage({
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href={`/stores/${storeId}/orders`} className="text-lg font-semibold hover:underline">
-            Orders
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold font-mono">
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading */}
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-mono font-bold">
             {order.id.slice(0, 8)}...
           </h1>
           <Badge variant={statusBadge(order.status)}>{order.status}</Badge>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-3xl p-6 space-y-6">
         {/* Order Info */}
         <Card>
           <CardHeader>
@@ -285,6 +299,6 @@ export default function OrderDetailPage({
           </CardContent>
         </Card>
       </main>
-    </div>
+    </PageTransition>
   );
 }

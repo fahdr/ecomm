@@ -37,7 +37,8 @@ from app.schemas.public import (
     PublicProductResponse,
     PublicStoreResponse,
 )
-from app.services import order_service
+from app.schemas.theme import PublicThemeResponse
+from app.services import order_service, theme_service
 from app.services.stripe_service import create_checkout_session
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -318,3 +319,34 @@ async def get_public_order(
         )
 
     return OrderResponse.model_validate(order)
+
+
+@router.get("/stores/{slug}/theme", response_model=PublicThemeResponse)
+async def get_public_theme(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+) -> PublicThemeResponse:
+    """Retrieve the active theme for a store (public, no auth required).
+
+    The storefront uses this endpoint to load colors, fonts, styles,
+    and page blocks for rendering. Returns the currently active theme.
+
+    Args:
+        slug: The store's URL slug.
+        db: Async database session injected by FastAPI.
+
+    Returns:
+        PublicThemeResponse with colors, typography, styles, blocks, and logo.
+
+    Raises:
+        HTTPException: 404 if the store doesn't exist, is not active,
+            or has no active theme.
+    """
+    store = await _get_active_store(db, slug)
+    theme = await theme_service.get_active_theme(db, store.id)
+    if theme is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active theme found",
+        )
+    return PublicThemeResponse.model_validate(theme)

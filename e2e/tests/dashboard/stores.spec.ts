@@ -59,8 +59,9 @@ test.describe("Dashboard Store Management", () => {
     await expect(page).toHaveURL(/\/stores\/[a-f0-9-]+/, { timeout: 10000 });
 
     // Navigate back to stores list
-    await page.getByRole("link", { name: /stores/i }).first().click();
-    await expect(page.getByText("Listed Store")).toBeVisible();
+    await page.goto("/stores");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Listed Store")).toBeVisible({ timeout: 10000 });
   });
 
   test("updates store settings", async ({ page }) => {
@@ -77,7 +78,7 @@ test.describe("Dashboard Store Management", () => {
     await page.getByRole("button", { name: /save changes/i }).click();
 
     await expect(page.getByText(/store updated successfully/i)).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Updated Name")).toBeVisible();
+    await expect(page.locator("#name")).toHaveValue("Updated Name");
   });
 
   test("deletes a store with confirmation", async ({ page }) => {

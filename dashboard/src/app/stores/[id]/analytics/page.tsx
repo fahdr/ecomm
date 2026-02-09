@@ -20,6 +20,8 @@
  *   - Period selector changes the time range (7d, 30d, 90d).
  *
  * **For Developers:**
+ *   - Uses `useStore()` from the store context for the store ID.
+ *   - Wrapped in `<PageTransition>` for consistent page entrance animations.
  *   - Three parallel API calls on mount (summary, revenue, top products).
  *   - Recharts components are imported from the ``recharts`` package.
  *   - The chart uses CSS variable colors via ``var(--chart-N)`` tokens.
@@ -32,11 +34,12 @@
 
 "use client";
 
-import { useEffect, useState, use, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
-import { Button } from "@/components/ui/button";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -117,18 +120,16 @@ function formatCurrency(value: number | string): string {
 }
 
 /**
- * Format a percentage change with a sign prefix.
- * @param value - Percentage change value.
- * @returns A string like "+12.3%" or "-5.1%".
+ * Analytics page component.
+ *
+ * Renders summary metric cards, a revenue/profit area chart, and a
+ * top products table with period selection.
+ *
+ * @returns The analytics page wrapped in a PageTransition.
  */
-
-
-export default function AnalyticsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+export default function AnalyticsPage() {
+  const { store } = useStore();
+  const storeId = store?.id ?? "";
   const { user, loading: authLoading } = useAuth();
 
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
@@ -181,7 +182,7 @@ export default function AnalyticsPage({
   );
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !storeId) return;
     fetchAnalytics(period);
   }, [storeId, user, authLoading, period, fetchAnalytics]);
 
@@ -193,9 +194,9 @@ export default function AnalyticsPage({
     setPeriod(newPeriod);
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
           <p className="text-sm text-muted-foreground tracking-wide">Loading analytics...</p>
@@ -205,36 +206,23 @@ export default function AnalyticsPage({
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Analytics</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading with period selector */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-heading font-bold">Analytics</h1>
+          <Select value={period} onValueChange={handlePeriodChange}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={period} onValueChange={handlePeriodChange}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
-            <SelectItem value="90d">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
-      </header>
 
-      <main className="p-6 space-y-6">
         {error && (
           <Card className="border-amber-300/50 bg-amber-50/50">
             <CardContent className="pt-6">
@@ -457,6 +445,6 @@ export default function AnalyticsPage({
           </CardContent>
         </Card>
       </main>
-    </div>
+    </PageTransition>
   );
 }

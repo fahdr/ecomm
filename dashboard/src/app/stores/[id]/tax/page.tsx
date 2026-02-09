@@ -13,6 +13,8 @@
  *   - Fetches tax rates via `GET /api/v1/stores/{store_id}/tax`.
  *   - Creates new rates via `POST /api/v1/stores/{store_id}/tax`.
  *   - Uses the `Switch` component for active/inactive toggling in the form.
+ *   - Uses ``useStore()`` from store context for the store ID.
+ *   - Wrapped in ``PageTransition`` for consistent entrance animation.
  *
  * **For QA Engineers:**
  *   - Verify that the tax rate list refreshes after creating a new rate.
@@ -27,10 +29,11 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState, use } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,7 +61,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 
 /** Shape of a tax rate returned by the API. */
@@ -75,15 +77,15 @@ interface TaxRate {
 /**
  * TaxRatesPage renders the tax rate listing and creation form.
  *
- * @param params - Route parameters containing the store ID.
+ * Fetches tax rates from the API, displays them in a table, and
+ * provides a dialog to create new rates. Uses the store context for
+ * the store ID and PageTransition for entrance animation.
+ *
  * @returns The rendered tax rates management page.
  */
-export default function TaxRatesPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function TaxRatesPage() {
+  const { store } = useStore();
+  const storeId = store!.id;
   const { user, loading: authLoading } = useAuth();
   const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +107,7 @@ export default function TaxRatesPage({
    */
   async function fetchTaxRates() {
     setLoading(true);
-    const result = await api.get<{ items: TaxRate[] }>(`/api/v1/stores/${id}/tax-rates`);
+    const result = await api.get<{ items: TaxRate[] }>(`/api/v1/stores/${storeId}/tax-rates`);
     if (result.error) {
       setError(result.error.message);
     } else {
@@ -118,7 +120,7 @@ export default function TaxRatesPage({
     if (authLoading || !user) return;
     fetchTaxRates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user, authLoading]);
+  }, [storeId, user, authLoading]);
 
   /**
    * Handle the create-tax-rate form submission.
@@ -131,7 +133,7 @@ export default function TaxRatesPage({
     setCreating(true);
     setCreateError(null);
 
-    const result = await api.post<TaxRate>(`/api/v1/stores/${id}/tax-rates`, {
+    const result = await api.post<TaxRate>(`/api/v1/stores/${storeId}/tax-rates`, {
       name: formName,
       rate: parseFloat(formRate),
       country: formCountry,
@@ -156,38 +158,84 @@ export default function TaxRatesPage({
     fetchTaxRates();
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-muted-foreground">Loading tax rates...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Tax Rates</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading and action */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold font-heading">Tax Rates</h1>
+          <Button onClick={() => setDialogOpen(true)}>Add Tax Rate</Button>
         </div>
 
-        {/* Create tax rate dialog trigger */}
+        {error && (
+          <Card className="border-destructive/50">
+            <CardContent className="pt-6">
+              <p className="text-sm text-destructive">{error}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {taxRates.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <div className="text-5xl opacity-20">%</div>
+            <h2 className="text-xl font-semibold font-heading">No tax rates configured</h2>
+            <p className="text-muted-foreground max-w-sm">
+              Add your first tax rate to start collecting taxes on orders
+              from specific regions.
+            </p>
+            <Button onClick={() => setDialogOpen(true)}>
+              Add your first tax rate
+            </Button>
+          </div>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-heading">Tax Rates</CardTitle>
+              <CardDescription>
+                {taxRates.length} rate{taxRates.length !== 1 ? "s" : ""} configured
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Rate</TableHead>
+                    <TableHead>Country</TableHead>
+                    <TableHead>State</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {taxRates.map((rate) => (
+                    <TableRow key={rate.id}>
+                      <TableCell className="font-medium">{rate.name}</TableCell>
+                      <TableCell>{rate.rate}%</TableCell>
+                      <TableCell>{rate.country}</TableCell>
+                      <TableCell>{rate.state || "--"}</TableCell>
+                      <TableCell>
+                        <Badge variant={rate.is_active ? "default" : "secondary"}>
+                          {rate.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Create Tax Rate Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Add Tax Rate</Button>
-          </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>New Tax Rate</DialogTitle>
@@ -267,68 +315,7 @@ export default function TaxRatesPage({
             </form>
           </DialogContent>
         </Dialog>
-      </header>
-
-      <main className="p-6">
-        {error && (
-          <Card className="mb-6 border-destructive/50">
-            <CardContent className="pt-6">
-              <p className="text-sm text-destructive">{error}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {taxRates.length === 0 ? (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <div className="text-5xl opacity-20">%</div>
-            <h2 className="text-xl font-semibold">No tax rates configured</h2>
-            <p className="text-muted-foreground max-w-sm">
-              Add your first tax rate to start collecting taxes on orders
-              from specific regions.
-            </p>
-            <Button onClick={() => setDialogOpen(true)}>
-              Add your first tax rate
-            </Button>
-          </div>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Tax Rates</CardTitle>
-              <CardDescription>
-                {taxRates.length} rate{taxRates.length !== 1 ? "s" : ""} configured
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Rate</TableHead>
-                    <TableHead>Country</TableHead>
-                    <TableHead>State</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {taxRates.map((rate) => (
-                    <TableRow key={rate.id}>
-                      <TableCell className="font-medium">{rate.name}</TableCell>
-                      <TableCell>{rate.rate}%</TableCell>
-                      <TableCell>{rate.country}</TableCell>
-                      <TableCell>{rate.state || "--"}</TableCell>
-                      <TableCell>
-                        <Badge variant={rate.is_active ? "default" : "secondary"}>
-                          {rate.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

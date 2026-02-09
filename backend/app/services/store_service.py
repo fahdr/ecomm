@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.store import Store, StoreStatus
+from app.services.theme_service import seed_preset_themes
 from app.utils.slug import generate_unique_slug
 
 
@@ -55,6 +56,10 @@ async def create_store(
     )
     db.add(store)
     await db.flush()
+
+    # Seed preset themes so the store has a default appearance.
+    await seed_preset_themes(db, store.id)
+
     return store
 
 

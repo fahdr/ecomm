@@ -86,6 +86,57 @@ export interface PaginatedProducts {
 }
 
 // ---------------------------------------------------------------------------
+// Themes (Feature 15)
+// ---------------------------------------------------------------------------
+
+/**
+ * Theme block configuration. Each block represents a composable
+ * homepage section with a type and per-block settings.
+ *
+ * **For Developers:**
+ *   The ``type`` field maps to a React component in the BlockRenderer.
+ *   ``config`` shape varies by type but always includes at minimum
+ *   an ``enabled`` flag.
+ */
+export interface ThemeBlock {
+  /** Block type identifier (e.g. "hero_banner", "featured_products"). */
+  type: string;
+  /** Whether this block is enabled and should render. */
+  enabled: boolean;
+  /** Block-specific configuration values. */
+  config: Record<string, unknown>;
+}
+
+/**
+ * Public theme data returned by ``GET /api/v1/public/stores/{slug}/theme``.
+ *
+ * Contains everything the storefront needs to render — colors, fonts,
+ * style options, ordered page blocks, and branding assets.
+ *
+ * **For Developers:**
+ *   Colors are hex strings. Typography font names are Google Fonts names.
+ *   Styles use fixed option values (sm/md/lg, flat/elevated/glass, etc.).
+ */
+export interface StoreTheme {
+  /** Theme display name. */
+  name: string;
+  /** Color palette (hex values). Keys: primary, accent, background, surface, text, muted, border. */
+  colors: Record<string, string>;
+  /** Typography configuration. Keys: heading_font, body_font, heading_weight, body_weight. */
+  typography: Record<string, string>;
+  /** Style options. Keys: border_radius, card_style, button_style. */
+  styles: Record<string, string>;
+  /** Ordered list of homepage blocks. */
+  blocks: ThemeBlock[];
+  /** Optional store logo URL. */
+  logo_url: string | null;
+  /** Optional store favicon URL. */
+  favicon_url: string | null;
+  /** Optional custom CSS injected into the storefront. */
+  custom_css: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Categories (Feature 9)
 // ---------------------------------------------------------------------------
 
