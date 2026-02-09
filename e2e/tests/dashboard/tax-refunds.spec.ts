@@ -177,9 +177,10 @@ test.describe("Dashboard Refunds", () => {
     await expect(page.getByText("defective").first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("navigates from store settings to refunds", async ({ page }) => {
+  test("navigates via sidebar to refunds", async ({ page }) => {
     await page.goto(`/stores/${storeId}`);
-    await page.getByRole("button", { name: /refunds/i }).click();
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("link", { name: "Refunds" }).click();
     await expect(page).toHaveURL(new RegExp(`/stores/${storeId}/refunds`), {
       timeout: 10000,
     });

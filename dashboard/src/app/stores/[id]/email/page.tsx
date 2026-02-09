@@ -12,7 +12,7 @@
  *
  * **For QA Engineers:**
  *   - The page is read-only in dev mode (no SMTP configured).
- *   - Template list is static — no API call needed.
+ *   - Template list is static -- no API call needed.
  *   - Each template card shows the trigger event and preview.
  *
  * **For Developers:**
@@ -20,14 +20,22 @@
  *   The ``EmailService`` class in ``backend/app/services/email_service.py``
  *   handles rendering and sending. Future: add SMTP config form that
  *   persists to a store-level settings table.
+ *   Uses ``useStore()`` from store context for the store ID.
+ *   Wrapped in ``PageTransition`` for consistent entrance animation.
+ *
+ * **For Project Managers:**
+ *   Implements Feature 11 (Transactional Email) from the backlog.
+ *   Covers template preview; SMTP configuration is a future iteration.
  */
 
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -113,12 +121,18 @@ interface Store {
   name: string;
 }
 
-export default function EmailSettingsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+/**
+ * EmailSettingsPage displays transactional email template configuration.
+ *
+ * Shows a dev-mode banner, summary stats, and a list of all email
+ * templates with their triggers and recipients. Uses the store context
+ * for the store ID and PageTransition for entrance animation.
+ *
+ * @returns The rendered email settings page.
+ */
+export default function EmailSettingsPage() {
+  const { store: contextStore } = useStore();
+  const storeId = contextStore!.id;
   const { user, loading: authLoading } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
   const [loading, setLoading] = useState(true);
@@ -126,8 +140,9 @@ export default function EmailSettingsPage({
 
   useEffect(() => {
     if (authLoading || !user) return;
+    /** Fetch store details for validation. */
     async function fetchStore() {
-      const result = await api.get<Store>(`/api/v1/stores/${id}`);
+      const result = await api.get<Store>(`/api/v1/stores/${storeId}`);
       if (result.error) {
         setNotFound(true);
       } else {
@@ -136,11 +151,11 @@ export default function EmailSettingsPage({
       setLoading(false);
     }
     fetchStore();
-  }, [id, user, authLoading]);
+  }, [storeId, user, authLoading]);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-muted-foreground">Loading...</p>
       </div>
     );
@@ -148,8 +163,8 @@ export default function EmailSettingsPage({
 
   if (notFound) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
-        <h2 className="text-xl font-semibold">Store not found</h2>
+      <div className="flex flex-col items-center justify-center gap-4 py-16">
+        <h2 className="text-xl font-semibold font-heading">Store not found</h2>
         <Link href="/stores">
           <Button variant="outline">Back to stores</Button>
         </Link>
@@ -158,28 +173,11 @@ export default function EmailSettingsPage({
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/stores"
-            className="text-lg font-semibold hover:underline"
-          >
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            {store?.name}
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Email</h1>
-        </div>
-      </header>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading */}
+        <h1 className="text-2xl font-semibold font-heading">Email</h1>
 
-      <main className="mx-auto max-w-4xl space-y-6 p-6">
         {/* Status banner */}
         <Card className="border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="flex items-center gap-3 pt-6">
@@ -224,7 +222,7 @@ export default function EmailSettingsPage({
         {/* Template list */}
         <Card>
           <CardHeader>
-            <CardTitle>Email Templates</CardTitle>
+            <CardTitle className="font-heading">Email Templates</CardTitle>
             <CardDescription>
               Automated emails sent to customers and team members when events
               occur in your store.
@@ -259,6 +257,6 @@ export default function EmailSettingsPage({
           </CardContent>
         </Card>
       </main>
-    </div>
+    </PageTransition>
   );
 }

@@ -21,6 +21,8 @@
  *   - The tree is built client-side from a flat list using ``parent_id``.
  *   - ``buildTree()`` produces a nested structure for recursive rendering.
  *   - ``CategoryNode`` is a recursive component for the tree view.
+ *   - Uses ``useStore()`` from store context for the store ID.
+ *   - Wrapped in ``PageTransition`` for consistent entrance animation.
  *
  * **For Project Managers:**
  *   Implements Feature 9 (Categories) from the backlog. Covers CRUD and
@@ -29,10 +31,11 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState, use, useCallback } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,7 +54,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -150,7 +152,7 @@ function CategoryNode({
           {hasChildren ? (
             <span className="text-xs">{expanded ? "\u25BC" : "\u25B6"}</span>
           ) : (
-            <span className="text-xs text-muted-foreground/40">\u2022</span>
+            <span className="text-xs text-muted-foreground/40">{"\u2022"}</span>
           )}
         </button>
 
@@ -201,12 +203,18 @@ function CategoryNode({
   );
 }
 
-export default function CategoriesPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+/**
+ * CategoriesPage is the main page component for managing store categories.
+ *
+ * Fetches categories from the API, builds a tree hierarchy, and renders
+ * create/edit dialogs for CRUD operations. Uses the store context for
+ * the store ID and PageTransition for entrance animation.
+ *
+ * @returns The rendered categories management page.
+ */
+export default function CategoriesPage() {
+  const { store } = useStore();
+  const storeId = store!.id;
   const { user, loading: authLoading } = useAuth();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -335,9 +343,9 @@ export default function CategoriesPage({
 
   const tree = buildTree(categories);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
           <p className="text-sm text-muted-foreground tracking-wide">Loading categories...</p>
@@ -347,31 +355,18 @@ export default function CategoriesPage({
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Categories</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading and action */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold font-heading">Categories</h1>
+          <Button onClick={() => { setNewParentId("none"); setNewName(""); setCreateError(null); setCreateDialogOpen(true); }}>
+            Add Category
+          </Button>
         </div>
-        <Button onClick={() => { setNewParentId("none"); setNewName(""); setCreateError(null); setCreateDialogOpen(true); }}>
-          Add Category
-        </Button>
-      </header>
 
-      <main className="mx-auto max-w-3xl p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -384,7 +379,7 @@ export default function CategoriesPage({
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
               <span className="text-2xl text-muted-foreground">#</span>
             </div>
-            <h2 className="text-xl font-semibold">No categories yet</h2>
+            <h2 className="text-xl font-semibold font-heading">No categories yet</h2>
             <p className="max-w-sm text-muted-foreground">
               Create categories to organize your products and help customers
               navigate your storefront.
@@ -396,7 +391,7 @@ export default function CategoriesPage({
         ) : (
           <Card>
             <CardHeader>
-              <CardTitle>Category Hierarchy</CardTitle>
+              <CardTitle className="font-heading">Category Hierarchy</CardTitle>
               <CardDescription>
                 {categories.length} categor{categories.length !== 1 ? "ies" : "y"} across{" "}
                 {tree.length} top-level group{tree.length !== 1 ? "s" : ""}
@@ -415,110 +410,110 @@ export default function CategoriesPage({
             </CardContent>
           </Card>
         )}
-      </main>
 
-      {/* Create Category Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {newParentId !== "none" ? "Add Sub-Category" : "Add Category"}
-            </DialogTitle>
-            <DialogDescription>
-              {newParentId !== "none"
-                ? `This category will be nested under "${categories.find((c) => c.id === newParentId)?.name || "parent"}".`
-                : "Create a new top-level category for your products."}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreate}>
-            <div className="space-y-4 py-4">
-              {createError && (
-                <p className="text-sm text-destructive">{createError}</p>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="cat-name">Category Name</Label>
-                <Input
-                  id="cat-name"
-                  placeholder="e.g. Electronics"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  required
-                />
-              </div>
-              {newParentId === "none" && categories.length > 0 && (
+        {/* Create Category Dialog */}
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {newParentId !== "none" ? "Add Sub-Category" : "Add Category"}
+              </DialogTitle>
+              <DialogDescription>
+                {newParentId !== "none"
+                  ? `This category will be nested under "${categories.find((c) => c.id === newParentId)?.name || "parent"}".`
+                  : "Create a new top-level category for your products."}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreate}>
+              <div className="space-y-4 py-4">
+                {createError && (
+                  <p className="text-sm text-destructive">{createError}</p>
+                )}
                 <div className="space-y-2">
-                  <Label htmlFor="cat-parent">Parent Category</Label>
-                  <Select value={newParentId} onValueChange={setNewParentId}>
-                    <SelectTrigger id="cat-parent">
-                      <SelectValue placeholder="None (top level)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None (top level)</SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="cat-name">Category Name</Label>
+                  <Input
+                    id="cat-name"
+                    placeholder="e.g. Electronics"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    required
+                  />
                 </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCreateDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={creating}>
-                {creating ? "Creating..." : "Create"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Category Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Category</DialogTitle>
-            <DialogDescription>
-              Update the name for &quot;{editCategory?.name}&quot;.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleEdit}>
-            <div className="space-y-4 py-4">
-              {editError && (
-                <p className="text-sm text-destructive">{editError}</p>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="edit-cat-name">Category Name</Label>
-                <Input
-                  id="edit-cat-name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  required
-                />
+                {newParentId === "none" && categories.length > 0 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="cat-parent">Parent Category</Label>
+                    <Select value={newParentId} onValueChange={setNewParentId}>
+                      <SelectTrigger id="cat-parent">
+                        <SelectValue placeholder="None (top level)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None (top level)</SelectItem>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={editing}>
-                {editing ? "Saving..." : "Save Changes"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCreateDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={creating}>
+                  {creating ? "Creating..." : "Create"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Category Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Category</DialogTitle>
+              <DialogDescription>
+                Update the name for &quot;{editCategory?.name}&quot;.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleEdit}>
+              <div className="space-y-4 py-4">
+                {editError && (
+                  <p className="text-sm text-destructive">{editError}</p>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-cat-name">Category Name</Label>
+                  <Input
+                    id="edit-cat-name"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={editing}>
+                  {editing ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </main>
+    </PageTransition>
   );
 }

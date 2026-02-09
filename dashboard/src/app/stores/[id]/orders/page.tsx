@@ -7,6 +7,7 @@
  * **For Developers:**
  *   This is a client component. Orders are fetched from the authenticated
  *   orders API. Pagination and status filtering are controlled via state.
+ *   Uses `useStore()` from the store context for the store ID.
  *
  * **For QA Engineers:**
  *   - Orders are listed in reverse chronological order.
@@ -18,14 +19,19 @@
  * **For End Users:**
  *   View all orders placed on your store. Filter by status to find
  *   specific orders. Click any order to see its details.
+ *
+ * **For Project Managers:**
+ *   Part of the core order management flow in the dashboard.
  */
 
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -67,7 +73,11 @@ interface PaginatedOrders {
   pages: number;
 }
 
-/** Map order status to badge variant. */
+/**
+ * Map order status to badge variant for visual differentiation.
+ * @param status - The order status string.
+ * @returns A badge variant suitable for the shadcn Badge component.
+ */
 function statusBadge(status: string) {
   const map: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     pending: "outline",
@@ -82,15 +92,13 @@ function statusBadge(status: string) {
 /**
  * Orders list page component.
  *
- * @param props - Page props containing the store ID parameter.
- * @returns The orders list page with filters and pagination.
+ * Renders a filterable, paginated list of order cards.
+ *
+ * @returns The orders list page wrapped in a PageTransition.
  */
-export default function OrdersListPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+export default function OrdersListPage() {
+  const { store } = useStore();
+  const storeId = store?.id ?? "";
   const { user, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [total, setTotal] = useState(0);
@@ -101,8 +109,11 @@ export default function OrdersListPage({
   const perPage = 20;
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !storeId) return;
 
+    /**
+     * Fetch orders with current status filter and pagination.
+     */
     async function fetchOrders() {
       setLoading(true);
       let url = `/api/v1/stores/${storeId}/orders?page=${page}&per_page=${perPage}`;
@@ -121,34 +132,20 @@ export default function OrdersListPage({
     fetchOrders();
   }, [storeId, page, statusFilter, user, authLoading]);
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Loading orders...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Settings
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Orders</h1>
-        </div>
-      </header>
-
+    <PageTransition>
       <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading */}
+        <h1 className="text-2xl font-heading font-bold">Orders</h1>
+
         {/* Filters */}
         <div className="flex items-center gap-4">
           <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
@@ -238,6 +235,6 @@ export default function OrdersListPage({
           </div>
         )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

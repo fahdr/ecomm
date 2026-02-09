@@ -14,6 +14,8 @@
  *   - Fetches webhooks via `GET /api/v1/stores/{store_id}/webhooks`.
  *   - Creates new webhooks via `POST /api/v1/stores/{store_id}/webhooks`.
  *   - Events are submitted as a comma-separated string, parsed to an array.
+ *   - Uses `useStore()` context for store ID (provided by the layout).
+ *   - Wrapped in `PageTransition` for consistent page-level animations.
  *
  * **For QA Engineers:**
  *   - Verify the webhook list refreshes after creating a new endpoint.
@@ -29,10 +31,11 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState, use } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,15 +96,15 @@ const AVAILABLE_EVENTS = [
 /**
  * WebhooksPage renders the webhook listing and registration dialog.
  *
- * @param params - Route parameters containing the store ID.
+ * Retrieves the store ID from the StoreContext (provided by the parent layout)
+ * and fetches all webhooks for that store. Provides a dialog form to register
+ * new webhook endpoints with URL, events, secret, and active status.
+ *
  * @returns The rendered webhooks management page.
  */
-export default function WebhooksPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function WebhooksPage() {
+  const { store: contextStore } = useStore();
+  const id = contextStore!.id;
   const { user, loading: authLoading } = useAuth();
   const [webhooks, setWebhooks] = useState<Webhook[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,117 +188,104 @@ export default function WebhooksPage({
     fetchWebhooks();
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-muted-foreground">Loading webhooks...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Webhooks</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading and register button */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold font-heading">Webhooks</h1>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Register Webhook</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Register Webhook</DialogTitle>
+                <DialogDescription>
+                  Specify a URL and the events your endpoint should receive.
+                  We will send an HTTP POST to your URL each time a subscribed
+                  event occurs.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreate} className="space-y-4">
+                {createError && (
+                  <p className="text-sm text-destructive">{createError}</p>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="wh-url">Endpoint URL</Label>
+                  <Input
+                    id="wh-url"
+                    type="url"
+                    placeholder="https://example.com/webhook"
+                    value={formUrl}
+                    onChange={(e) => setFormUrl(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wh-events">Events</Label>
+                  <Input
+                    id="wh-events"
+                    placeholder="order.created, product.updated"
+                    value={formEvents}
+                    onChange={(e) => setFormEvents(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Comma-separated. Available:{" "}
+                    {AVAILABLE_EVENTS.join(", ")}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="wh-secret">
+                    Signing Secret{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Input
+                    id="wh-secret"
+                    type="password"
+                    placeholder="whsec_..."
+                    value={formSecret}
+                    onChange={(e) => setFormSecret(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="wh-active"
+                    checked={formActive}
+                    onCheckedChange={setFormActive}
+                  />
+                  <Label htmlFor="wh-active">Active</Label>
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={creating}>
+                    {creating ? "Registering..." : "Register Webhook"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Register Webhook</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Register Webhook</DialogTitle>
-              <DialogDescription>
-                Specify a URL and the events your endpoint should receive.
-                We will send an HTTP POST to your URL each time a subscribed
-                event occurs.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
-              {createError && (
-                <p className="text-sm text-destructive">{createError}</p>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="wh-url">Endpoint URL</Label>
-                <Input
-                  id="wh-url"
-                  type="url"
-                  placeholder="https://example.com/webhook"
-                  value={formUrl}
-                  onChange={(e) => setFormUrl(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="wh-events">Events</Label>
-                <Input
-                  id="wh-events"
-                  placeholder="order.created, product.updated"
-                  value={formEvents}
-                  onChange={(e) => setFormEvents(e.target.value)}
-                  required
-                />
-                <p className="text-xs text-muted-foreground">
-                  Comma-separated. Available:{" "}
-                  {AVAILABLE_EVENTS.join(", ")}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="wh-secret">
-                  Signing Secret{" "}
-                  <span className="text-muted-foreground font-normal">
-                    (optional)
-                  </span>
-                </Label>
-                <Input
-                  id="wh-secret"
-                  type="password"
-                  placeholder="whsec_..."
-                  value={formSecret}
-                  onChange={(e) => setFormSecret(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <Switch
-                  id="wh-active"
-                  checked={formActive}
-                  onCheckedChange={setFormActive}
-                />
-                <Label htmlFor="wh-active">Active</Label>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={creating}>
-                  {creating ? "Registering..." : "Register Webhook"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </header>
-
-      <main className="p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -305,7 +295,7 @@ export default function WebhooksPage({
         {webhooks.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <div className="text-5xl opacity-20">&lt;/&gt;</div>
-            <h2 className="text-xl font-semibold">No webhooks registered</h2>
+            <h2 className="text-xl font-semibold font-heading">No webhooks registered</h2>
             <p className="text-muted-foreground max-w-sm">
               Register your first webhook endpoint to receive real-time
               event notifications from your store.
@@ -370,6 +360,6 @@ export default function WebhooksPage({
           </Card>
         )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

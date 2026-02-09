@@ -14,6 +14,8 @@
  *   - Fetches current currency via `GET /api/v1/stores/{store_id}/currency`.
  *   - Updates default currency via `POST /api/v1/stores/{store_id}/currency`.
  *   - Fetches exchange rates via `GET /api/v1/currency/rates`.
+ *   - Uses `useStore()` context for store ID (provided by the layout).
+ *   - Wrapped in `PageTransition` for consistent page-level animations.
  *
  * **For QA Engineers:**
  *   - Verify the current currency displays on page load.
@@ -29,10 +31,11 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState, use } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,15 +92,14 @@ const CURRENCIES = [
  * CurrencySettingsPage renders the store currency configuration and
  * a converter tool powered by live exchange rates.
  *
- * @param params - Route parameters containing the store ID.
+ * Retrieves the store ID from the StoreContext (provided by the parent layout)
+ * and fetches the current currency configuration and exchange rates.
+ *
  * @returns The rendered currency settings page.
  */
-export default function CurrencySettingsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function CurrencySettingsPage() {
+  const { store: contextStore } = useStore();
+  const id = contextStore!.id;
   const { user, loading: authLoading } = useAuth();
   const [config, setConfig] = useState<CurrencyConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -204,34 +206,19 @@ export default function CurrencySettingsPage({
     );
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-muted-foreground">Loading currency settings...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Currency</h1>
-        </div>
-      </header>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        <h1 className="text-2xl font-bold font-heading">Currency</h1>
 
-      <main className="mx-auto max-w-2xl space-y-6 p-6">
         {error && (
           <Card className="border-destructive/50">
             <CardContent className="pt-6">
@@ -373,6 +360,6 @@ export default function CurrencySettingsPage({
           </CardContent>
         </Card>
       </main>
-    </div>
+    </PageTransition>
   );
 }

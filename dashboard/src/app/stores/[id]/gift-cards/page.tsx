@@ -13,6 +13,8 @@
  *   - Fetches gift cards via `GET /api/v1/stores/{store_id}/gift-cards`.
  *   - Creates new cards via `POST /api/v1/stores/{store_id}/gift-cards`.
  *   - Gift card codes are typically generated server-side.
+ *   - Uses `useStore()` context for store ID (provided by the layout).
+ *   - Wrapped in `PageTransition` for consistent page-level animations.
  *
  * **For QA Engineers:**
  *   - Verify gift card list refreshes after issuing a new card.
@@ -26,10 +28,11 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState, use } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,15 +77,15 @@ interface GiftCard {
 /**
  * GiftCardsPage renders the gift card listing and issuance dialog.
  *
- * @param params - Route parameters containing the store ID.
+ * Retrieves the store ID from the StoreContext (provided by the parent layout)
+ * and fetches all gift cards for that store. Provides a dialog form to issue
+ * new gift cards with an initial balance and optional customer email.
+ *
  * @returns The rendered gift cards management page.
  */
-export default function GiftCardsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function GiftCardsPage() {
+  const { store: contextStore } = useStore();
+  const id = contextStore!.id;
   const { user, loading: authLoading } = useAuth();
   const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,96 +175,83 @@ export default function GiftCardsPage({
     }
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-muted-foreground">Loading gift cards...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Gift Cards</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading and issue button */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold font-heading">Gift Cards</h1>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Issue Gift Card</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Issue Gift Card</DialogTitle>
+                <DialogDescription>
+                  Create a new gift card with an initial balance. The unique
+                  code will be generated automatically.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreate} className="space-y-4">
+                {createError && (
+                  <p className="text-sm text-destructive">{createError}</p>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="gc-balance">Initial Balance ($)</Label>
+                  <Input
+                    id="gc-balance"
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    placeholder="50.00"
+                    value={formBalance}
+                    onChange={(e) => setFormBalance(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gc-email">
+                    Customer Email{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional)
+                    </span>
+                  </Label>
+                  <Input
+                    id="gc-email"
+                    type="email"
+                    placeholder="customer@example.com"
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={creating}>
+                    {creating ? "Issuing..." : "Issue Card"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Issue Gift Card</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Issue Gift Card</DialogTitle>
-              <DialogDescription>
-                Create a new gift card with an initial balance. The unique
-                code will be generated automatically.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
-              {createError && (
-                <p className="text-sm text-destructive">{createError}</p>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="gc-balance">Initial Balance ($)</Label>
-                <Input
-                  id="gc-balance"
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  placeholder="50.00"
-                  value={formBalance}
-                  onChange={(e) => setFormBalance(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="gc-email">
-                  Customer Email{" "}
-                  <span className="text-muted-foreground font-normal">
-                    (optional)
-                  </span>
-                </Label>
-                <Input
-                  id="gc-email"
-                  type="email"
-                  placeholder="customer@example.com"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                />
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={creating}>
-                  {creating ? "Issuing..." : "Issue Card"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </header>
-
-      <main className="p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -271,7 +261,7 @@ export default function GiftCardsPage({
         {giftCards.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <div className="text-5xl opacity-20">&#127873;</div>
-            <h2 className="text-xl font-semibold">No gift cards issued</h2>
+            <h2 className="text-xl font-semibold font-heading">No gift cards issued</h2>
             <p className="text-muted-foreground max-w-sm">
               Issue your first gift card to offer flexible payment options
               to your customers.
@@ -333,6 +323,6 @@ export default function GiftCardsPage({
           </Card>
         )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

@@ -1,7 +1,7 @@
 /**
  * Product list page for a store.
  *
- * Displays products in a table with search, status filter, and pagination.
+ * Displays products in a card grid with search, status filter, and pagination.
  * Provides actions to create new products and navigate to edit existing ones.
  *
  * **For End Users:**
@@ -13,14 +13,25 @@
  *   - Archived products are excluded by default unless explicitly filtered.
  *   - Search is case-insensitive and filters by title.
  *   - Pagination controls appear when there are more items than ``per_page``.
+ *
+ * **For Developers:**
+ *   - Uses `useStore()` from the store context to obtain the store ID.
+ *   - Wrapped in `<PageTransition>` for consistent page entrance animations.
+ *   - The old breadcrumb header has been removed; navigation is handled
+ *     by the shell sidebar.
+ *
+ * **For Project Managers:**
+ *   Core product management listing. Part of the store dashboard sub-pages.
  */
 
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -58,12 +69,16 @@ interface PaginatedProducts {
   pages: number;
 }
 
-export default function ProductListPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+/**
+ * Product list page component.
+ *
+ * Renders a searchable, filterable grid of product cards with pagination.
+ *
+ * @returns The product list page wrapped in a PageTransition.
+ */
+export default function ProductListPage() {
+  const { store } = useStore();
+  const storeId = store?.id ?? "";
   const { user, loading: authLoading } = useAuth();
   const [data, setData] = useState<PaginatedProducts | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,8 +88,11 @@ export default function ProductListPage({
   const perPage = 20;
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !storeId) return;
 
+    /**
+     * Fetch products with current search, status filter, and pagination.
+     */
     async function fetchProducts() {
       setLoading(true);
       let url = `/api/v1/stores/${storeId}/products?page=${page}&per_page=${perPage}`;
@@ -92,7 +110,8 @@ export default function ProductListPage({
   }, [storeId, user, authLoading, page, search, statusFilter]);
 
   /**
-   * Handle search input with debounce reset to page 1.
+   * Handle search input with reset to page 1.
+   * @param value - The new search string.
    */
   function handleSearch(value: string) {
     setSearch(value);
@@ -101,45 +120,34 @@ export default function ProductListPage({
 
   /**
    * Handle status filter change with reset to page 1.
+   * @param value - The new status filter value.
    */
   function handleStatusFilter(value: string) {
     setStatusFilter(value);
     setPage(1);
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Loading products...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-heading font-bold">Products</h1>
+          <Link href={`/stores/${storeId}/products/new`}>
+            <Button>Add Product</Button>
           </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Products</h1>
         </div>
-        <Link href={`/stores/${storeId}/products/new`}>
-          <Button>Add Product</Button>
-        </Link>
-      </header>
 
-      <main className="p-6">
         {/* Filters */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <Input
             placeholder="Search products..."
             value={search}
@@ -231,7 +239,7 @@ export default function ProductListPage({
 
         {/* Pagination */}
         {data && data.pages > 1 && (
-          <div className="mt-6 flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -254,6 +262,6 @@ export default function ProductListPage({
           </div>
         )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

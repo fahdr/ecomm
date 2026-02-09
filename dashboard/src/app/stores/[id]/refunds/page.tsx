@@ -19,7 +19,8 @@
  *   - The filter dropdown resets the displayed list by status.
  *
  * **For Developers:**
- *   - Follows the store sub-page pattern with breadcrumb navigation.
+ *   - Uses ``useStore()`` from store context for the store ID.
+ *   - Wrapped in ``PageTransition`` for consistent entrance animation.
  *   - ``handleProcess()`` handles both approve and deny actions.
  *   - Refetches the list after every moderation action.
  *
@@ -31,10 +32,12 @@
 
 "use client";
 
-import { useEffect, useState, use, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -101,10 +104,11 @@ function refundStatusVariant(
 ): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
     case "approved":
+    case "completed":
       return "default";
-    case "processed":
+    case "processing":
       return "secondary";
-    case "denied":
+    case "rejected":
       return "destructive";
     case "pending":
       return "outline";
@@ -113,11 +117,6 @@ function refundStatusVariant(
   }
 }
 
-/**
- * Format a number as USD currency with decimals.
- * @param value - The numeric value.
- * @returns Formatted currency string.
- */
 /**
  * Format a number or Decimal string as USD currency with decimals.
  * @param value - The numeric value (may be a Decimal string from the backend).
@@ -130,12 +129,19 @@ function formatAmount(value: number | string): string {
   }).format(Number(value));
 }
 
-export default function RefundsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+/**
+ * RefundsPage is the main page component for managing store refunds.
+ *
+ * Fetches refunds from the API with optional status filtering, displays
+ * summary statistics, and provides approve/deny actions with a deny
+ * dialog for admin notes. Uses the store context for the store ID and
+ * PageTransition for entrance animation.
+ *
+ * @returns The rendered refunds management page.
+ */
+export default function RefundsPage() {
+  const { store } = useStore();
+  const storeId = store!.id;
   const { user, loading: authLoading } = useAuth();
 
   const [refunds, setRefunds] = useState<Refund[]>([]);
@@ -232,9 +238,9 @@ export default function RefundsPage({
       .reduce((sum, r) => sum + Number(r.amount), 0),
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
           <p className="text-sm text-muted-foreground tracking-wide">Loading refunds...</p>
@@ -244,40 +250,27 @@ export default function RefundsPage({
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Refunds</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading and filter */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold font-heading">Refunds</h1>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Refunds</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="denied">Denied</SelectItem>
+              <SelectItem value="processed">Processed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Refunds</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="denied">Denied</SelectItem>
-            <SelectItem value="processed">Processed</SelectItem>
-          </SelectContent>
-        </Select>
-      </header>
 
-      <main className="p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -285,7 +278,7 @@ export default function RefundsPage({
         )}
 
         {/* Summary cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -340,7 +333,7 @@ export default function RefundsPage({
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
               <span className="text-2xl text-muted-foreground">R</span>
             </div>
-            <h2 className="text-xl font-semibold">No refunds</h2>
+            <h2 className="text-xl font-semibold font-heading">No refunds</h2>
             <p className="max-w-sm text-muted-foreground">
               {statusFilter !== "all"
                 ? `No ${statusFilter} refunds found. Try a different filter.`
@@ -431,48 +424,48 @@ export default function RefundsPage({
             </CardContent>
           </Card>
         )}
-      </main>
 
-      {/* Deny Refund Dialog */}
-      <Dialog open={denyDialogOpen} onOpenChange={setDenyDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Deny Refund</DialogTitle>
-            <DialogDescription>
-              Deny the refund request for order #{denyingRefund?.order_id.slice(0, 8)}{" "}
-              ({denyingRefund ? formatAmount(denyingRefund.amount) : ""}). You
-              can optionally provide a reason for the customer.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="deny-notes">Admin Notes (optional)</Label>
-              <Textarea
-                id="deny-notes"
-                placeholder="Reason for denying this refund..."
-                value={denyNotes}
-                onChange={(e) => setDenyNotes(e.target.value)}
-                rows={3}
-              />
+        {/* Deny Refund Dialog */}
+        <Dialog open={denyDialogOpen} onOpenChange={setDenyDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Deny Refund</DialogTitle>
+              <DialogDescription>
+                Deny the refund request for order #{denyingRefund?.order_id.slice(0, 8)}{" "}
+                ({denyingRefund ? formatAmount(denyingRefund.amount) : ""}). You
+                can optionally provide a reason for the customer.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="deny-notes">Admin Notes (optional)</Label>
+                <Textarea
+                  id="deny-notes"
+                  placeholder="Reason for denying this refund..."
+                  value={denyNotes}
+                  onChange={(e) => setDenyNotes(e.target.value)}
+                  rows={3}
+                />
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDenyDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={processing === denyingRefund?.id}
-              onClick={handleDeny}
-            >
-              {processing === denyingRefund?.id ? "Denying..." : "Deny Refund"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setDenyDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={processing === denyingRefund?.id}
+                onClick={handleDeny}
+              >
+                {processing === denyingRefund?.id ? "Denying..." : "Deny Refund"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </main>
+    </PageTransition>
   );
 }

@@ -14,6 +14,8 @@
  *   - Bulk delete via `POST /api/v1/stores/{store_id}/bulk/delete`.
  *   - Price update payload: `{ mode, value, product_ids? }`.
  *   - Delete payload: `{ product_ids }`.
+ *   - Uses `useStore()` context for store ID (provided by the layout).
+ *   - Wrapped in `PageTransition` for consistent page-level animations.
  *
  * **For QA Engineers:**
  *   - Verify that the percentage adjustment accepts negative values (discount).
@@ -29,10 +31,11 @@
 
 "use client";
 
-import { FormEvent, useState, use } from "react";
-import Link from "next/link";
+import { FormEvent, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,15 +75,15 @@ interface BulkResult {
 /**
  * BulkOperationsPage renders forms for bulk price updates and bulk deletion.
  *
- * @param params - Route parameters containing the store ID.
+ * Retrieves the store ID from the StoreContext (provided by the parent layout).
+ * Provides two main operations: bulk price adjustment (percentage or fixed)
+ * and bulk product deletion with confirmation dialog.
+ *
  * @returns The rendered bulk operations page.
  */
-export default function BulkOperationsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function BulkOperationsPage() {
+  const { store: contextStore } = useStore();
+  const id = contextStore!.id;
   const { loading: authLoading } = useAuth();
 
   /* Bulk price update state */
@@ -182,32 +185,17 @@ export default function BulkOperationsPage({
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-muted-foreground">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Bulk Operations</h1>
-        </div>
-      </header>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        <h1 className="text-2xl font-bold font-heading">Bulk Operations</h1>
 
-      <main className="mx-auto max-w-2xl space-y-6 p-6">
         {/* Bulk Price Update */}
         <Card>
           <CardHeader>
@@ -359,6 +347,6 @@ export default function BulkOperationsPage({
           </CardContent>
         </Card>
       </main>
-    </div>
+    </PageTransition>
   );
 }

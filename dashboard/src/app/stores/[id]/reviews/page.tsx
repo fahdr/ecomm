@@ -23,6 +23,8 @@
  *   - ``renderStars()`` produces accessible text-based star ratings.
  *   - Moderation actions call ``handleModerate()`` which patches status.
  *   - The component refetches after each moderation action.
+ *   - Uses ``useStore()`` from store context for the store ID.
+ *   - Wrapped in ``PageTransition`` for consistent entrance animation.
  *
  * **For Project Managers:**
  *   Implements Feature 12 (Reviews) from the backlog. Covers list and
@@ -32,10 +34,11 @@
 
 "use client";
 
-import { useEffect, useState, use, useCallback } from "react";
-import Link from "next/link";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -109,12 +112,19 @@ function ratingColor(rating: number): string {
   return "text-amber-300";
 }
 
-export default function ReviewsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+/**
+ * ReviewsPage is the main page component for moderating store reviews.
+ *
+ * Fetches reviews from the API with optional status filtering, displays
+ * summary statistics, and provides approve/reject moderation actions.
+ * Uses the store context for the store ID and PageTransition for
+ * entrance animation.
+ *
+ * @returns The rendered reviews moderation page.
+ */
+export default function ReviewsPage() {
+  const { store } = useStore();
+  const storeId = store!.id;
   const { user, loading: authLoading } = useAuth();
 
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -181,9 +191,9 @@ export default function ReviewsPage({
         : "\u2014",
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
           <p className="text-sm text-muted-foreground tracking-wide">Loading reviews...</p>
@@ -193,39 +203,26 @@ export default function ReviewsPage({
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Reviews</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading and filter */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold font-heading">Reviews</h1>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Reviews</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Reviews</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
-      </header>
 
-      <main className="mx-auto max-w-4xl p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -233,7 +230,7 @@ export default function ReviewsPage({
         )}
 
         {/* Summary cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -284,7 +281,7 @@ export default function ReviewsPage({
         {reviews.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <div className="text-4xl opacity-20">{renderStars(0)}</div>
-            <h2 className="text-xl font-semibold">No reviews yet</h2>
+            <h2 className="text-xl font-semibold font-heading">No reviews yet</h2>
             <p className="max-w-sm text-muted-foreground">
               {statusFilter !== "all"
                 ? `No ${statusFilter} reviews found. Try a different filter.`
@@ -373,6 +370,6 @@ export default function ReviewsPage({
           </div>
         )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

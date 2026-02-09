@@ -1,18 +1,26 @@
 /**
- * Cart badge component for the storefront header.
+ * Cart badge component for the storefront header with theme-aware styling.
  *
  * Displays a cart icon with the current item count as a badge.
  * Links to the cart page. Only renders the count badge when the
- * cart has items.
+ * cart has items. Uses theme-driven colors for the icon and badge.
  *
  * **For Developers:**
  *   This is a client component that reads from the cart context.
- *   Must be rendered within a ``CartProvider``.
+ *   Must be rendered within a ``CartProvider``. The icon color uses
+ *   ``text-theme-muted`` and the badge background uses
+ *   ``bg-theme-primary`` so both adapt to the store's active theme.
  *
  * **For QA Engineers:**
  *   - Badge shows total item count (sum of quantities).
  *   - Badge is hidden when cart is empty.
+ *   - Badge uses ``bg-theme-primary`` for background color.
+ *   - Icon uses ``text-theme-muted`` for default color.
  *   - Clicking navigates to ``/cart``.
+ *
+ * **For Project Managers:**
+ *   The cart badge is a persistent UI element that keeps customers
+ *   aware of their cart state, reducing abandonment rates.
  *
  * **For End Users:**
  *   The cart icon in the header shows how many items are in your cart.
@@ -27,6 +35,10 @@ import { useCart } from "@/contexts/cart-context";
 /**
  * Cart icon with item count badge.
  *
+ * The icon uses ``text-theme-muted`` for its default color and
+ * transitions to a darker shade on hover. The count badge uses
+ * ``bg-theme-primary`` so it matches the store's primary brand color.
+ *
  * @returns A link to the cart page with an SVG cart icon and optional count badge.
  */
 export function CartBadge() {
@@ -35,7 +47,7 @@ export function CartBadge() {
   return (
     <Link
       href="/cart"
-      className="relative inline-flex items-center text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+      className="relative inline-flex items-center text-theme-muted hover:opacity-75 transition-opacity"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -52,7 +64,7 @@ export function CartBadge() {
         />
       </svg>
       {cartCount > 0 && (
-        <span className="absolute -top-2 -right-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-zinc-900 dark:bg-zinc-100 text-xs font-medium text-white dark:text-zinc-900">
+        <span className="absolute -top-2 -right-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-theme-primary text-xs font-medium text-(--theme-primary-text)">
           {cartCount}
         </span>
       )}

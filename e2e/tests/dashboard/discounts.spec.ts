@@ -129,9 +129,10 @@ test.describe("Dashboard Discount Management", () => {
     await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
   });
 
-  test("navigates from store settings to discounts", async ({ page }) => {
+  test("navigates via sidebar to discounts", async ({ page }) => {
     await page.goto(`/stores/${storeId}`);
-    await page.getByRole("button", { name: /discounts/i }).click();
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("link", { name: "Discounts" }).click();
     await expect(page).toHaveURL(new RegExp(`/stores/${storeId}/discounts`), {
       timeout: 10000,
     });

@@ -18,8 +18,9 @@
  *   - Active discounts with remaining uses show "active".
  *
  * **For Developers:**
- *   - Follows the store sub-page pattern (breadcrumb header, useAuth guard).
- *   - ``params`` is a Promise in Next.js 16 — unwrap with ``use(params)``.
+ *   - Uses `useStore()` from the store context for the store ID.
+ *   - Wrapped in `<PageTransition>` for consistent page entrance animations.
+ *   - ``params`` is no longer unwrapped here; store ID comes from context.
  *
  * **For Project Managers:**
  *   Implements Feature 8 (Discounts) from the backlog. Covers create and list
@@ -28,10 +29,11 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState, use } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,12 +123,17 @@ function formatDiscountValue(type: Discount["discount_type"], value: number): st
   return type === "percentage" ? `${value}%` : `$${Number(value).toFixed(2)}`;
 }
 
-export default function DiscountsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: storeId } = use(params);
+/**
+ * Discounts page component.
+ *
+ * Renders summary cards, a create-discount dialog, and a table of
+ * all discount codes for the current store.
+ *
+ * @returns The discounts page wrapped in a PageTransition.
+ */
+export default function DiscountsPage() {
+  const { store } = useStore();
+  const storeId = store?.id ?? "";
   const { user, loading: authLoading } = useAuth();
 
   const [discounts, setDiscounts] = useState<Discount[]>([]);
@@ -165,7 +172,7 @@ export default function DiscountsPage({
   }
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !storeId) return;
     fetchDiscounts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeId, user, authLoading]);
@@ -221,9 +228,9 @@ export default function DiscountsPage({
     fetchDiscounts();
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
           <p className="text-sm text-muted-foreground tracking-wide">Loading discounts...</p>
@@ -233,139 +240,126 @@ export default function DiscountsPage({
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Breadcrumb header */}
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${storeId}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Discounts</h1>
-        </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button>Create Discount</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Create Discount Code</DialogTitle>
-              <DialogDescription>
-                Set up a new discount code for your customers. Codes are
-                automatically uppercased.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate}>
-              <div className="space-y-4 py-4">
-                {createError && (
-                  <p className="text-sm text-destructive">{createError}</p>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="discount-code">Discount Code</Label>
-                  <Input
-                    id="discount-code"
-                    placeholder="e.g. SUMMER25"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    required
-                    className="font-mono uppercase tracking-wider"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading with create button */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-heading font-bold">Discounts</h1>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button>Create Discount</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Create Discount Code</DialogTitle>
+                <DialogDescription>
+                  Set up a new discount code for your customers. Codes are
+                  automatically uppercased.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreate}>
+                <div className="space-y-4 py-4">
+                  {createError && (
+                    <p className="text-sm text-destructive">{createError}</p>
+                  )}
                   <div className="space-y-2">
-                    <Label htmlFor="discount-type">Type</Label>
-                    <Select
-                      value={discountType}
-                      onValueChange={(v) => setDiscountType(v as "percentage" | "fixed")}
-                    >
-                      <SelectTrigger id="discount-type">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="percentage">Percentage</SelectItem>
-                        <SelectItem value="fixed">Fixed Amount</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="discount-value">
-                      Value {discountType === "percentage" ? "(%)" : "($)"}
-                    </Label>
+                    <Label htmlFor="discount-code">Discount Code</Label>
                     <Input
-                      id="discount-value"
-                      type="number"
-                      min="0"
-                      step={discountType === "percentage" ? "1" : "0.01"}
-                      max={discountType === "percentage" ? "100" : undefined}
-                      placeholder={discountType === "percentage" ? "25" : "10.00"}
-                      value={value}
-                      onChange={(e) => setValue(e.target.value)}
+                      id="discount-code"
+                      placeholder="e.g. SUMMER25"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
                       required
+                      className="font-mono uppercase tracking-wider"
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="discount-type">Type</Label>
+                      <Select
+                        value={discountType}
+                        onValueChange={(v) => setDiscountType(v as "percentage" | "fixed")}
+                      >
+                        <SelectTrigger id="discount-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">Percentage</SelectItem>
+                          <SelectItem value="fixed">Fixed Amount</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="discount-value">
+                        Value {discountType === "percentage" ? "(%)" : "($)"}
+                      </Label>
+                      <Input
+                        id="discount-value"
+                        type="number"
+                        min="0"
+                        step={discountType === "percentage" ? "1" : "0.01"}
+                        max={discountType === "percentage" ? "100" : undefined}
+                        placeholder={discountType === "percentage" ? "25" : "10.00"}
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="usage-limit">Usage Limit</Label>
+                      <Input
+                        id="usage-limit"
+                        type="number"
+                        min="1"
+                        placeholder="Unlimited"
+                        value={usageLimit}
+                        onChange={(e) => setUsageLimit(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="min-order">Min. Order ($)</Label>
+                      <Input
+                        id="min-order"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="No minimum"
+                        value={minimumOrder}
+                        onChange={(e) => setMinimumOrder(e.target.value)}
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-2">
-                    <Label htmlFor="usage-limit">Usage Limit</Label>
+                    <Label htmlFor="expires-at">Expiry Date</Label>
                     <Input
-                      id="usage-limit"
-                      type="number"
-                      min="1"
-                      placeholder="Unlimited"
-                      value={usageLimit}
-                      onChange={(e) => setUsageLimit(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="min-order">Min. Order ($)</Label>
-                    <Input
-                      id="min-order"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="No minimum"
-                      value={minimumOrder}
-                      onChange={(e) => setMinimumOrder(e.target.value)}
+                      id="expires-at"
+                      type="datetime-local"
+                      value={expiresAt}
+                      onChange={(e) => setExpiresAt(e.target.value)}
                     />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="expires-at">Expiry Date</Label>
-                  <Input
-                    id="expires-at"
-                    type="datetime-local"
-                    value={expiresAt}
-                    onChange={(e) => setExpiresAt(e.target.value)}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={creating}>
-                  {creating ? "Creating..." : "Create Discount"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </header>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={creating}>
+                    {creating ? "Creating..." : "Create Discount"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-      <main className="p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -373,7 +367,7 @@ export default function DiscountsPage({
         )}
 
         {/* Summary cards */}
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -479,6 +473,6 @@ export default function DiscountsPage({
           </Card>
         )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

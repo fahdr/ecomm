@@ -13,6 +13,8 @@
  *   - Fetches tests via `GET /api/v1/stores/{store_id}/ab-tests`.
  *   - Creates new tests via `POST /api/v1/stores/{store_id}/ab-tests`.
  *   - Variants are submitted as a JSON array of `{ name, weight }` objects.
+ *   - Uses `useStore()` context for store ID (provided by the layout).
+ *   - Wrapped in `PageTransition` for consistent page-level animations.
  *
  * **For QA Engineers:**
  *   - Verify the test list refreshes after creating a new test.
@@ -28,10 +30,11 @@
 
 "use client";
 
-import { FormEvent, useEffect, useState, use } from "react";
-import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,15 +102,15 @@ interface VariantInput {
 /**
  * ABTestsPage renders the A/B test listing and creation dialog.
  *
- * @param params - Route parameters containing the store ID.
+ * Retrieves the store ID from the StoreContext (provided by the parent layout)
+ * and fetches all A/B tests for that store. Provides a dialog form to create
+ * new experiments with multiple variants and weight assignments.
+ *
  * @returns The rendered A/B tests management page.
  */
-export default function ABTestsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function ABTestsPage() {
+  const { store: contextStore } = useStore();
+  const id = contextStore!.id;
   const { user, loading: authLoading } = useAuth();
   const [tests, setTests] = useState<ABTest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -266,157 +269,144 @@ export default function ABTestsPage({
     return ((totalConversions / totalImpressions) * 100).toFixed(1) + "%";
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-muted-foreground">Loading A/B tests...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">A/B Tests</h1>
-        </div>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading and create button */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold font-heading">A/B Tests</h1>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>Create Test</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>New A/B Test</DialogTitle>
+                <DialogDescription>
+                  Set up an experiment with multiple variants. Traffic will be
+                  split according to the weights you assign.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreate} className="space-y-4">
+                {createError && (
+                  <p className="text-sm text-destructive">{createError}</p>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="ab-name">Test Name</Label>
+                  <Input
+                    id="ab-name"
+                    placeholder="e.g. Homepage Hero Banner"
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ab-desc">Description</Label>
+                  <Textarea
+                    id="ab-desc"
+                    placeholder="What are you testing?"
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ab-type">Test Type</Label>
+                  <Select
+                    value={formType}
+                    onValueChange={(v) =>
+                      setFormType(v as ABTest["test_type"])
+                    }
+                  >
+                    <SelectTrigger id="ab-type">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="page">Page</SelectItem>
+                      <SelectItem value="price">Price</SelectItem>
+                      <SelectItem value="layout">Layout</SelectItem>
+                      <SelectItem value="copy">Copy</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>Create Test</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>New A/B Test</DialogTitle>
-              <DialogDescription>
-                Set up an experiment with multiple variants. Traffic will be
-                split according to the weights you assign.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
-              {createError && (
-                <p className="text-sm text-destructive">{createError}</p>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="ab-name">Test Name</Label>
-                <Input
-                  id="ab-name"
-                  placeholder="e.g. Homepage Hero Banner"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ab-desc">Description</Label>
-                <Textarea
-                  id="ab-desc"
-                  placeholder="What are you testing?"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  rows={2}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ab-type">Test Type</Label>
-                <Select
-                  value={formType}
-                  onValueChange={(v) =>
-                    setFormType(v as ABTest["test_type"])
-                  }
-                >
-                  <SelectTrigger id="ab-type">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="page">Page</SelectItem>
-                    <SelectItem value="price">Price</SelectItem>
-                    <SelectItem value="layout">Layout</SelectItem>
-                    <SelectItem value="copy">Copy</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                {/* Variants */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Variants</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addVariant}
+                    >
+                      + Add Variant
+                    </Button>
+                  </div>
+                  {formVariants.map((variant, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input
+                        placeholder="Variant name"
+                        value={variant.name}
+                        onChange={(e) =>
+                          updateVariant(idx, "name", e.target.value)
+                        }
+                        required
+                        className="flex-1"
+                      />
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="Weight %"
+                        value={variant.weight}
+                        onChange={(e) =>
+                          updateVariant(idx, "weight", e.target.value)
+                        }
+                        className="w-24"
+                      />
+                      {formVariants.length > 2 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeVariant(idx)}
+                        >
+                          X
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-              {/* Variants */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Variants</Label>
+                <DialogFooter>
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    onClick={addVariant}
+                    onClick={() => setDialogOpen(false)}
                   >
-                    + Add Variant
+                    Cancel
                   </Button>
-                </div>
-                {formVariants.map((variant, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <Input
-                      placeholder="Variant name"
-                      value={variant.name}
-                      onChange={(e) =>
-                        updateVariant(idx, "name", e.target.value)
-                      }
-                      required
-                      className="flex-1"
-                    />
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      placeholder="Weight %"
-                      value={variant.weight}
-                      onChange={(e) =>
-                        updateVariant(idx, "weight", e.target.value)
-                      }
-                      className="w-24"
-                    />
-                    {formVariants.length > 2 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeVariant(idx)}
-                      >
-                        X
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  <Button type="submit" disabled={creating}>
+                    {creating ? "Creating..." : "Create Test"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={creating}>
-                  {creating ? "Creating..." : "Create Test"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </header>
-
-      <main className="p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -426,7 +416,7 @@ export default function ABTestsPage({
         {tests.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <div className="text-5xl opacity-20">A|B</div>
-            <h2 className="text-xl font-semibold">No A/B tests yet</h2>
+            <h2 className="text-xl font-semibold font-heading">No A/B tests yet</h2>
             <p className="text-muted-foreground max-w-sm">
               Create your first experiment to start testing what converts
               best on your storefront.
@@ -491,6 +481,6 @@ export default function ABTestsPage({
           </Card>
         )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

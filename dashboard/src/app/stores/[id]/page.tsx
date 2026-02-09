@@ -2,28 +2,42 @@
  * Store settings page.
  *
  * Displays the details of a single store and provides forms to update
- * its settings or delete it. Loaded by store ID from the URL.
+ * its settings or delete it. Uses the store context for the store ID
+ * and fetches the full store record for local editing state.
  *
  * **For End Users:**
  *   View and edit your store's name, niche, and description. You can
  *   also pause or delete the store from this page.
  *
  * **For QA Engineers:**
- *   - The page loads the store by ID from the URL parameter.
+ *   - The page reads the store ID from the shared StoreProvider context.
+ *   - Store details are fetched for the edit form (name, niche, description, status).
  *   - If the store is not found (404) or belongs to another user, a
  *     "Store not found" message is shown.
  *   - The delete button shows a confirmation dialog before soft-deleting.
  *   - After deletion, the user is redirected to `/stores`.
  *   - Updating the name triggers slug regeneration on the backend.
+ *
+ * **For Developers:**
+ *   - Uses `useStore()` from the store context to obtain the store ID.
+ *   - Wrapped in `<PageTransition>` for consistent page entrance animations.
+ *   - The old breadcrumb header and Quick Links card have been removed;
+ *     navigation is handled by the shell sidebar.
+ *
+ * **For Project Managers:**
+ *   Part of the core store management flow. The settings page is the
+ *   landing page for each store in the dashboard.
  */
 
 "use client";
 
-import { FormEvent, useEffect, useState, use } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -81,12 +95,17 @@ interface Store {
   updated_at: string;
 }
 
-export default function StoreSettingsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+/**
+ * Store settings page component.
+ *
+ * Renders an editable form for the store's name, niche, description,
+ * and status, plus a danger-zone section with a delete confirmation dialog.
+ *
+ * @returns The store settings page wrapped in a PageTransition.
+ */
+export default function StoreSettingsPage() {
+  const { store: contextStore } = useStore();
+  const storeId = contextStore?.id;
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [store, setStore] = useState<Store | null>(null);
@@ -107,10 +126,13 @@ export default function StoreSettingsPage({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !storeId) return;
 
+    /**
+     * Fetch the full store record from the API to populate the edit form.
+     */
     async function fetchStore() {
-      const result = await api.get<Store>(`/api/v1/stores/${id}`);
+      const result = await api.get<Store>(`/api/v1/stores/${storeId}`);
       if (result.error) {
         setNotFound(true);
         setLoading(false);
@@ -126,10 +148,13 @@ export default function StoreSettingsPage({
     }
 
     fetchStore();
-  }, [id, user, authLoading]);
+  }, [storeId, user, authLoading]);
 
   /**
    * Handle the update form submission.
+   *
+   * Sends a PATCH request to update the store and shows success/error feedback.
+   * @param e - The form submission event.
    */
   async function handleUpdate(e: FormEvent) {
     e.preventDefault();
@@ -137,7 +162,7 @@ export default function StoreSettingsPage({
     setSaveError(null);
     setSaveSuccess(false);
 
-    const result = await api.patch<Store>(`/api/v1/stores/${id}`, {
+    const result = await api.patch<Store>(`/api/v1/stores/${storeId}`, {
       name,
       niche,
       description: description || null,
@@ -158,17 +183,19 @@ export default function StoreSettingsPage({
 
   /**
    * Handle the delete confirmation.
+   *
+   * Sends a DELETE request to soft-delete the store and redirects to /stores.
    */
   async function handleDelete() {
     setDeleting(true);
-    await api.delete(`/api/v1/stores/${id}`);
+    await api.delete(`/api/v1/stores/${storeId}`);
     setDeleteDialogOpen(false);
     router.push("/stores");
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <p className="text-muted-foreground">Loading store...</p>
       </div>
     );
@@ -176,7 +203,7 @@ export default function StoreSettingsPage({
 
   if (notFound) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+      <div className="flex flex-col items-center justify-center gap-4 py-20">
         <h2 className="text-xl font-semibold">Store not found</h2>
         <Link href="/stores">
           <Button variant="outline">Back to stores</Button>
@@ -186,80 +213,17 @@ export default function StoreSettingsPage({
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">{store?.name}</h1>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        {/* Page heading */}
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-heading font-bold">Store Settings</h1>
           {store && (
             <Badge variant={store.status === "active" ? "default" : "secondary"}>
               {store.status}
             </Badge>
           )}
         </div>
-      </header>
-
-      <main className="mx-auto max-w-2xl space-y-6 p-6">
-        {/* Quick Links */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Link href={`/stores/${id}/products`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Manage Products
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/orders`}>
-                <Button variant="outline" className="w-full justify-start">
-                  View Orders
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/discounts`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Discounts
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/categories`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Categories
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/suppliers`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Suppliers
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/reviews`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Reviews
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/analytics`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Analytics
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/refunds`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Refunds
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/email`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Email Settings
-                </Button>
-              </Link>
-              <Link href={`/stores/${id}/themes`}>
-                <Button variant="outline" className="w-full justify-start">
-                  Themes
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Store Info */}
         <Card>
@@ -373,6 +337,6 @@ export default function StoreSettingsPage({
           </CardContent>
         </Card>
       </main>
-    </div>
+    </PageTransition>
   );
 }

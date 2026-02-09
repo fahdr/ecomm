@@ -194,13 +194,17 @@ test.describe("Navigation", () => {
     const user = await registerUser();
     await dashboardLogin(page, user.email, user.password);
 
-    // Check from home page
+    // Check billing link is accessible from home page
     await expect(
       page.getByRole("link", { name: /billing/i }).first()
     ).toBeVisible();
+
+    // Navigate to billing page, then check pricing link is available
+    await page.getByRole("link", { name: /billing/i }).first().click();
+    await expect(page).toHaveURL(/\/billing/, { timeout: 5000 });
     await expect(
-      page.getByRole("link", { name: /pricing/i }).first()
-    ).toBeVisible();
+      page.getByRole("link", { name: /pricing|change plan/i }).first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test("navigate between billing and pricing", async ({ page }) => {

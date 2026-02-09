@@ -49,6 +49,7 @@ from app.api.ab_tests import router as ab_tests_router
 from app.api.fraud import router as fraud_router
 from app.api.bulk import router as bulk_router
 from app.api.currency import router as currency_router
+from app.api.themes import router as themes_router, meta_router as themes_meta_router
 
 from app.config import settings
 from app.constants.plans import init_price_ids
@@ -103,6 +104,10 @@ app.include_router(store_webhooks_router, prefix="/api/v1")
 app.include_router(ab_tests_router, prefix="/api/v1")
 app.include_router(fraud_router, prefix="/api/v1")
 app.include_router(currency_router, prefix="/api/v1")
+
+# --- Themes ---
+app.include_router(themes_router, prefix="/api/v1")
+app.include_router(themes_meta_router, prefix="/api/v1")
 
 # Inject Stripe Price IDs into plan constants at startup.
 init_price_ids(

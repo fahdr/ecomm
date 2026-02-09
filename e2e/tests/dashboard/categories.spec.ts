@@ -99,9 +99,10 @@ test.describe("Dashboard Category Management", () => {
     await expect(page.getByText(/3 categor/i).first()).toBeVisible({ timeout: 10000 });
   });
 
-  test("navigates from store settings to categories", async ({ page }) => {
+  test("navigates via sidebar to categories", async ({ page }) => {
     await page.goto(`/stores/${storeId}`);
-    await page.getByRole("button", { name: /categories/i }).click();
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("link", { name: "Categories" }).click();
     await expect(page).toHaveURL(new RegExp(`/stores/${storeId}/categories`), {
       timeout: 10000,
     });

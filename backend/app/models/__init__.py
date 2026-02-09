@@ -108,3 +108,6 @@ from app.models.ab_test import ABTest, ABTestVariant, ABTestStatus  # noqa: F401
 
 # F7.5 - Storefront Customer Accounts
 from app.models.customer import CustomerAccount, CustomerWishlist  # noqa: F401
+
+# F15 - Store Themes (enhanced with JSON config, blocks, and presets)
+from app.models.theme import StoreTheme  # noqa: F401

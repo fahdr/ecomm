@@ -45,9 +45,10 @@ test.describe("Dashboard Reviews", () => {
     ).toBeVisible({ timeout: 10000 });
   });
 
-  test("navigates from store settings to reviews", async ({ page }) => {
+  test("navigates via sidebar to reviews", async ({ page }) => {
     await page.goto(`/stores/${storeId}`);
-    await page.getByRole("button", { name: /reviews/i }).click();
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("link", { name: "Reviews" }).click();
     await expect(page).toHaveURL(new RegExp(`/stores/${storeId}/reviews`), {
       timeout: 10000,
     });
@@ -188,9 +189,10 @@ test.describe("Dashboard Analytics", () => {
     await expect(page.getByRole("cell", { name: "Analytics Widget" })).toBeVisible({ timeout: 10000 });
   });
 
-  test("navigates from store settings to analytics", async ({ page }) => {
+  test("navigates via sidebar to analytics", async ({ page }) => {
     await page.goto(`/stores/${storeId}`);
-    await page.getByRole("button", { name: /analytics/i }).click();
+    await page.waitForLoadState("networkidle");
+    await page.getByRole("link", { name: "Analytics" }).click();
     await expect(page).toHaveURL(new RegExp(`/stores/${storeId}/analytics`), {
       timeout: 10000,
     });

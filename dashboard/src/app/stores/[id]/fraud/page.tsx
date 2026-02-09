@@ -14,6 +14,8 @@
  *   - Fetches fraud checks via `GET /api/v1/stores/{store_id}/fraud-checks`.
  *   - Reviews a check via `POST /api/v1/stores/{store_id}/fraud-checks/{id}/review`.
  *   - Risk levels: "low", "medium", "high", "critical".
+ *   - Uses `useStore()` context for store ID (provided by the layout).
+ *   - Wrapped in `PageTransition` for consistent page-level animations.
  *
  * **For QA Engineers:**
  *   - Verify fraud checks display with correct risk level badges.
@@ -29,10 +31,12 @@
 
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
+import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
+import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -68,15 +72,15 @@ interface FraudCheck {
 /**
  * FraudDetectionPage renders the fraud check listing with review actions.
  *
- * @param params - Route parameters containing the store ID.
+ * Retrieves the store ID from the StoreContext (provided by the parent layout)
+ * and fetches all fraud checks for that store. Displays summary stats and a
+ * table of checks with approve/reject actions for pending items.
+ *
  * @returns The rendered fraud detection page.
  */
-export default function FraudDetectionPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = use(params);
+export default function FraudDetectionPage() {
+  const { store: contextStore } = useStore();
+  const id = contextStore!.id;
   const { user, loading: authLoading } = useAuth();
   const [checks, setChecks] = useState<FraudCheck[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,36 +178,21 @@ export default function FraudDetectionPage({
     }
   }
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-muted-foreground">Loading fraud checks...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <Link
-            href={`/stores/${id}`}
-            className="text-lg font-semibold hover:underline"
-          >
-            Store
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-semibold">Fraud Detection</h1>
-        </div>
-      </header>
+    <PageTransition>
+      <main className="mx-auto max-w-4xl p-6 space-y-6">
+        <h1 className="text-2xl font-bold font-heading">Fraud Detection</h1>
 
-      <main className="p-6">
         {error && (
-          <Card className="mb-6 border-destructive/50">
+          <Card className="border-destructive/50">
             <CardContent className="pt-6">
               <p className="text-sm text-destructive">{error}</p>
             </CardContent>
@@ -212,7 +201,7 @@ export default function FraudDetectionPage({
 
         {/* Summary stats */}
         {checks.length > 0 && (
-          <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Card>
               <CardContent className="pt-6">
                 <p className="text-2xl font-bold">{checks.length}</p>
@@ -249,7 +238,7 @@ export default function FraudDetectionPage({
         {checks.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <div className="text-5xl opacity-20">&#128737;</div>
-            <h2 className="text-xl font-semibold">No fraud checks recorded</h2>
+            <h2 className="text-xl font-semibold font-heading">No fraud checks recorded</h2>
             <p className="text-muted-foreground max-w-sm">
               Fraud checks are generated automatically when orders are placed.
               Results will appear here once your store starts receiving orders.
@@ -369,6 +358,6 @@ export default function FraudDetectionPage({
           </Card>
         )}
       </main>
-    </div>
+    </PageTransition>
   );
 }

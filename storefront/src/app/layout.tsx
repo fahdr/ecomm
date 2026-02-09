@@ -1,47 +1,41 @@
 /**
- * Root layout for the storefront app.
+ * Root layout for the storefront app with dynamic theme loading.
  *
- * Resolves the store slug from the ``x-store-slug`` header (set by
- * middleware), fetches store data from the backend, and renders the
- * store-aware header and footer. If no store can be resolved, the
- * children (page) handle showing a "store not found" state.
+ * Resolves the store slug, fetches store data and the active theme from
+ * the backend API, then injects dynamic CSS variables and Google Fonts
+ * for the theme's visual configuration.
  *
  * **For Developers:**
- *   This is a server component. Store data is fetched at request time
- *   via the public API. The store object is passed to children via
- *   the StoreProvider context so client components can access it.
+ *   This is a server component. Theme data is fetched at request time
+ *   and injected as a ``<style>`` tag with CSS custom properties.
+ *   Google Fonts are loaded via a ``<link>`` tag in ``<head>``.
+ *   The ``ThemeProvider`` from ``next-themes`` enables light/dark toggle.
  *
  * **For QA Engineers:**
- *   - The page title and meta description are set dynamically from store data.
- *   - Without a ``?store=`` param (local dev), the layout renders without
- *     store branding.
+ *   - Theme colors should match the active theme set in the dashboard.
+ *   - Fonts should load from Google Fonts based on theme typography config.
+ *   - Dark mode toggle should persist via localStorage.
+ *   - If no theme is found, Frosted fallback colors apply from globals.css.
  *
  * **For End Users:**
- *   The header shows your store name and the footer displays basic
- *   store information.
+ *   Your store's appearance (colors, fonts, and layout) is determined
+ *   by the active theme you've selected in the dashboard.
  */
 
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { fetchStore } from "@/lib/store";
+import { api } from "@/lib/api";
 import Link from "next/link";
-import type { Store } from "@/lib/types";
+import type { Store, StoreTheme } from "@/lib/types";
 import { StoreProvider } from "@/contexts/store-context";
 import { CartProvider } from "@/contexts/cart-context";
 import { CartBadge } from "@/components/cart-badge";
 import { HeaderSearch } from "@/components/header-search";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { ThemeToggle } from "@/components/theme-toggle";
+import { buildGoogleFontsUrl, buildThemeCssVars } from "@/lib/theme-utils";
+import { ThemeProvider } from "next-themes";
 
 /**
  * Generate dynamic metadata based on the resolved store.
@@ -83,12 +77,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * Root layout component that wraps all pages with store context,
- * header, and footer.
+ * Root layout component with dynamic theme injection.
+ *
+ * Fetches the store and its active theme, injects CSS variables and
+ * Google Fonts, and wraps all pages with store context and cart provider.
  *
  * @param props - Layout props containing children to render.
  * @param props.children - The page content to render inside the layout.
- * @returns The complete HTML document with store-aware chrome.
+ * @returns The complete HTML document with theme-aware chrome.
  */
 export default async function RootLayout({
   children,
@@ -99,53 +95,104 @@ export default async function RootLayout({
   const slug = headersList.get("x-store-slug");
 
   let store: Store | null = null;
+  let theme: StoreTheme | null = null;
+
   if (slug) {
     store = await fetchStore(slug);
+    if (store) {
+      const { data } = await api.get<StoreTheme>(
+        `/api/v1/public/stores/${encodeURIComponent(slug)}/theme`
+      );
+      theme = data;
+    }
   }
 
+  const fontsUrl = theme ? buildGoogleFontsUrl(theme) : null;
+  const themeCss = theme ? buildThemeCssVars(theme) : "";
+
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
-      >
-        <StoreProvider store={store}>
-          <CartProvider>
-            {store && <StoreHeader store={store} />}
-            <main className="flex-1">{children}</main>
-            {store && <StoreFooter store={store} />}
-          </CartProvider>
-        </StoreProvider>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {fontsUrl && (
+          <>
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link
+              rel="preconnect"
+              href="https://fonts.gstatic.com"
+              crossOrigin="anonymous"
+            />
+            <link rel="stylesheet" href={fontsUrl} />
+          </>
+        )}
+        {theme?.favicon_url && (
+          <link rel="icon" href={theme.favicon_url} />
+        )}
+        {themeCss && <style dangerouslySetInnerHTML={{ __html: themeCss }} />}
+        {theme?.custom_css && (
+          <style dangerouslySetInnerHTML={{ __html: theme.custom_css }} />
+        )}
+      </head>
+      <body className="antialiased min-h-screen flex flex-col">
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+          <StoreProvider store={store}>
+            <CartProvider>
+              {store && <StoreHeader store={store} theme={theme} />}
+              <main className="flex-1">{children}</main>
+              {store && <StoreFooter store={store} />}
+            </CartProvider>
+          </StoreProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
 }
 
 /**
- * Store header component displaying the store name and navigation.
+ * Store header component with theme-aware styling.
+ *
+ * Displays the store logo or name, navigation links, search, cart,
+ * and dark mode toggle. Colors and fonts adapt to the active theme.
  *
  * @param props - Component props.
  * @param props.store - The resolved store data.
- * @returns A header element with store branding.
+ * @param props.theme - The active theme config (may be null).
+ * @returns A header element with theme-driven branding.
  */
-function StoreHeader({ store }: { store: Store }) {
+function StoreHeader({
+  store,
+  theme,
+}: {
+  store: Store;
+  theme: StoreTheme | null;
+}) {
   return (
-    <header className="border-b border-zinc-200 dark:border-zinc-800">
+    <header className="border-b border-theme bg-theme-surface/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6">
-            <Link href="/">
-              <h1 className="text-xl font-bold tracking-tight">{store.name}</h1>
+            <Link href="/" className="flex items-center gap-3">
+              {theme?.logo_url ? (
+                <img
+                  src={theme.logo_url}
+                  alt={store.name}
+                  className="h-8 w-auto"
+                />
+              ) : (
+                <h1 className="text-xl font-heading font-bold tracking-tight">
+                  {store.name}
+                </h1>
+              )}
             </Link>
             <nav className="hidden sm:flex items-center gap-4">
               <Link
                 href="/products"
-                className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                className="text-sm text-theme-muted hover:text-theme-primary transition-colors"
               >
                 Products
               </Link>
               <Link
                 href="/categories"
-                className="text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                className="text-sm text-theme-muted hover:text-theme-primary transition-colors"
               >
                 Categories
               </Link>
@@ -153,6 +200,7 @@ function StoreHeader({ store }: { store: Store }) {
           </div>
           <div className="flex items-center gap-3">
             <HeaderSearch />
+            <ThemeToggle />
             <CartBadge />
           </div>
         </div>
@@ -162,7 +210,7 @@ function StoreHeader({ store }: { store: Store }) {
 }
 
 /**
- * Store footer component displaying store info and copyright.
+ * Store footer component with theme-aware styling.
  *
  * @param props - Component props.
  * @param props.store - The resolved store data.
@@ -170,10 +218,13 @@ function StoreHeader({ store }: { store: Store }) {
  */
 function StoreFooter({ store }: { store: Store }) {
   return (
-    <footer className="border-t border-zinc-200 dark:border-zinc-800 py-8">
+    <footer className="border-t border-theme py-8 bg-theme-surface">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-          <p>&copy; {new Date().getFullYear()} {store.name}. All rights reserved.</p>
+        <div className="flex flex-col items-center gap-2 text-sm text-theme-muted">
+          <p>
+            &copy; {new Date().getFullYear()} {store.name}. All rights
+            reserved.
+          </p>
           <p>Powered by Dropshipping Platform</p>
         </div>
       </div>
