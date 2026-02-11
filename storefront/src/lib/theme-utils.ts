@@ -139,9 +139,9 @@ export function buildThemeCssVars(theme: StoreTheme): string {
       --theme-accent: ${colorValue(c.accent || "#d4a853")};
       --theme-accent-text: ${contrastText(c.accent || "#d4a853")};
       --theme-background: ${colorValue(c.background || "#fafaf8")};
-      --theme-surface: ${colorValue(c.surface || "#ffffff")};
-      --theme-text: ${colorValue(c.text || "#1a1a1a")};
-      --theme-muted: ${colorValue(c.muted || "#6b7280")};
+      --theme-surface: ${colorValue(c.surface || c.card || "#ffffff")};
+      --theme-text: ${colorValue(c.text || c.foreground || "#1a1a1a")};
+      --theme-muted: ${colorValue(c.muted || c.muted_foreground || "#6b7280")};
       --theme-border: ${colorValue(c.border || "#e5e5e5")};
       --theme-font-heading: ${headingFont};
       --theme-font-body: ${bodyFont};

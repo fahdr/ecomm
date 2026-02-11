@@ -1,19 +1,45 @@
 # Plan: Make the Dropshipping Platform Shippable
 
-> **STATUS: ALL PHASES COMPLETE (A-G) + Phase 2 Polish COMPLETE (5 Phases)**
+> **STATUS: ALL PHASES COMPLETE (A-G) + Phase 2 Polish COMPLETE (5 Phases) + Refinement COMPLETE**
 >
 > All seven original phases have been implemented, tested, and verified. The platform
 > is fully demo-able end-to-end. Phase 2 Polish added 5 additional phases of visual
 > and functional enhancements: Theme Engine v2, Animation & Motion, Storefront Visual,
-> Dashboard Enhancements, and Data & QoL features.
+> Dashboard Enhancements, and Data & QoL features. A subsequent refinement pass fixed
+> 7 user-facing bugs and expanded test coverage.
 >
-> **Key metrics after Phase 2 Polish completion:**
-> - **329 backend tests passing** (28+ test files)
-> - **171+ e2e tests passing** (24 spec files across dashboard + storefront)
+> **Key metrics after refinement:**
+> - **336 backend tests passing** (30+ test files)
+> - **190+ e2e tests** (25 spec files across dashboard + storefront)
 > - **34 dashboard pages** building cleanly
 > - **18 storefront pages** building cleanly
 > - **13 Alembic migrations** (22+ model files, ~37 DB tables)
 > - **11 preset themes**, 13 block types, motion animations throughout
+> - **Makefile** with 25+ targets for dev workflow automation
+>
+> ### Refinement Pass (Post-Phase 2 Polish)
+>
+> Fixed 7 user-facing bugs found through manual testing:
+>
+> 1. **Currency "Method Not Allowed"** — Dashboard sent POST, backend expects PATCH
+>    - Fixed: `dashboard/src/app/stores/[id]/currency/page.tsx` (POST→PATCH, field names)
+> 2. **Currency converter disabled** — Dashboard called non-existent `/currency/rates`
+>    - Fixed: Added `GET /currencies/rates` endpoint in `backend/app/api/currency.py`
+>    - Fixed: URL path in dashboard currency page
+> 3. **Domain verify shows "add domain" form** — Verify response shape mismatch
+>    - Fixed: `dashboard/src/app/stores/[id]/domain/page.tsx` (re-fetch after verify)
+> 4. **Domain remove errors** — API client crashed on 204 No Content
+>    - Fixed: `dashboard/src/lib/api.ts` (handle 204 before JSON parse)
+> 5. **Domain 404 shown as error** — Fresh stores showed error banner
+>    - Fixed: `dashboard/src/app/stores/[id]/domain/page.tsx` (treat 404 as "no domain")
+> 6. **Hero product showcase empty** — Early return when no featured IDs configured
+>    - Fixed: `storefront/src/components/blocks/hero-banner.tsx` (fallback to first 3)
+> 7. **Dark text on dark background** — Theme presets use `foreground`, storefront reads `text`
+>    - Fixed: `storefront/src/lib/theme-utils.ts` (fallback chain: text → foreground)
+>
+> New tests: 8 backend tests (currency rates, domain lifecycle), 7 currency-domain E2E
+> tests, 3 storefront theme contrast E2E tests. Added `Makefile` with background test
+> execution, zombie cleanup, DB operations, and composite workflows.
 
 ## Context
 

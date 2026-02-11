@@ -12,8 +12,8 @@
  *
  * **For Developers:**
  *   - Fetches current currency via `GET /api/v1/stores/{store_id}/currency`.
- *   - Updates default currency via `POST /api/v1/stores/{store_id}/currency`.
- *   - Fetches exchange rates via `GET /api/v1/currency/rates`.
+ *   - Updates default currency via `PATCH /api/v1/stores/{store_id}/currency`.
+ *   - Fetches exchange rates via `GET /api/v1/currencies/rates`.
  *   - Uses `useStore()` context for store ID (provided by the layout).
  *   - Wrapped in `PageTransition` for consistent page-level animations.
  *
@@ -58,8 +58,11 @@ import { Separator } from "@/components/ui/separator";
 
 /** Shape of the store currency configuration returned by the API. */
 interface CurrencyConfig {
-  default_currency: string;
-  supported_currencies: string[];
+  store_id: string;
+  base_currency: string;
+  display_currencies: string[];
+  auto_convert: boolean;
+  rounding_method: string;
 }
 
 /** Shape of exchange rates returned by the API. */
@@ -131,7 +134,7 @@ export default function CurrencySettingsPage() {
       setError(result.error.message);
     } else if (result.data) {
       setConfig(result.data);
-      setSelectedCurrency(result.data.default_currency);
+      setSelectedCurrency(result.data.base_currency);
     }
     setLoading(false);
   }
@@ -141,7 +144,7 @@ export default function CurrencySettingsPage() {
    */
   async function fetchRates() {
     setRatesLoading(true);
-    const result = await api.get<ExchangeRates>("/api/v1/currency/rates");
+    const result = await api.get<ExchangeRates>("/api/v1/currencies/rates");
     if (result.data) {
       setRates(result.data);
     }
@@ -166,9 +169,9 @@ export default function CurrencySettingsPage() {
     setSaveError(null);
     setSaveSuccess(false);
 
-    const result = await api.post<CurrencyConfig>(
+    const result = await api.patch<CurrencyConfig>(
       `/api/v1/stores/${id}/currency`,
-      { default_currency: selectedCurrency }
+      { base_currency: selectedCurrency }
     );
 
     if (result.error) {
@@ -233,7 +236,7 @@ export default function CurrencySettingsPage() {
             <CardTitle>Default Currency</CardTitle>
             <CardDescription>
               {config
-                ? `Your store currently uses ${config.default_currency} as the default currency.`
+                ? `Your store currently uses ${config.base_currency} as the default currency.`
                 : "Configure your store's default currency for product pricing."}
             </CardDescription>
           </CardHeader>

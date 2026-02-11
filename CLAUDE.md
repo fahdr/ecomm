@@ -7,9 +7,14 @@ Write docs for types of users.
 
 Every code and function/method should have a docstring explaining its purpose, parameters, and return values. This is crucial for maintaining code readability and helping other developers understand the functionality of the code. Additionally, comments should be used to explain complex logic or important decisions made in the code. This practice not only aids in collaboration but also ensures that the codebase remains maintainable and scalable as the project evolves.
 
-Add plan documentation and impltation steps
+Add plan documentation and impltation steps everytime
+Update all relevant docs evrytime
+Always write comprehensive tests
 
 Keep updating history to remember the conversations
+
+We need to think from the perspective of a user and go through each option and each button and each value. Then we need to find the intention of the particluar button or item. Then form a flow of what should happen next and go check the relevant thing next.
+We should also keep ux in mind. A human will never be able to read dark text on dark background. Let us form a solid plan to detect such anomalies when running texts.
 
 DISTILLED_AESTHETICS_PROMPT = """
 <frontend_aesthetics>

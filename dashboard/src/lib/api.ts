@@ -79,6 +79,11 @@ class ApiClient {
       };
     }
 
+    // Handle 204 No Content (e.g. DELETE responses with empty body)
+    if (response.status === 204) {
+      return { data: null as unknown as T, error: null };
+    }
+
     const data = await response.json();
     return { data, error: null };
   }

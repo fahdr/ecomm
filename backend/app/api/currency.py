@@ -142,6 +142,48 @@ async def list_currencies_endpoint(
     )
 
 
+class ExchangeRatesResponse(BaseModel):
+    """Exchange rates for all supported currencies.
+
+    Used by the dashboard currency converter tool.
+
+    Attributes:
+        base: The base currency code (always "USD" for now).
+        rates: Mapping of currency code to exchange rate relative to base.
+        updated_at: ISO timestamp when rates were last refreshed.
+    """
+
+    base: str
+    rates: dict[str, float]
+    updated_at: str
+
+
+@router.get("/currencies/rates", response_model=ExchangeRatesResponse)
+async def get_exchange_rates_endpoint(
+    current_user: User = Depends(get_current_user),
+) -> ExchangeRatesResponse:
+    """Get exchange rates for all supported currencies.
+
+    Returns rates relative to USD as the base currency. Used by the
+    dashboard currency converter tool.
+
+    Args:
+        current_user: The authenticated user.
+
+    Returns:
+        ExchangeRatesResponse with base currency, rates dict, and timestamp.
+    """
+    from datetime import datetime, timezone
+
+    from app.services import currency_service
+
+    return ExchangeRatesResponse(
+        base="USD",
+        rates=dict(currency_service.EXCHANGE_RATES),
+        updated_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
 @router.post("/currencies/convert", response_model=PriceConversionResponse)
 async def convert_currency_endpoint(
     request: ConvertCurrencyRequest,

@@ -223,3 +223,56 @@ async def test_update_store_currency_store_not_found(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Exchange Rates Endpoint
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_get_exchange_rates_success(client):
+    """Getting exchange rates returns base, rates dict, and updated_at."""
+    token = await register_and_get_token(client)
+
+    response = await client.get(
+        "/api/v1/currencies/rates",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["base"] == "USD"
+    assert isinstance(data["rates"], dict)
+    assert "USD" in data["rates"]
+    assert "EUR" in data["rates"]
+    assert data["rates"]["USD"] == 1.0
+    assert "updated_at" in data
+
+
+@pytest.mark.asyncio
+async def test_get_exchange_rates_no_auth(client):
+    """Getting exchange rates without authentication returns 401."""
+    response = await client.get("/api/v1/currencies/rates")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_store_currency_persists(client):
+    """Updating currency to EUR persists on subsequent GET."""
+    token = await register_and_get_token(client)
+    store = await create_test_store(client, token)
+
+    # Update to EUR
+    await client.patch(
+        f"/api/v1/stores/{store['id']}/currency",
+        json={"base_currency": "EUR"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    # Verify persistence
+    response = await client.get(
+        f"/api/v1/stores/{store['id']}/currency",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert response.json()["base_currency"] == "EUR"

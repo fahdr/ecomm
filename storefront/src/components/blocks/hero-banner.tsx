@@ -121,24 +121,27 @@ export function HeroBanner({ config }: HeroBannerProps) {
 
   /** Fetch featured products for showcase mode. */
   useEffect(() => {
-    if (!isShowcase || !store || featuredProductIds.length === 0) return;
+    if (!isShowcase || !store) return;
     let cancelled = false;
 
     async function fetchProducts() {
-      // Fetch all products and filter by IDs (public API doesn't support
-      // filtering by IDs directly, so we fetch a batch and filter client-side)
       const { data } = await api.get<{ items: Product[] }>(
         `/api/v1/public/stores/${encodeURIComponent(store!.slug)}/products?per_page=50`
       );
       if (!cancelled && data) {
-        const matched = data.items.filter((p) =>
-          featuredProductIds.includes(p.id)
-        );
-        // Maintain the order of featuredProductIds
-        const ordered = featuredProductIds
-          .map((id) => matched.find((p) => p.id === id))
-          .filter((p): p is Product => !!p);
-        setProducts(ordered.length > 0 ? ordered : data.items.slice(0, 3));
+        if (featuredProductIds.length > 0) {
+          // Filter and reorder by configured product IDs
+          const matched = data.items.filter((p) =>
+            featuredProductIds.includes(p.id)
+          );
+          const ordered = featuredProductIds
+            .map((id) => matched.find((p) => p.id === id))
+            .filter((p): p is Product => !!p);
+          setProducts(ordered.length > 0 ? ordered : data.items.slice(0, 3));
+        } else {
+          // Fallback: show first 3 products when no specific IDs configured
+          setProducts(data.items.slice(0, 3));
+        }
       }
     }
 

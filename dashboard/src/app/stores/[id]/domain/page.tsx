@@ -63,10 +63,22 @@ import { Separator } from "@/components/ui/separator";
 /** Shape of the domain configuration returned by the API. */
 interface DomainConfig {
   domain: string | null;
-  status: "none" | "pending" | "verified" | "failed";
+  status: "none" | "pending" | "verified" | "active" | "failed";
   dns_record_type: string | null;
   dns_record_value: string | null;
   verified_at: string | null;
+}
+
+/** Shape of the raw backend DomainResponse. */
+interface DomainApiResponse {
+  id: string;
+  store_id: string;
+  domain: string;
+  status: string;
+  verification_token: string;
+  verified_at: string | null;
+  ssl_provisioned: boolean;
+  created_at: string;
 }
 
 /**
@@ -103,13 +115,25 @@ export default function DomainSettingsPage() {
    */
   async function fetchDomain() {
     setLoading(true);
-    const result = await api.get<DomainConfig>(
+    setError(null);
+    const result = await api.get<DomainApiResponse>(
       `/api/v1/stores/${id}/domain`
     );
     if (result.error) {
-      setError(result.error.message);
-    } else {
-      setDomainConfig(result.data ?? null);
+      // 404 means no domain configured — that's normal, not an error
+      if (result.error.code === "404") {
+        setDomainConfig(null);
+      } else {
+        setError(result.error.message);
+      }
+    } else if (result.data) {
+      setDomainConfig({
+        domain: result.data.domain,
+        status: result.data.status as DomainConfig["status"],
+        dns_record_type: "CNAME",
+        dns_record_value: result.data.verification_token,
+        verified_at: result.data.verified_at,
+      });
     }
     setLoading(false);
   }
@@ -130,7 +154,7 @@ export default function DomainSettingsPage() {
     setSetting(true);
     setDomainError(null);
 
-    const result = await api.post<DomainConfig>(
+    const result = await api.post<DomainApiResponse>(
       `/api/v1/stores/${id}/domain`,
       { domain: formDomain }
     );
@@ -141,7 +165,15 @@ export default function DomainSettingsPage() {
       return;
     }
 
-    setDomainConfig(result.data);
+    if (result.data) {
+      setDomainConfig({
+        domain: result.data.domain,
+        status: result.data.status as DomainConfig["status"],
+        dns_record_type: "CNAME",
+        dns_record_value: result.data.verification_token,
+        verified_at: result.data.verified_at,
+      });
+    }
     setFormDomain("");
     setSetting(false);
   }
@@ -151,12 +183,13 @@ export default function DomainSettingsPage() {
    */
   async function handleVerify() {
     setVerifying(true);
-    const result = await api.post<DomainConfig>(
+    const result = await api.post<{ verified: boolean; message: string }>(
       `/api/v1/stores/${id}/domain/verify`,
       {}
     );
-    if (result.data) {
-      setDomainConfig(result.data);
+    if (result.data?.verified) {
+      // Re-fetch full domain config to get updated status and fields
+      await fetchDomain();
     }
     setVerifying(false);
   }
@@ -193,6 +226,7 @@ export default function DomainSettingsPage() {
   ): "default" | "secondary" | "outline" | "destructive" {
     switch (status) {
       case "verified":
+      case "active":
         return "default";
       case "pending":
         return "secondary";
@@ -278,7 +312,7 @@ export default function DomainSettingsPage() {
               <Separator />
 
               <div className="flex gap-3">
-                {domainConfig.status !== "verified" && (
+                {domainConfig.status !== "verified" && domainConfig.status !== "active" && (
                   <Button onClick={handleVerify} disabled={verifying}>
                     {verifying ? "Verifying..." : "Verify DNS"}
                   </Button>

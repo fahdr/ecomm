@@ -227,3 +227,102 @@ async def test_remove_domain_not_configured(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# API Contract Tests (response shape validation)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_verify_domain_response_shape(client):
+    """Verify response contains only verified and message keys."""
+    token = await register_and_get_token(client, email="shape@example.com")
+    store = await create_test_store(client, token)
+    await set_domain(client, token, store["id"], "shop.shapetest.com")
+
+    response = await client.post(
+        f"/api/v1/stores/{store['id']}/domain/verify",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data.keys()) == {"verified", "message"}
+
+
+@pytest.mark.asyncio
+async def test_remove_domain_returns_empty_body(client):
+    """DELETE domain returns 204 with empty body (no JSON)."""
+    token = await register_and_get_token(client, email="empty@example.com")
+    store = await create_test_store(client, token)
+    await set_domain(client, token, store["id"], "shop.emptytest.com")
+
+    response = await client.delete(
+        f"/api/v1/stores/{store['id']}/domain",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+@pytest.mark.asyncio
+async def test_domain_full_lifecycle(client):
+    """Full lifecycle: create -> verify -> get (verified) -> remove."""
+    token = await register_and_get_token(client, email="lifecycle@example.com")
+    store = await create_test_store(client, token)
+
+    # 1. Create
+    resp = await client.post(
+        f"/api/v1/stores/{store['id']}/domain",
+        json={"domain": "shop.lifecycle.com"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["status"] == "pending"
+
+    # 2. Verify
+    resp = await client.post(
+        f"/api/v1/stores/{store['id']}/domain/verify",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["verified"] is True
+
+    # 3. Get -- should be verified
+    resp = await client.get(
+        f"/api/v1/stores/{store['id']}/domain",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "verified"
+
+    # 4. Remove
+    resp = await client.delete(
+        f"/api/v1/stores/{store['id']}/domain",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 204
+
+    # 5. Get after removal -- should be 404
+    resp = await client.get(
+        f"/api/v1/stores/{store['id']}/domain",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_set_duplicate_domain_returns_400(client):
+    """Setting a domain when one already exists returns 400."""
+    token = await register_and_get_token(client, email="dup@example.com")
+    store = await create_test_store(client, token)
+    await set_domain(client, token, store["id"], "shop.dup.com")
+
+    # Try setting another domain on the same store
+    response = await client.post(
+        f"/api/v1/stores/{store['id']}/domain",
+        json={"domain": "shop.other.com"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 400
+    assert "already" in response.json()["detail"].lower()
