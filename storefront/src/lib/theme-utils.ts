@@ -114,6 +114,24 @@ export function buildThemeCssVars(theme: StoreTheme): string {
   };
   const radius = radiusMap[s.border_radius] || radiusMap.md;
 
+  // Typography weight/spacing/line-height tokens
+  const headingWeight = t.heading_weight || "700";
+  const bodyWeight = t.body_weight || "400";
+
+  const letterSpacingMap: Record<string, string> = {
+    tight: "-0.025em",
+    normal: "0",
+    wide: "0.05em",
+  };
+  const letterSpacing = letterSpacingMap[t.letter_spacing] || "0";
+
+  const lineHeightMap: Record<string, string> = {
+    compact: "1.3",
+    normal: "1.6",
+    relaxed: "1.8",
+  };
+  const lineHeight = lineHeightMap[t.line_height] || "1.6";
+
   return `
     :root {
       --theme-primary: ${colorValue(c.primary || "#0d9488")};
@@ -127,6 +145,10 @@ export function buildThemeCssVars(theme: StoreTheme): string {
       --theme-border: ${colorValue(c.border || "#e5e5e5")};
       --theme-font-heading: ${headingFont};
       --theme-font-body: ${bodyFont};
+      --theme-heading-weight: ${headingWeight};
+      --theme-body-weight: ${bodyWeight};
+      --theme-letter-spacing: ${letterSpacing};
+      --theme-line-height: ${lineHeight};
       --theme-radius: ${radius};
       --theme-card-style: ${s.card_style || "elevated"};
       --theme-button-style: ${s.button_style || "rounded"};

@@ -24,6 +24,7 @@ performing operations.
 
 import math
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select
@@ -145,16 +146,34 @@ async def create_order_from_checkout(
     items_data: list[dict],
     total: Decimal,
     stripe_session_id: str | None = None,
+    subtotal: Decimal | None = None,
+    shipping_address: str | None = None,
+    discount_code: str | None = None,
+    discount_amount: Decimal = Decimal("0.00"),
+    tax_amount: Decimal = Decimal("0.00"),
+    gift_card_amount: Decimal = Decimal("0.00"),
+    currency: str = "USD",
 ) -> Order:
     """Create a pending order from validated checkout data.
+
+    Creates the order record with full financial breakdown and shipping
+    address. All monetary calculations (discount, tax, gift card) should
+    be performed by the caller before invoking this function.
 
     Args:
         db: Async database session.
         store_id: The store's UUID.
         customer_email: Customer's email address.
         items_data: Validated order item dicts from ``validate_and_build_order_items``.
-        total: Pre-calculated total amount.
+        total: Final total after all adjustments.
         stripe_session_id: Optional Stripe session ID.
+        subtotal: Sum of line items before adjustments. Defaults to ``total``.
+        shipping_address: JSON string of the shipping address.
+        discount_code: Discount code applied (if any).
+        discount_amount: Amount deducted by the discount.
+        tax_amount: Tax amount calculated from shipping address.
+        gift_card_amount: Amount deducted by the gift card.
+        currency: Three-letter currency code (default ``"USD"``).
 
     Returns:
         The newly created Order ORM instance with items loaded.
@@ -164,7 +183,14 @@ async def create_order_from_checkout(
         customer_email=customer_email,
         status=OrderStatus.pending,
         total=total,
+        subtotal=subtotal if subtotal is not None else total,
         stripe_session_id=stripe_session_id,
+        shipping_address=shipping_address,
+        discount_code=discount_code,
+        discount_amount=discount_amount,
+        tax_amount=tax_amount,
+        gift_card_amount=gift_card_amount,
+        currency=currency,
     )
     db.add(order)
     await db.flush()
@@ -314,16 +340,18 @@ async def update_order_status(
     store_id: uuid.UUID,
     user_id: uuid.UUID,
     order_id: uuid.UUID,
-    new_status: OrderStatus,
+    new_status: OrderStatus | None = None,
+    notes: str | None = ...,
 ) -> Order:
-    """Update an order's status.
+    """Update an order's status and/or internal notes.
 
     Args:
         db: Async database session.
         store_id: The store's UUID.
         user_id: The requesting user's UUID (for ownership check).
         order_id: The UUID of the order to update.
-        new_status: The new order status.
+        new_status: The new order status (None to keep unchanged).
+        notes: Internal notes/memo (sentinel ``...`` means no change).
 
     Returns:
         The updated Order ORM instance.
@@ -333,7 +361,90 @@ async def update_order_status(
             belongs to another user.
     """
     order = await get_order(db, store_id, user_id, order_id)
-    order.status = new_status
+    if new_status is not None:
+        order.status = new_status
+    if notes is not ...:
+        order.notes = notes
+    await db.flush()
+    await db.refresh(order)
+    return order
+
+
+async def fulfill_order(
+    db: AsyncSession,
+    store_id: uuid.UUID,
+    user_id: uuid.UUID,
+    order_id: uuid.UUID,
+    tracking_number: str,
+    carrier: str | None = None,
+) -> Order:
+    """Mark an order as shipped with tracking information.
+
+    Transitions the order to ``shipped`` status and records the tracking
+    number, carrier, and shipment timestamp.
+
+    Args:
+        db: Async database session.
+        store_id: The store's UUID.
+        user_id: The requesting user's UUID (for ownership check).
+        order_id: The UUID of the order to fulfill.
+        tracking_number: Shipment tracking number.
+        carrier: Optional shipping carrier name.
+
+    Returns:
+        The updated Order ORM instance.
+
+    Raises:
+        ValueError: If the order doesn't exist, belongs to another user,
+            or is not in a fulfillable state (must be ``paid``).
+    """
+    order = await get_order(db, store_id, user_id, order_id)
+    if order.status not in (OrderStatus.paid,):
+        raise ValueError(
+            f"Cannot fulfill order in '{order.status.value}' status. "
+            f"Order must be in 'paid' status."
+        )
+    order.status = OrderStatus.shipped
+    order.tracking_number = tracking_number
+    order.carrier = carrier
+    order.shipped_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.refresh(order)
+    return order
+
+
+async def deliver_order(
+    db: AsyncSession,
+    store_id: uuid.UUID,
+    user_id: uuid.UUID,
+    order_id: uuid.UUID,
+) -> Order:
+    """Mark a shipped order as delivered.
+
+    Transitions the order to ``delivered`` status and records the
+    delivery timestamp.
+
+    Args:
+        db: Async database session.
+        store_id: The store's UUID.
+        user_id: The requesting user's UUID (for ownership check).
+        order_id: The UUID of the order.
+
+    Returns:
+        The updated Order ORM instance.
+
+    Raises:
+        ValueError: If the order doesn't exist, belongs to another user,
+            or is not in ``shipped`` status.
+    """
+    order = await get_order(db, store_id, user_id, order_id)
+    if order.status != OrderStatus.shipped:
+        raise ValueError(
+            f"Cannot deliver order in '{order.status.value}' status. "
+            f"Order must be in 'shipped' status."
+        )
+    order.status = OrderStatus.delivered
+    order.delivered_at = datetime.now(timezone.utc)
     await db.flush()
     await db.refresh(order)
     return order

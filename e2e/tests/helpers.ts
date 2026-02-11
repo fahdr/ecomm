@@ -449,28 +449,42 @@ async function apiPatch(token: string, path: string, body: unknown) {
   }
 }
 
+/** Default shipping address for test orders. */
+export const TEST_SHIPPING_ADDRESS = {
+  name: "Test User",
+  line1: "123 Test Street",
+  city: "Testville",
+  state: "CA",
+  postal_code: "90210",
+  country: "US",
+};
+
 /**
  * Create an order via the public checkout API (no auth needed).
  *
  * @param slug - Store slug.
  * @param customerEmail - Customer email.
  * @param items - Cart items with product_id, variant_id, quantity.
+ * @param shippingAddress - Optional shipping address override.
  * @returns The checkout response with order_id.
  */
 export async function createOrderAPI(
   slug: string,
   customerEmail: string,
-  items: { product_id: string; variant_id?: string; quantity: number }[]
+  items: { product_id: string; variant_id?: string; quantity: number }[],
+  shippingAddress?: Record<string, string>
 ) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const res = await fetch(`${API_BASE}/api/v1/public/stores/${slug}/checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ customer_email: customerEmail, items }),
+      body: JSON.stringify({
+        customer_email: customerEmail,
+        items,
+        shipping_address: shippingAddress || TEST_SHIPPING_ADDRESS,
+      }),
     });
     if (res.ok) return await res.json();
-    // Retry on 400 as well — transient race conditions (e.g. "Product not found
-    // or not available") can occur when the product create commit hasn't propagated.
     if ((res.status === 400 || res.status === 404) && attempt < 4) {
       await new Promise((r) => setTimeout(r, 300));
       continue;
@@ -627,6 +641,180 @@ export async function createReviewAPI(
     }
     throw new Error(`Create review failed: ${res.status} ${await res.text()}`);
   }
+}
+
+/**
+ * Register a customer account on a storefront via the API.
+ *
+ * @param slug - Store slug.
+ * @param email - Customer email.
+ * @param password - Customer password (min 6 chars).
+ * @param firstName - Customer first name.
+ * @param lastName - Customer last name.
+ * @returns The registration response with access_token and customer data.
+ */
+export async function registerCustomerAPI(
+  slug: string,
+  email: string,
+  password: string,
+  firstName = "Test",
+  lastName = "Customer"
+) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch(`${API_BASE}/api/v1/public/stores/${slug}/customers/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        password,
+        first_name: firstName,
+        last_name: lastName,
+      }),
+    });
+    if (res.ok) return await res.json();
+    if (res.status === 404 && attempt < 4) {
+      await new Promise((r) => setTimeout(r, 300));
+      continue;
+    }
+    throw new Error(`Customer register failed: ${res.status} ${await res.text()}`);
+  }
+}
+
+/**
+ * Login a customer on a storefront via the API.
+ *
+ * @param slug - Store slug.
+ * @param email - Customer email.
+ * @param password - Customer password.
+ * @returns The login response with access_token.
+ */
+export async function loginCustomerAPI(
+  slug: string,
+  email: string,
+  password: string
+) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch(`${API_BASE}/api/v1/public/stores/${slug}/customers/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (res.ok) return await res.json();
+    if (res.status === 404 && attempt < 4) {
+      await new Promise((r) => setTimeout(r, 300));
+      continue;
+    }
+    throw new Error(`Customer login failed: ${res.status} ${await res.text()}`);
+  }
+}
+
+/**
+ * Mark an order as shipped with tracking information via the API.
+ *
+ * @param token - Store owner JWT access token.
+ * @param storeId - Store UUID.
+ * @param orderId - Order UUID.
+ * @param trackingNumber - Tracking number string.
+ * @param carrier - Optional carrier name.
+ * @returns The updated order response.
+ */
+export async function fulfillOrderAPI(
+  token: string,
+  storeId: string,
+  orderId: string,
+  trackingNumber: string,
+  carrier?: string
+) {
+  return apiPost(token, `/api/v1/stores/${storeId}/orders/${orderId}/fulfill`, {
+    tracking_number: trackingNumber,
+    carrier: carrier || null,
+  });
+}
+
+/**
+ * Mark a shipped order as delivered via the API.
+ *
+ * @param token - Store owner JWT access token.
+ * @param storeId - Store UUID.
+ * @param orderId - Order UUID.
+ * @returns The updated order response.
+ */
+export async function deliverOrderAPI(
+  token: string,
+  storeId: string,
+  orderId: string
+) {
+  return apiPost(token, `/api/v1/stores/${storeId}/orders/${orderId}/deliver`, {});
+}
+
+/**
+ * Run the seed script to populate the database with demo data.
+ *
+ * The seed script is idempotent — re-running it skips already-created
+ * entities (409 conflicts). Safe to call multiple times.
+ *
+ * @returns An object with the seed user token and store data.
+ */
+export async function seedDatabase(): Promise<{
+  token: string;
+  storeId: string;
+  storeSlug: string;
+}> {
+  // Helper to login as seed user with retries
+  async function loginSeed(): Promise<string | null> {
+    for (let i = 0; i < 10; i++) {
+      try {
+        const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: "demo@example.com", password: "password123" }),
+        });
+        if (res.ok) return (await res.json()).access_token;
+        if (res.status === 401 || res.status === 400) return null;
+      } catch {
+        // Server not ready — retry
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    return null;
+  }
+
+  let token = await loginSeed();
+
+  if (!token) {
+    // User doesn't exist yet — run the seed script
+    const { execSync } = await import("child_process");
+    execSync("npx tsx /workspaces/ecomm/scripts/seed.ts", {
+      cwd: "/workspaces/ecomm",
+      timeout: 120000,
+      stdio: "pipe",
+    });
+    // Wait for backend to stabilize after heavy writes
+    await new Promise((r) => setTimeout(r, 2000));
+    token = await loginSeed();
+    if (!token) throw new Error("Seed login failed after running seed script");
+  }
+
+  await waitForToken(token);
+
+  // Get the seed store with retries
+  for (let i = 0; i < 5; i++) {
+    try {
+      const storesRes = await fetch(`${API_BASE}/api/v1/stores`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (storesRes.ok) {
+        const stores = await storesRes.json();
+        const storeList = Array.isArray(stores) ? stores : stores.items ?? stores;
+        const store = storeList.find((s: any) => s.slug === "volt-electronics") || storeList[0];
+        if (store) return { token, storeId: store.id, storeSlug: store.slug };
+      }
+    } catch {
+      // Retry
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("No seed store found");
 }
 
 /**

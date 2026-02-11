@@ -33,8 +33,14 @@ def create_checkout_session(
     items: list[dict],
     customer_email: str,
     store_name: str,
+    total_override: "Decimal | None" = None,
 ) -> dict:
     """Create a Stripe Checkout session for an order.
+
+    If ``total_override`` is provided (because discounts, tax, or gift cards
+    changed the total), Stripe is sent a single line item representing the
+    adjusted total rather than individual product line items. This ensures
+    the amount Stripe charges matches the order total exactly.
 
     If the Stripe secret key is not configured, returns a mock session
     for local development.
@@ -44,6 +50,9 @@ def create_checkout_session(
         items: List of order item dicts with product_title, unit_price, quantity.
         customer_email: Customer's email for Stripe receipts.
         store_name: Store name for display on the checkout page.
+        total_override: If set, charge this exact amount instead of
+            summing individual line items. Used when discounts, tax,
+            or gift cards modify the total.
 
     Returns:
         A dict with ``session_id`` and ``checkout_url``.
@@ -63,18 +72,31 @@ def create_checkout_session(
 
     stripe.api_key = settings.stripe_secret_key
 
-    line_items = []
-    for item in items:
-        line_items.append({
+    if total_override is not None:
+        # When adjustments exist, send a single line item with the final total
+        line_items = [{
             "price_data": {
                 "currency": "usd",
                 "product_data": {
-                    "name": item["product_title"],
+                    "name": f"Order from {store_name}",
                 },
-                "unit_amount": int(item["unit_price"] * 100),
+                "unit_amount": int(total_override * 100),
             },
-            "quantity": item["quantity"],
-        })
+            "quantity": 1,
+        }]
+    else:
+        line_items = []
+        for item in items:
+            line_items.append({
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": item["product_title"],
+                    },
+                    "unit_amount": int(item["unit_price"] * 100),
+                },
+                "quantity": item["quantity"],
+            })
 
     session = stripe.checkout.Session.create(
         payment_method_types=["card"],

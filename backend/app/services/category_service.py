@@ -69,7 +69,7 @@ async def _verify_store_ownership(
 
 
 async def _generate_category_slug(
-    db: AsyncSession, store_id: uuid.UUID, name: str
+    db: AsyncSession, store_id: uuid.UUID, name: str, exclude_id=None,
 ) -> str:
     """Generate a unique category slug within a store.
 
@@ -80,6 +80,8 @@ async def _generate_category_slug(
         db: Async database session.
         store_id: The store's UUID for scoping uniqueness.
         name: The category name to derive the slug from.
+        exclude_id: Optional UUID of the current category to exclude from
+            the uniqueness check (used during updates).
 
     Returns:
         A unique slug string within the store.
@@ -89,12 +91,13 @@ async def _generate_category_slug(
     counter = 2
 
     while True:
-        result = await db.execute(
-            select(Category).where(
-                Category.store_id == store_id,
-                Category.slug == slug,
-            )
+        query = select(Category).where(
+            Category.store_id == store_id,
+            Category.slug == slug,
         )
+        if exclude_id is not None:
+            query = query.where(Category.id != exclude_id)
+        result = await db.execute(query)
         if result.scalar_one_or_none() is None:
             return slug
         slug = f"{base_slug}-{counter}"
@@ -283,7 +286,9 @@ async def update_category(
 
     # Regenerate slug if name changed
     if "name" in kwargs and kwargs["name"] is not None:
-        category.slug = await _generate_category_slug(db, store_id, kwargs["name"])
+        category.slug = await _generate_category_slug(
+            db, store_id, kwargs["name"], exclude_id=category.id
+        )
 
     await db.flush()
     await db.refresh(category)

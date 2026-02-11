@@ -58,7 +58,7 @@ async def _verify_store_ownership(
 
 
 async def _generate_product_slug(
-    db: AsyncSession, store_id: uuid.UUID, title: str
+    db: AsyncSession, store_id: uuid.UUID, title: str, exclude_id=None,
 ) -> str:
     """Generate a unique product slug within a store.
 
@@ -69,6 +69,9 @@ async def _generate_product_slug(
         db: Async database session.
         store_id: The store's UUID for scoping uniqueness.
         title: The product title to derive the slug from.
+        exclude_id: Optional UUID of the current product to exclude from the
+            uniqueness check (used during updates so a product doesn't
+            conflict with itself).
 
     Returns:
         A unique slug string within the store.
@@ -80,11 +83,12 @@ async def _generate_product_slug(
     counter = 2
 
     while True:
-        result = await db.execute(
-            select(Product).where(
-                Product.store_id == store_id, Product.slug == slug
-            )
+        query = select(Product).where(
+            Product.store_id == store_id, Product.slug == slug
         )
+        if exclude_id is not None:
+            query = query.where(Product.id != exclude_id)
+        result = await db.execute(query)
         if result.scalar_one_or_none() is None:
             return slug
         slug = f"{base_slug}-{counter}"
@@ -293,7 +297,9 @@ async def update_product(
             setattr(product, key, value)
 
     if "title" in fields and fields["title"] is not None:
-        product.slug = await _generate_product_slug(db, store_id, fields["title"])
+        product.slug = await _generate_product_slug(
+            db, store_id, fields["title"], exclude_id=product.id
+        )
 
     if variants_data is not None:
         # Replace all existing variants

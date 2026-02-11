@@ -2,18 +2,37 @@
 
 Covers order creation via checkout, order listing (pagination, status filter),
 order retrieval, status updates, cart validation, tenant isolation,
-public order lookup, and mock Stripe integration.
+public order lookup, mock Stripe integration, and checkout with discounts,
+tax rates, gift cards, and shipping address.
 
 **For QA Engineers:**
     Each test is independent — the database is reset between tests.
     Helper functions register users and create stores/products to reduce
     boilerplate. Tests verify tenant isolation, cart validation errors,
-    and that orders transition correctly through statuses.
+    and that orders transition correctly through statuses. Checkout
+    integration tests verify discount, tax, and gift card calculations
+    are reflected in order totals and response fields.
 """
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+TEST_SHIPPING_ADDRESS = {
+    "name": "John Doe",
+    "line1": "123 Test St",
+    "city": "Testville",
+    "state": "CA",
+    "postal_code": "90210",
+    "country": "US",
+}
+"""Standard shipping address used across all checkout tests."""
 
 
 # ---------------------------------------------------------------------------
@@ -120,6 +139,7 @@ async def test_checkout_creates_pending_order(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": product["id"], "quantity": 1},
             ],
@@ -151,6 +171,7 @@ async def test_checkout_with_variant(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": product["id"], "variant_id": variant_id, "quantity": 2},
             ],
@@ -175,6 +196,7 @@ async def test_checkout_insufficient_stock(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": product["id"], "variant_id": variant_id, "quantity": 5},
             ],
@@ -193,6 +215,7 @@ async def test_checkout_invalid_product(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": str(uuid.uuid4()), "quantity": 1},
             ],
@@ -217,6 +240,7 @@ async def test_checkout_draft_product_rejected(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": draft_product["id"], "quantity": 1},
             ],
@@ -232,6 +256,7 @@ async def test_checkout_unknown_store(client):
         "/api/v1/public/stores/nonexistent-store/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": str(uuid.uuid4()), "quantity": 1},
             ],
@@ -249,6 +274,7 @@ async def test_checkout_empty_cart(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [],
         },
     )
@@ -264,6 +290,7 @@ async def test_checkout_no_auth_required(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": product["id"], "quantity": 1},
             ],
@@ -287,6 +314,7 @@ async def test_checkout_multiple_items(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": product1["id"], "quantity": 2},
                 {"product_id": product2["id"], "quantity": 1},
@@ -327,6 +355,7 @@ async def test_list_orders_after_checkout(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [{"product_id": product["id"], "quantity": 1}],
         },
     )
@@ -352,6 +381,7 @@ async def test_list_orders_status_filter(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [{"product_id": product["id"], "quantity": 1}],
         },
     )
@@ -382,6 +412,7 @@ async def test_get_order_detail(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [{"product_id": product["id"], "quantity": 3}],
         },
     )
@@ -422,6 +453,7 @@ async def test_update_order_status(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [{"product_id": product["id"], "quantity": 1}],
         },
     )
@@ -460,6 +492,7 @@ async def test_orders_tenant_isolation(client):
         f"/api/v1/public/stores/{store1['slug']}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [{"product_id": product1["id"], "quantity": 1}],
         },
     )
@@ -488,6 +521,7 @@ async def test_public_order_lookup(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [{"product_id": product["id"], "quantity": 1}],
         },
     )
@@ -525,6 +559,7 @@ async def test_order_total_calculation(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [{"product_id": product["id"], "quantity": 3}],
         },
     )
@@ -556,6 +591,7 @@ async def test_order_captures_variant_price(client):
         f"/api/v1/public/stores/{slug}/checkout",
         json={
             "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
             "items": [
                 {"product_id": product["id"], "variant_id": variant_id, "quantity": 2},
             ],
@@ -572,3 +608,431 @@ async def test_order_captures_variant_price(client):
     assert data["total"] == "50.00"
     assert data["items"][0]["unit_price"] == "25.00"
     assert data["items"][0]["variant_name"] == "Premium"
+
+
+# ---------------------------------------------------------------------------
+# Checkout Integration Helpers (discounts, tax, gift cards)
+# ---------------------------------------------------------------------------
+
+
+async def create_test_discount(
+    client,
+    token: str,
+    store_id: str,
+    code: str = "SAVE20",
+    discount_type: str = "percentage",
+    value: float = 20.0,
+    **kwargs,
+) -> dict:
+    """Create a discount and return the response data.
+
+    Args:
+        client: The async HTTP test client.
+        token: JWT access token.
+        store_id: UUID of the store.
+        code: Coupon code.
+        discount_type: 'percentage' or 'fixed_amount'.
+        value: The discount value.
+        **kwargs: Additional discount fields.
+
+    Returns:
+        The JSON response dictionary for the created discount.
+    """
+    if "starts_at" not in kwargs:
+        kwargs["starts_at"] = datetime.now(timezone.utc).isoformat()
+    data = {"code": code, "discount_type": discount_type, "value": value, **kwargs}
+    resp = await client.post(
+        f"/api/v1/stores/{store_id}/discounts",
+        json=data,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    return resp.json()
+
+
+async def create_test_tax_rate(
+    client,
+    token: str,
+    store_id: str,
+    name: str = "CA Sales Tax",
+    country: str = "US",
+    state: str | None = "CA",
+    rate: float = 8.25,
+) -> dict:
+    """Create a tax rate and return the response data.
+
+    Args:
+        client: The async HTTP test client.
+        token: JWT access token.
+        store_id: UUID of the store.
+        name: Tax rate display name.
+        country: ISO country code.
+        state: Optional state code.
+        rate: Tax rate percentage.
+
+    Returns:
+        The JSON response dictionary for the created tax rate.
+    """
+    payload = {"name": name, "country": country, "rate": rate}
+    if state is not None:
+        payload["state"] = state
+    resp = await client.post(
+        f"/api/v1/stores/{store_id}/tax-rates",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    return resp.json()
+
+
+async def create_test_gift_card(
+    client,
+    token: str,
+    store_id: str,
+    initial_balance: float = 50.0,
+) -> dict:
+    """Create a gift card and return the response data.
+
+    Args:
+        client: The async HTTP test client.
+        token: JWT access token.
+        store_id: UUID of the store.
+        initial_balance: Starting balance.
+
+    Returns:
+        The JSON response dictionary for the created gift card.
+    """
+    resp = await client.post(
+        f"/api/v1/stores/{store_id}/gift-cards",
+        json={"initial_balance": initial_balance},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    return resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Checkout with Discounts
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_checkout_with_percentage_discount(client):
+    """Checkout with a percentage discount reduces the order total."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    # Create a 20% discount
+    await create_test_discount(
+        client, token, store["id"], code="SAVE20", discount_type="percentage", value=20.0
+    )
+
+    # Product price is 29.99, qty 1 → subtotal 29.99
+    # 20% off → discount_amount = 29.99 * 0.20 = 5.998
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "discount_code": "SAVE20",
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["subtotal"] == "29.99"
+    # Discount applied (exact amount depends on backend rounding)
+    assert float(data["discount_amount"]) > 0
+    assert float(data["total"]) < 29.99
+
+
+@pytest.mark.asyncio
+async def test_checkout_with_fixed_discount(client):
+    """Checkout with a fixed-amount discount reduces the order total."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    # Create a $5 off discount
+    await create_test_discount(
+        client, token, store["id"], code="FLAT5", discount_type="fixed_amount", value=5.0
+    )
+
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "discount_code": "FLAT5",
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["subtotal"] == "29.99"
+    assert float(data["discount_amount"]) == 5.00
+    assert float(data["total"]) == 24.99
+
+
+@pytest.mark.asyncio
+async def test_checkout_invalid_discount_code(client):
+    """Checkout with an invalid discount code returns 400."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "discount_code": "FAKECODE",
+        },
+    )
+    assert resp.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Checkout with Tax
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_checkout_with_tax(client):
+    """Checkout calculates tax from matching tax rates and adds to total."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    # Create an 8.25% CA sales tax
+    await create_test_tax_rate(
+        client, token, store["id"], name="CA Tax", country="US", state="CA", rate=8.25
+    )
+
+    # Product: 29.99, qty 1 → subtotal 29.99
+    # Tax: 29.99 * 8.25% ≈ 2.47
+    # Total: 29.99 + 2.47 = 32.46
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["subtotal"] == "29.99"
+    assert float(data["tax_amount"]) == 2.47
+    assert float(data["total"]) == 32.46
+
+
+@pytest.mark.asyncio
+async def test_checkout_tax_with_discount(client):
+    """Tax is calculated on the discounted subtotal, not the original."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    # 8.25% CA tax
+    await create_test_tax_rate(
+        client, token, store["id"], name="CA Tax", country="US", state="CA", rate=8.25
+    )
+    # $5 off discount
+    await create_test_discount(
+        client, token, store["id"], code="FLAT5", discount_type="fixed_amount", value=5.0
+    )
+
+    # Subtotal: 29.99, discount: 5.00, discounted: 24.99
+    # Tax: 24.99 * 8.25% = 2.061675 → 2.06
+    # Total: 24.99 + 2.06 = 27.05
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "discount_code": "FLAT5",
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert float(data["discount_amount"]) == 5.00
+    # Tax applied on discounted subtotal
+    assert float(data["tax_amount"]) > 0
+    # Total = discounted subtotal + tax
+    assert float(data["total"]) > float(data["subtotal"]) - float(data["discount_amount"])
+
+
+# ---------------------------------------------------------------------------
+# Checkout with Gift Cards
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_checkout_with_gift_card(client):
+    """Checkout with a gift card reduces the total by the card balance."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    # Create a $10 gift card
+    gc = await create_test_gift_card(client, token, store["id"], initial_balance=10.0)
+
+    # Subtotal: 29.99, gift card: 10.00
+    # Total: 29.99 - 10.00 = 19.99
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+            "gift_card_code": gc["code"],
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert float(data["gift_card_amount"]) == 10.00
+    assert float(data["total"]) == 19.99
+
+
+# ---------------------------------------------------------------------------
+# Checkout Response Fields & Shipping Address
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_checkout_response_has_financial_breakdown(client):
+    """Checkout response includes subtotal, discount, tax, gift card, and total."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 2}],
+        },
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+
+    # All financial fields should be present
+    assert "subtotal" in data
+    assert "discount_amount" in data
+    assert "tax_amount" in data
+    assert "gift_card_amount" in data
+    assert "total" in data
+    # Subtotal should be correct: 29.99 * 2 = 59.98
+    assert data["subtotal"] == "59.98"
+
+
+@pytest.mark.asyncio
+async def test_order_stores_shipping_address(client):
+    """Order detail includes the shipping address from checkout."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    checkout_resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+        },
+    )
+    order_id = checkout_resp.json()["order_id"]
+
+    # Fetch via store-owner endpoint
+    resp = await client.get(
+        f"/api/v1/stores/{store['id']}/orders/{order_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["shipping_address"] is not None
+    assert data["shipping_address"]["name"] == "John Doe"
+    assert data["shipping_address"]["city"] == "Testville"
+    assert data["shipping_address"]["country"] == "US"
+
+
+@pytest.mark.asyncio
+async def test_public_order_has_financial_fields(client):
+    """Public order lookup includes financial breakdown and shipping address."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    checkout_resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout",
+        json={
+            "customer_email": "buyer@example.com",
+            "shipping_address": TEST_SHIPPING_ADDRESS,
+            "items": [{"product_id": product["id"], "quantity": 1}],
+        },
+    )
+    order_id = checkout_resp.json()["order_id"]
+
+    resp = await client.get(
+        f"/api/v1/public/stores/{slug}/orders/{order_id}",
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "subtotal" in data
+    assert "total" in data
+    assert data["shipping_address"] is not None
+    assert data["shipping_address"]["line1"] == "123 Test St"
+
+
+# ---------------------------------------------------------------------------
+# Validate Discount & Calculate Tax Endpoints
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_validate_discount_endpoint(client):
+    """Public discount validation endpoint returns discount amount."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    await create_test_discount(
+        client, token, store["id"], code="TEST10", discount_type="percentage", value=10.0
+    )
+
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout/validate-discount",
+        json={"code": "TEST10", "subtotal": 100.0},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["valid"] is True
+    assert float(data["discount_amount"]) == 10.00
+
+
+@pytest.mark.asyncio
+async def test_validate_discount_invalid_code(client):
+    """Public discount validation with invalid code returns valid=false."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout/validate-discount",
+        json={"code": "NONEXISTENT", "subtotal": 100.0},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["valid"] is False
+
+
+@pytest.mark.asyncio
+async def test_calculate_tax_endpoint(client):
+    """Public tax calculation endpoint returns tax amount for address."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    await create_test_tax_rate(
+        client, token, store["id"], name="CA Tax", country="US", state="CA", rate=10.0
+    )
+
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout/calculate-tax",
+        json={"subtotal": 100.0, "country": "US", "state": "CA"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert float(data["tax_amount"]) == 10.00
+
+
+@pytest.mark.asyncio
+async def test_calculate_tax_no_matching_rates(client):
+    """Tax calculation with no matching rates returns zero tax."""
+    token, store, product, slug = await setup_store_and_product(client)
+
+    resp = await client.post(
+        f"/api/v1/public/stores/{slug}/checkout/calculate-tax",
+        json={"subtotal": 100.0, "country": "GB"},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert float(data["tax_amount"]) == 0.00

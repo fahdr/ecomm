@@ -28,10 +28,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.constants.plans import PlanTier, get_plan_limits
 from app.database import get_db
+from app.models.customer import CustomerAccount
 from app.models.product import Product, ProductStatus
 from app.models.store import Store, StoreStatus
 from app.models.user import User
 from app.services.auth_service import decode_token, get_user_by_id
+from app.services.customer_service import get_customer_by_id
 
 # OAuth2 scheme extracts the Bearer token from the Authorization header.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -165,3 +167,61 @@ async def check_product_limit(
             ),
         )
     return current_user
+
+
+# Optional OAuth2 scheme for customer tokens (same header, different audience).
+customer_oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/public/stores/{slug}/customers/login",
+    auto_error=True,
+)
+
+
+async def get_current_customer(
+    token: str = Depends(customer_oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> CustomerAccount:
+    """FastAPI dependency that resolves the current authenticated customer.
+
+    Extracts the JWT from the ``Authorization: Bearer`` header, validates
+    the ``aud: "customer"`` claim, and loads the customer from the database.
+
+    Args:
+        token: The JWT access token.
+        db: Async database session.
+
+    Returns:
+        The authenticated CustomerAccount ORM instance.
+
+    Raises:
+        HTTPException: 401 if the token is invalid or the customer is not found.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate customer credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = decode_token(token)
+        customer_id_str: str | None = payload.get("sub")
+        token_type: str | None = payload.get("type")
+        audience: str | None = payload.get("aud")
+        store_id_str: str | None = payload.get("store_id")
+
+        if (
+            customer_id_str is None
+            or token_type != "access"
+            or audience != "customer"
+        ):
+            raise credentials_exception
+
+        customer_id = uuid.UUID(customer_id_str)
+        store_id = uuid.UUID(store_id_str) if store_id_str else None
+    except (JWTError, ValueError):
+        raise credentials_exception
+
+    customer = await get_customer_by_id(db, customer_id, store_id)
+    if customer is None:
+        raise credentials_exception
+
+    return customer

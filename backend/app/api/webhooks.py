@@ -30,7 +30,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.models.store import Store
 from app.services import order_service, subscription_service
+from app.services.discount_service import apply_discount
+from app.services.email_service import email_service
 from app.services.stripe_service import construct_webhook_event
 
 logger = logging.getLogger(__name__)
@@ -105,6 +108,40 @@ async def stripe_webhook(
             order = await order_service.confirm_order(db, stripe_session_id)
             if order:
                 logger.info("Order %s confirmed via Stripe webhook", order.id)
+
+                # Send order confirmation email
+                try:
+                    from sqlalchemy import select as sa_select
+                    store_result = await db.execute(
+                        sa_select(Store).where(Store.id == order.store_id)
+                    )
+                    store = store_result.scalar_one_or_none()
+                    if store:
+                        await email_service.send_order_confirmation(order, store)
+                except Exception as email_err:
+                    logger.warning(
+                        "Failed to send order confirmation email for %s: %s",
+                        order.id,
+                        email_err,
+                    )
+
+                # Track discount usage if a code was applied
+                if order.discount_code and order.discount_amount:
+                    try:
+                        await apply_discount(
+                            db=db,
+                            store_id=order.store_id,
+                            code=order.discount_code,
+                            order_id=order.id,
+                            customer_email=order.customer_email,
+                            amount_saved=order.discount_amount,
+                        )
+                    except Exception as disc_err:
+                        logger.warning(
+                            "Failed to record discount usage for order %s: %s",
+                            order.id,
+                            disc_err,
+                        )
             else:
                 logger.warning(
                     "No pending order found for Stripe session %s",

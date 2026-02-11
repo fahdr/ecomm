@@ -34,6 +34,7 @@ import { api } from "@/lib/api";
 import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Download } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -144,7 +145,21 @@ export default function OrdersListPage() {
     <PageTransition>
       <main className="mx-auto max-w-4xl p-6 space-y-6">
         {/* Page heading */}
-        <h1 className="text-2xl font-heading font-bold">Orders</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-heading font-bold">Orders</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => {
+              const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+              window.open(`${API_BASE}/api/v1/stores/${storeId}/exports/orders`, "_blank");
+            }}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </Button>
+        </div>
 
         {/* Filters */}
         <div className="flex items-center gap-4">

@@ -46,7 +46,8 @@ test.describe("Dashboard Store Management", () => {
 
     // Should redirect to store settings page
     await expect(page).toHaveURL(/\/stores\/[a-f0-9-]+/, { timeout: 10000 });
-    await expect(page.getByText("My E2E Store")).toBeVisible();
+    // Store name appears in breadcrumbs, sidebar, and store switcher — use first()
+    await expect(page.getByText("My E2E Store").first()).toBeVisible({ timeout: 10000 });
   });
 
   test("lists created stores", async ({ page }) => {

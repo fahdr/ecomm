@@ -55,9 +55,15 @@ test.describe("Storefront Categories", () => {
       waitUntil: "networkidle",
     });
 
+    // Wait for the page heading to confirm successful page load
+    await expect(
+      page.getByRole("heading", { name: /categories/i })
+    ).toBeVisible({ timeout: 15000 });
+
+    // Then verify the empty state text
     await expect(
       page.getByText(/no categories available/i)
-    ).toBeVisible({ timeout: 15000 });
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test("shows category with product count", async ({ page }) => {

@@ -37,6 +37,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import { useCart } from "@/contexts/cart-context";
 
 /**
@@ -92,6 +94,7 @@ export function AddToCart({
   variants,
 }: AddToCartProps) {
   const { addItem } = useCart();
+  const router = useRouter();
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(
     variants.length > 0 ? variants[0] : null
   );
@@ -106,6 +109,9 @@ export function AddToCart({
   /** Whether the currently selected variant is out of stock. */
   const isOutOfStock =
     selectedVariant && selectedVariant.inventory_count <= 0;
+
+  /** Current stock count for the selected variant. */
+  const stockCount = selectedVariant?.inventory_count ?? 0;
 
   /**
    * Handle adding the product (with selected variant and quantity) to the cart.
@@ -156,6 +162,28 @@ export function AddToCart({
         </div>
       )}
 
+      {/* Stock Indicator */}
+      {selectedVariant && (
+        <div className="flex items-center gap-2 text-sm">
+          {stockCount <= 0 ? (
+            <span className="flex items-center gap-1.5 text-red-500">
+              <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+              Out of Stock
+            </span>
+          ) : stockCount <= 5 ? (
+            <span className="flex items-center gap-1.5 text-amber-600">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+              Low Stock — only {stockCount} left
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-green-600">
+              <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
+              In Stock
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Quantity */}
       <div>
         <label className="block text-sm font-medium text-theme-muted mb-2">
@@ -179,9 +207,12 @@ export function AddToCart({
       </div>
 
       {/* Add to Cart Button */}
-      <button
+      <motion.button
         onClick={handleAdd}
         disabled={isOutOfStock || false}
+        whileTap={!isOutOfStock && !added ? { scale: 0.97 } : undefined}
+        animate={added ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+        transition={{ duration: 0.3 }}
         className={`w-full px-6 py-3 text-sm font-medium transition-colors ${
           added
             ? "bg-green-600 text-white rounded-lg"
@@ -190,12 +221,33 @@ export function AddToCart({
               : "btn-primary"
         }`}
       >
-        {added
-          ? "Added to Cart!"
-          : isOutOfStock
-            ? "Out of Stock"
-            : `Add to Cart — $${(effectivePrice * quantity).toFixed(2)}`}
-      </button>
+        {added ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            Added to Cart!
+          </span>
+        ) : isOutOfStock ? (
+          "Out of Stock"
+        ) : (
+          `Add to Cart — $${(effectivePrice * quantity).toFixed(2)}`
+        )}
+      </motion.button>
+
+      {/* View Cart link after adding */}
+      <AnimatePresence>
+        {added && (
+          <motion.button
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => router.push("/cart")}
+            className="w-full text-center text-sm text-theme-primary hover:underline transition-colors"
+          >
+            View Cart
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

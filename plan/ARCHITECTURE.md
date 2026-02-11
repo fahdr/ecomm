@@ -5,7 +5,7 @@
 | Decision          | Choice                          | Rationale                                              |
 | ----------------- | ------------------------------- | ------------------------------------------------------ |
 | Backend language  | Python 3.12+ / FastAPI          | Developer expertise, strong AI/scraping ecosystem      |
-| Frontend          | Next.js 14+ (App Router)        | SEO, component ecosystem (Shadcn/ui), industry standard|
+| Frontend          | Next.js 16 (App Router)         | SEO, component ecosystem (Shadcn/ui), industry standard|
 | Database          | PostgreSQL 16 + SQLAlchemy 2.0  | Async ORM, Alembic migrations, row-level security      |
 | Cache / Broker    | Redis                           | Caching, sessions, Celery broker — single dependency   |
 | Task queue        | Celery + Celery Beat + Flower   | Battle-tested, chains/groups for workflows, scheduling |
@@ -229,9 +229,9 @@ dropshipping-platform/
 
 ### Core Tables (Backend)
 
-**Existing tables (Features 1-7.5):**
+**Existing tables (Features 1-7.5 + Polish Plan):**
 `users`, `stores`, `products`, `product_variants`, `orders`, `order_items`,
-`subscriptions`, `customers`, `wishlist_items`
+`subscriptions`, `customer_accounts`, `customer_wishlists`, `customer_addresses`
 
 **New tables by feature:**
 
@@ -534,7 +534,7 @@ Backend tests use `pytest` with `httpx.AsyncClient` for API testing. Tests are l
 - `NullPool` for test engine to avoid async connection-sharing issues
 - Tests create their own data via API calls (register user → create store → create resource)
 
-**Test files:** `test_discounts.py`, `test_categories.py`, `test_suppliers.py`, `test_reviews.py`, `test_analytics.py`, `test_refunds.py`, `test_tax.py`, `test_search.py`, `test_upsells.py`, `test_segments.py`, `test_gift_cards.py`, `test_currency.py`, `test_domains.py`, `test_store_webhooks.py`, `test_teams.py`, `test_notifications.py`, `test_bulk.py`, `test_fraud.py`, `test_ab_tests.py`
+**Test files (28+ files, 329 tests):** `test_health.py`, `test_auth.py`, `test_public.py`, `test_products.py`, `test_stores.py`, `test_subscriptions.py`, `test_orders.py`, `test_customers.py`, `test_discounts.py`, `test_categories.py`, `test_suppliers.py`, `test_reviews.py`, `test_analytics.py`, `test_refunds.py`, `test_themes.py`, `test_tax.py`, `test_search.py`, `test_upsells.py`, `test_segments.py`, `test_gift_cards.py`, `test_currency.py`, `test_domains.py`, `test_store_webhooks.py`, `test_teams.py`, `test_notifications.py`, `test_bulk.py`, `test_fraud.py`, `test_ab_tests.py`
 
 ### E2E Tests (Playwright)
 
@@ -552,10 +552,15 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 - `createProductAPI()`, `createOrderAPI()`, `createCategoryAPI()`, etc. — resource creation helpers
 - `createRefundAPI()`, `createReviewAPI()` — complex resource creation (requires order/product chain)
 
-**E2E test files (119 tests total):**
+**E2E test files (187+ tests across 24 spec files):**
 
 | File | Covers |
 |------|--------|
+| `dashboard/auth.spec.ts` | User registration, login, redirects |
+| `dashboard/stores.spec.ts` | Store CRUD, store listing |
+| `dashboard/products.spec.ts` | Product CRUD, populated table |
+| `dashboard/orders.spec.ts` | Order listing, detail, status updates |
+| `dashboard/fulfillment.spec.ts` | Fulfillment flow, tracking |
 | `dashboard/discounts.spec.ts` | Discount CRUD, populated table with formatting |
 | `dashboard/categories.spec.ts` | Category CRUD, nested subcategories |
 | `dashboard/suppliers.spec.ts` | Supplier CRUD, populated table with linked products |
@@ -566,7 +571,15 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 | `dashboard/currency-domain.spec.ts` | Currency settings + domain config |
 | `dashboard/advanced-features.spec.ts` | Segments, upsells, A/B tests, bulk ops |
 | `dashboard/themes-email.spec.ts` | Theme settings + email templates |
+| `dashboard/billing.spec.ts` | Billing page, subscription |
+| `dashboard/seed-data.spec.ts` | Seed data verification (24 tests) |
+| `dashboard/phase2-polish.spec.ts` | KPIs, order notes, CSV export, command palette, inventory alerts |
+| `storefront/browse.spec.ts` | Product browsing, homepage |
+| `storefront/cart-checkout.spec.ts` | Cart, checkout, payment |
 | `storefront/categories-search.spec.ts` | Storefront category nav + search |
+| `storefront/customer-accounts.spec.ts` | Customer auth, orders, wishlist |
+| `storefront/policies.spec.ts` | Policy pages |
+| `storefront/seed-data.spec.ts` | Seed data verification (12 tests) |
 
 ### Common Frontend Bug Patterns (Caught by E2E Tests)
 
@@ -575,3 +588,35 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 3. **String reduce concatenation**: `reduce((sum, r) => sum + r.amount, 0)` with string amounts produces `"049.99"`. Fix: `Number(r.amount)`
 4. **Field name mismatches**: Frontend uses `order_number` but backend returns `order_id`. Fix: Align interfaces with backend schemas
 5. **HTML5 step validation**: `<input step="0.01">` blocks values like 8.875. Fix: `step="any"`
+6. **Slug self-collision on update**: `generate_unique_slug()` finds the SAME entity in DB, appends `-2`, then on next save finds `-2` and uses original. Fix: pass `exclude_id` to exclude the current entity from uniqueness check
+
+---
+
+## Phase 2 Polish Features
+
+### Theme Engine v2
+- **13 block types** (5 new: product_carousel, testimonials, countdown_timer, video_banner, trust_badges)
+- **11 preset themes** (4 new: Coastal, Monochrome, Cyberpunk, Terracotta)
+- Hero banner product showcase mode with configurable overlays
+- Block config editor in dashboard with per-block-type forms
+- Enhanced typography: weight, letter-spacing, line-height controls
+
+### Animation & Motion
+- Motion primitives: `FadeIn`, `StaggerChildren`, `SlideIn`, `ScaleIn`, `ScrollReveal`
+- Staggered grid animations on all product/category listing pages
+- Micro-interactions: add-to-cart pulse, cart badge bounce, spring-based mobile menu
+- Loading skeletons (shimmer effect) on product pages
+- Animated count-up numbers on dashboard analytics
+
+### Dashboard Enhancements
+- **Store overview KPI dashboard**: 4 metric cards with animated count-up, recent orders, quick actions
+- **Platform home dashboard**: Aggregate KPIs across stores, store cards with mini metrics
+- **Command palette** (`Cmd+K`/`Ctrl+K`): Fuzzy search pages/actions with keyboard navigation
+- **Notification badges**: Unread count on Notifications, pending orders on Orders sidebar item
+- **Enhanced analytics**: Customer metrics, order status bar chart, animated counters
+
+### Data & QoL
+- **CSV export**: `GET /stores/{id}/exports/{orders|products|customers}` endpoints + dashboard buttons
+- **Order notes**: Internal memo field on orders (auto-save textarea in dashboard)
+- **Inventory alerts**: Low-stock warning cards on store overview (variants with < 5 units)
+- **Seed enhancements**: Order notes on demo orders, Cyberpunk theme assignment

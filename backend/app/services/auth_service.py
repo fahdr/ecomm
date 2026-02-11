@@ -92,7 +92,12 @@ def decode_token(token: str) -> dict:
     Raises:
         JWTError: If the token is expired, tampered with, or otherwise invalid.
     """
-    return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+    return jwt.decode(
+        token,
+        settings.jwt_secret_key,
+        algorithms=[settings.jwt_algorithm],
+        options={"verify_aud": False},
+    )
 
 
 async def register_user(db: AsyncSession, email: str, password: str) -> User:

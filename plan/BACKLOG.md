@@ -134,12 +134,19 @@ Per-store customer authentication, order history, and wishlists.
 > and operational infrastructure. All Phase 1 features use the core backend (`backend/`) and frontend
 > apps (`dashboard/`, `storefront/`). Phase 2 (Automation & AI) is built after Phase 1 is stable.
 
-**Status:** All Phase 1 features (F8-F30) are implemented with:
+**Status:** All Phase 1 features (F8-F30) are implemented, plus the full Polish Plan (Phases A-G) and Phase 2 Polish (5 phases). The platform is now demo-able end-to-end with premium visual polish.
+
+**Current totals:**
+- **329 backend tests passing** (28+ test files)
+- **187+ e2e tests passing** (24 Playwright spec files — empty state + populated data + seed data + phase 2 polish)
+- **34 dashboard pages** building cleanly
+- **18 storefront pages** building cleanly
+- **13 Alembic migrations**, ~37 DB tables
+- **11 preset themes**, 13 block types, motion animations throughout
 - Backend API endpoints (FastAPI + SQLAlchemy async)
 - Dashboard UI pages (Next.js + Shadcn/ui)
 - Storefront UI components (Next.js + Tailwind)
 - Backend unit/integration tests (pytest + httpx AsyncClient)
-- E2E tests with Playwright (119 tests total — empty state + populated data)
 - Alembic migration for all new database tables
 
 ### Implementation Summary
@@ -184,16 +191,46 @@ During populated-data e2e testing, several classes of frontend bugs were uncover
 
 ### E2E Testing Approach
 
-Tests live in `e2e/tests/` and use Playwright. Each test file covers both:
+Tests live in `e2e/tests/` and use Playwright. Each test file covers:
 - **Empty state**: Verifies pages render correctly with no data (empty state messages, create buttons)
 - **Populated data**: Seeds real data via API calls and verifies pages render all fields correctly
+- **Seed data**: Verifies the demo seed data (Volt Electronics store) is correctly displayed across dashboard and storefront
 
-This dual approach catches bugs that only manifest with real data (Decimal formatting, response unwrapping, field mismatches).
+This triple approach catches bugs that only manifest with real data (Decimal formatting, response unwrapping, field mismatches).
 
 Key test helpers in `e2e/tests/helpers.ts`:
 - `apiPost` / `apiGet` with retry logic for race conditions (retries on 400, 401, 404)
 - `createOrderAPI`, `createRefundAPI`, `createReviewAPI` for seeding test data
 - `createSegmentAPI`, `createCategoryAPI`, etc. for all resource types
+- `seedDatabase()` — runs the seed.ts script and returns the store slug for seed data tests
+
+**E2E test files (171 tests across 23 spec files):**
+
+| File | Covers |
+|------|--------|
+| `dashboard/auth.spec.ts` | User registration, login, redirects |
+| `dashboard/stores.spec.ts` | Store CRUD, store listing |
+| `dashboard/products.spec.ts` | Product CRUD, populated table |
+| `dashboard/orders.spec.ts` | Order listing, detail, status updates |
+| `dashboard/fulfillment.spec.ts` | Fulfillment flow, tracking |
+| `dashboard/discounts.spec.ts` | Discount CRUD, formatted values |
+| `dashboard/categories.spec.ts` | Category CRUD, nested subcategories |
+| `dashboard/suppliers.spec.ts` | Supplier CRUD, linked products |
+| `dashboard/gift-cards.spec.ts` | Gift card CRUD, formatted balances |
+| `dashboard/tax-refunds.spec.ts` | Tax rates + refunds, Decimal formatting |
+| `dashboard/teams-webhooks.spec.ts` | Team invites + webhook config |
+| `dashboard/reviews-analytics.spec.ts` | Reviews + analytics pages |
+| `dashboard/currency-domain.spec.ts` | Currency settings + domain config |
+| `dashboard/advanced-features.spec.ts` | Segments, upsells, A/B tests, bulk ops |
+| `dashboard/themes-email.spec.ts` | Theme settings + email templates |
+| `dashboard/billing.spec.ts` | Billing page, subscription |
+| `dashboard/seed-data.spec.ts` | Seed data verification (24 tests) |
+| `storefront/browse.spec.ts` | Product browsing, homepage |
+| `storefront/cart-checkout.spec.ts` | Cart, checkout, payment |
+| `storefront/categories-search.spec.ts` | Category nav + search |
+| `storefront/customer-accounts.spec.ts` | Customer auth, orders, wishlist |
+| `storefront/policies.spec.ts` | Policy pages |
+| `storefront/seed-data.spec.ts` | Seed data verification (12 tests) |
 
 ---
 
@@ -1142,9 +1179,58 @@ Convert the storefront into a PWA with offline support and install prompt.
 
 ---
 
+### Polish Plan (Phases A-G): Make the Platform Shippable ✅
+**Priority:** Critical | **Estimated effort:** Large
+**Status:** Complete
+
+After Phase 1 features were implemented, a comprehensive polish plan was executed to transform the
+platform from having breadth (30+ API routers) into a fully functional, demo-able product. See
+[POLISH_PLAN.md](POLISH_PLAN.md) for full details.
+
+**Phases completed:**
+- **Phase A: Checkout Flow** — Extended checkout with shipping address, discount codes, tax calculation, gift cards. Multi-section checkout page in storefront.
+- **Phase B: Customer Accounts** — Full customer auth system (register/login/JWT), order history, wishlist, saved addresses. 8 storefront account pages.
+- **Phase C: Dashboard Unified Shell** — Top bar with breadcrumbs + store switcher, dual-mode sidebar (platform/store), consistent layout across all 34 pages.
+- **Phase D: Stub Pages** — All 11 sidebar stubs replaced with working CRUD pages (gift cards, upsells, refunds, segments, A/B tests, email, bulk, fraud, tax, currency, webhooks).
+- **Phase E: Storefront Polish** — Mobile hamburger menu, multi-column footer, policy pages, toast on add-to-cart, stock indicators.
+- **Phase F: Fulfillment & Tracking** — Order tracking fields, dashboard fulfillment workflow (ship → deliver), email notifications on fulfillment events.
+- **Phase G: Seed Data** — Comprehensive seed script (8 products, 6 categories, 4 orders, 12 reviews, customer accounts). 36 e2e seed data tests.
+
+**Bug fixes during polish:**
+- Slug toggling on update (stores, products, categories)
+- Paginated response unwrapping in dashboard pages
+- Decimal string serialization in frontend
+- Seed data idempotency
+
+---
+
+### Phase 2 Polish: Theme Engine v2, Animations & Platform Enhancements ✅
+**Priority:** High | **Estimated effort:** Large
+**Status:** Complete (all 5 phases)
+
+After the Polish Plan (A-G), a second round of enhancements transformed the platform from
+functional MVP to premium-feeling product. See [POLISH_PLAN.md](POLISH_PLAN.md) for full details.
+
+**Phases completed:**
+- **Phase 2.1: Theme Engine v2** — 5 new block types (product carousel, testimonials, countdown, video, trust badges), hero product showcase mode, block config editor, 4 new preset themes (Coastal, Monochrome, Cyberpunk, Terracotta), enhanced typography controls. **11 presets, 13 block types total.**
+- **Phase 2.2: Animation & Motion** — Motion primitives (FadeIn, StaggerChildren, SlideIn, ScaleIn, ScrollReveal), staggered grid animations on all listing pages, micro-interactions (add-to-cart pulse, cart badge bounce), loading skeletons, dashboard animated counters.
+- **Phase 2.3: Storefront Visual** — Product card redesign (New/Sale badges, hover zoom, theme-aware styling), recently viewed products section, enhanced product detail page.
+- **Phase 2.4: Dashboard Enhancements** — Store overview KPI dashboard (4 metric cards, recent orders, quick actions), platform home dashboard (aggregate metrics, store cards), command palette (Cmd+K), notification badges on sidebar, enhanced analytics (customer metrics, order status bar chart).
+- **Phase 2.5: Data & QoL** — CSV export (orders, products, customers), order notes (internal memos), inventory alerts (low-stock warnings), seed script enhancements.
+
+**Key metrics after Phase 2 Polish:**
+- 329 backend tests passing
+- 187+ e2e tests across 24 spec files
+- 34 dashboard pages building cleanly
+- 18 storefront pages building cleanly
+- 13 Alembic migrations, 37+ DB tables
+- 11 preset themes, 13 block types
+
+---
+
 ### Feature 31: Kubernetes Deployment & CI/CD
 **Priority:** Must have (but last) | **Estimated effort:** Large
-**Status:** Not started (next up after Phase 1)
+**Status:** Not started (next up after Polish Plan)
 
 ### What we're building
 Deploy the complete platform to the existing K8s cluster. CI/CD pipeline.

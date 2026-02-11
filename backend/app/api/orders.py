@@ -31,6 +31,7 @@ from app.database import get_db
 from app.models.order import OrderStatus
 from app.models.user import User
 from app.schemas.order import (
+    FulfillOrderRequest,
     OrderResponse,
     PaginatedOrderResponse,
     UpdateOrderStatusRequest,
@@ -81,7 +82,7 @@ async def list_orders(
     pages = math.ceil(total / per_page) if total > 0 else 1
 
     return PaginatedOrderResponse(
-        items=[OrderResponse.model_validate(o) for o in orders],
+        items=[OrderResponse.from_order(o) for o in orders],
         total=total,
         page=page,
         per_page=per_page,
@@ -120,7 +121,7 @@ async def get_order(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
 
-    return OrderResponse.model_validate(order)
+    return OrderResponse.from_order(order)
 
 
 @router.patch("/{order_id}", response_model=OrderResponse)
@@ -149,11 +150,90 @@ async def update_order_status(
     """
     try:
         order = await order_service.update_order_status(
-            db, store_id, current_user.id, order_id, body.status
+            db,
+            store_id,
+            current_user.id,
+            order_id,
+            new_status=body.status,
+            notes=body.notes if body.notes is not None else ...,
         )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
 
-    return OrderResponse.model_validate(order)
+    return OrderResponse.from_order(order)
+
+
+@router.post("/{order_id}/fulfill", response_model=OrderResponse)
+async def fulfill_order(
+    store_id: uuid.UUID,
+    order_id: uuid.UUID,
+    body: FulfillOrderRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> OrderResponse:
+    """Mark an order as shipped with tracking information.
+
+    Transitions a paid order to shipped status and stores the tracking
+    number and carrier.
+
+    Args:
+        store_id: The store's UUID.
+        order_id: The order's UUID.
+        body: Request body with tracking_number and optional carrier.
+        db: Async database session injected by FastAPI.
+        current_user: Authenticated user from JWT.
+
+    Returns:
+        OrderResponse with the updated order data.
+
+    Raises:
+        HTTPException: 404 if not found, 400 if order is not in paid status.
+    """
+    try:
+        order = await order_service.fulfill_order(
+            db, store_id, current_user.id, order_id,
+            body.tracking_number, body.carrier,
+        )
+    except ValueError as e:
+        detail = str(e)
+        code = status.HTTP_400_BAD_REQUEST if "Cannot fulfill" in detail else status.HTTP_404_NOT_FOUND
+        raise HTTPException(status_code=code, detail=detail)
+
+    return OrderResponse.from_order(order)
+
+
+@router.post("/{order_id}/deliver", response_model=OrderResponse)
+async def deliver_order(
+    store_id: uuid.UUID,
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> OrderResponse:
+    """Mark a shipped order as delivered.
+
+    Transitions a shipped order to delivered status.
+
+    Args:
+        store_id: The store's UUID.
+        order_id: The order's UUID.
+        db: Async database session injected by FastAPI.
+        current_user: Authenticated user from JWT.
+
+    Returns:
+        OrderResponse with the updated order data.
+
+    Raises:
+        HTTPException: 404 if not found, 400 if order is not in shipped status.
+    """
+    try:
+        order = await order_service.deliver_order(
+            db, store_id, current_user.id, order_id,
+        )
+    except ValueError as e:
+        detail = str(e)
+        code = status.HTTP_400_BAD_REQUEST if "Cannot deliver" in detail else status.HTTP_404_NOT_FOUND
+        raise HTTPException(status_code=code, detail=detail)
+
+    return OrderResponse.from_order(order)

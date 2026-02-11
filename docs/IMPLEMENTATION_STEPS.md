@@ -1,7 +1,8 @@
 # Implementation Steps
 
+**For Developers & Project Managers:**
 Step-by-step implementation guide for each feature in the dropshipping platform.
-Features are ordered by dependency and must be completed sequentially.
+Features are ordered by dependency and were completed sequentially.
 
 ---
 
@@ -80,23 +81,21 @@ Full CRUD for stores with tenant isolation — users can only access their own s
 1. Created `app/models/store.py` — `Store` model with id (UUID), user_id (FK), name, slug (unique), niche, description, status (enum: active/paused/deleted), created_at, updated_at, plus relationship to User
 2. Created `app/utils/slug.py` — `slugify()` for URL-safe strings + `generate_unique_slug()` with collision resolution (-2, -3, etc.)
 3. Generated and applied Alembic migration for `stores` table (with indexes on slug and user_id)
-4. Fixed `alembic/env.py` — added `import app.models` so all models register on `Base.metadata` for autogenerate
-5. Created `app/schemas/store.py` — CreateStoreRequest, UpdateStoreRequest (partial), StoreResponse
-6. Created `app/services/store_service.py` — create_store, list_stores (excludes deleted), get_store (ownership check), update_store (with slug regen), delete_store (soft-delete)
-7. Created `app/api/stores.py` — store router with POST, GET (list), GET/{id}, PATCH/{id}, DELETE/{id}
-8. Registered store router in `app/main.py`, imported Store in `app/models/__init__.py`
-9. Created `tests/test_stores.py` — 20 tests covering CRUD, slug uniqueness, auth, validation, soft-delete, and tenant isolation (4 cross-user tests)
+4. Created `app/schemas/store.py` — CreateStoreRequest, UpdateStoreRequest (partial), StoreResponse
+5. Created `app/services/store_service.py` — create_store, list_stores (excludes deleted), get_store (ownership check), update_store (with slug regen), delete_store (soft-delete)
+6. Created `app/api/stores.py` — store router with POST, GET (list), GET/{id}, PATCH/{id}, DELETE/{id}
+7. Registered store router in `app/main.py`, imported Store in `app/models/__init__.py`
+8. Created `tests/test_stores.py` — 20 tests covering CRUD, slug uniqueness, auth, validation, soft-delete, and tenant isolation
 
 ### Frontend steps completed
-1. Installed shadcn/ui components: select, textarea, badge, dialog
-2. Built store list page at `dashboard/src/app/stores/page.tsx` — card grid with status badges, empty state, "Create Store" button
-3. Built create store page at `dashboard/src/app/stores/new/page.tsx` — form with name, niche dropdown (11 categories), description textarea
-4. Built store settings page at `dashboard/src/app/stores/[id]/page.tsx` — edit form with all fields, status toggle, delete button with confirmation dialog
-5. Updated dashboard home page with "Stores" nav link and "Go to Stores" CTA button
+1. Built store list page at `dashboard/src/app/stores/page.tsx` — card grid with status badges, empty state, "Create Store" button
+2. Built create store page at `dashboard/src/app/stores/new/page.tsx` — form with name, niche dropdown, description textarea
+3. Built store settings page at `dashboard/src/app/stores/[id]/page.tsx` — edit form with all fields, status toggle, delete button with confirmation dialog
+4. Updated dashboard home page with "Stores" nav link and "Go to Stores" CTA button
 
 ### Verification
-- `pytest` — 36 tests pass (16 auth + 1 health + 20 stores - 1 duplicate = 36)
-- `npm run build` — compiles without errors, all routes detected
+- `pytest` — 36 tests pass
+- `npm run build` — compiles without errors
 - CRUD operations: create → list → get → update → soft-delete all working
 - Tenant isolation: user A cannot see/edit/delete user B's stores
 
@@ -107,30 +106,24 @@ Full CRUD for stores with tenant isolation — users can only access their own s
 **Status:** Complete
 
 ### What was built
-Public-facing storefront that resolves stores by slug and renders store-branded pages with dynamic SEO metadata. No authentication required — stores are accessed via their slug.
+Public-facing storefront that resolves stores by slug and renders store-branded pages with dynamic SEO metadata.
 
 ### Backend steps completed
 1. Created `app/schemas/public.py` — `PublicStoreResponse` schema (excludes `user_id` for security)
 2. Created `app/api/public.py` — public router with `GET /api/v1/public/stores/{slug}` (only returns active stores)
-3. Registered public router in `app/main.py` under `/api/v1` prefix
-4. Created `tests/test_public.py` — 6 tests: slug lookup, user_id exclusion, unknown slug 404, paused store 404, deleted store 404, no auth required
+3. Registered public router in `app/main.py`
+4. Created `tests/test_public.py` — 6 tests
 
 ### Frontend steps completed
-1. Created `storefront/src/lib/types.ts` — TypeScript types mirroring backend public schemas
-2. Created `storefront/src/lib/store.ts` — `resolveSlug()` (query param for local dev, subdomain for prod) + `fetchStore()` API call
-3. Created `storefront/src/middleware.ts` — extracts store slug on every request, forwards via `x-store-slug` header
-4. Created `storefront/src/contexts/store-context.tsx` — `StoreProvider` + `useStore()` hook for client components
-5. Built storefront layout (`storefront/src/app/layout.tsx`) — dynamic header with store name/niche, footer with copyright, `generateMetadata()` for SEO
-6. Built homepage (`storefront/src/app/page.tsx`) — hero section with store name/description/niche badge, product grid placeholder (4 "Coming soon" cards)
-7. Built 404 page (`storefront/src/app/not-found.tsx`) — "Store not found" with explanation text
-8. Dynamic SEO metadata: `<title>` from store name (with template), `<meta description>`, Open Graph tags
+1. Created storefront types, store resolution, middleware, and context
+2. Built storefront layout with dynamic header/footer and SEO metadata
+3. Built homepage with hero section and product grid placeholder
+4. Built 404 page for unknown stores
 
 ### Verification
-- `pytest` — 42 tests pass (16 auth + 1 health + 6 public + 20 stores - 1 = 42)
-- `npm run build` — compiles without errors, routes: `/` (dynamic), `/_not-found`
+- `pytest` — 42 tests pass
+- `npm run build` — compiles without errors
 - Local dev: `localhost:3001?store=my-slug` resolves store and renders branded page
-- Missing/invalid slug: shows 404 "Store not found" page
-- Public API: no auth required, `user_id` never exposed
 
 ---
 
@@ -139,38 +132,21 @@ Public-facing storefront that resolves stores by slug and renders store-branded 
 **Status:** Complete
 
 ### What was built
-Full product CRUD with variants, image upload, pagination, search, and status filtering. Dashboard pages for creating, listing, and editing products. Storefront pages for browsing and viewing product details. Public API endpoints for unauthenticated product access.
+Full product CRUD with variants, image upload, pagination, search, and status filtering. Dashboard and storefront product pages.
 
 ### Backend steps completed
-1. Created `app/models/product.py` — `Product` model (id, store_id FK, title, slug, description, price, compare_at_price, cost, images JSON, status enum, seo_title, seo_description, timestamps) + `ProductVariant` model (id, product_id FK, name, sku, price, inventory_count, timestamps) with UniqueConstraint on (store_id, slug)
-2. Generated and applied Alembic migration for `products` and `product_variants` tables
-3. Created `app/schemas/product.py` — CreateProductRequest, UpdateProductRequest, ProductResponse, VariantRequest, VariantResponse, PaginatedProductResponse
-4. Created `app/services/product_service.py` — CRUD with store ownership verification, store-scoped slug generation, paginated listing with search/filter, variant management (create/replace)
-5. Created `app/api/products.py` — product router with all endpoints (POST, GET list, GET by ID, PATCH, DELETE) + image upload (POST /upload)
-6. Added public product endpoints to `app/api/public.py` — paginated list (active only) + single product detail by slug
-7. Updated `app/schemas/public.py` with PublicProductResponse, PublicVariantResponse, PaginatedPublicProductResponse (excludes cost, store_id)
-8. Registered product router in `app/main.py`
-9. Added `python-multipart` dependency for file upload support
-10. Created `tests/test_products.py` — 24 tests covering CRUD, variants, slug collision, pagination, search, status filter, archived exclusion, auth, tenant isolation, image upload (valid/invalid types), public endpoints (list, detail, cost exclusion, draft 404, unknown store 404, no auth required)
+1. Created `app/models/product.py` — `Product` + `ProductVariant` models
+2. Created schemas, services, and API routes for products
+3. Added public product endpoints (active only, excludes cost)
+4. Created `tests/test_products.py` — 24 tests
 
-### Frontend steps completed (Dashboard)
-1. Added `upload()` method to dashboard API client (`dashboard/src/lib/api.ts`) for multipart file uploads
-2. Built product list page (`dashboard/src/app/stores/[id]/products/page.tsx`) — card grid with search, status filter, pagination
-3. Built product create page (`dashboard/src/app/stores/[id]/products/new/page.tsx`) — form with title, pricing, status, variants, SEO
-4. Built product edit page (`dashboard/src/app/stores/[id]/products/[productId]/page.tsx`) — full editor with image upload, variant management, delete dialog
-5. Added "Manage Products" link to store settings page
-
-### Frontend steps completed (Storefront)
-1. Updated `storefront/src/lib/types.ts` with Product, ProductVariant, PaginatedProducts interfaces
-2. Built product grid component (`storefront/src/components/product-grid.tsx`) — responsive grid with image/title/price cards
-3. Updated homepage (`storefront/src/app/page.tsx`) — replaced placeholder grid with real products from API
-4. Built product listing page (`storefront/src/app/products/page.tsx`) — paginated grid with Previous/Next navigation
-5. Built product detail page (`storefront/src/app/products/[slug]/page.tsx`) — image gallery, pricing, description, variants, dynamic SEO metadata
+### Frontend steps completed
+1. Dashboard: product list, create, edit pages with image upload and variant management
+2. Storefront: product grid, listing page with pagination, detail page with gallery
 
 ### Verification
-- `pytest` — 66 tests pass (16 auth + 1 health + 6 public + 19 stores + 24 products)
-- `npm run build` (dashboard) — compiles without errors, new routes: `/stores/[id]/products`, `/stores/[id]/products/new`, `/stores/[id]/products/[productId]`
-- `npm run build` (storefront) — compiles without errors, new routes: `/products`, `/products/[slug]`
+- `pytest` — 66 tests pass
+- Both frontends build cleanly with new product routes
 
 ---
 
@@ -179,238 +155,374 @@ Full product CRUD with variants, image upload, pagination, search, and status fi
 **Status:** Complete
 
 ### What was built
-Client-side shopping cart with localStorage persistence, Stripe Checkout integration (with mock mode for local dev), order management for store owners, and public checkout/order confirmation endpoints.
+Client-side shopping cart with localStorage persistence, Stripe Checkout integration (with mock mode), order management for store owners.
 
 ### Backend steps completed
-1. Created `app/models/order.py` — `Order` model (id, store_id, customer_email, status enum, total, stripe_session_id, shipping_address, timestamps) + `OrderItem` model (id, order_id, product_id, variant_id, product_title, variant_name, quantity, unit_price) with price/title snapshots at purchase time
-2. Generated and applied Alembic migration for `orders` and `order_items` tables
-3. Created `app/schemas/order.py` — CheckoutItemRequest, CheckoutRequest, CheckoutResponse, OrderItemResponse, OrderResponse, PaginatedOrderResponse, UpdateOrderStatusRequest
-4. Created `app/services/order_service.py` — validate_and_build_order_items (checks active products, stock), create_order_from_checkout, confirm_order (pending→paid + inventory decrement), list_orders (paginated with status filter), get_order, update_order_status
-5. Created `app/services/stripe_service.py` — create_checkout_session (real Stripe or mock mode when no key configured), construct_webhook_event (signature verification)
-6. Added to `app/api/public.py` — POST checkout endpoint (validates cart, creates order, returns Stripe URL), GET order by ID (for confirmation page)
-7. Created `app/api/webhooks.py` — POST /webhooks/stripe (verifies signature, handles checkout.session.completed)
-8. Created `app/api/orders.py` — GET list (paginated, filterable), GET detail, PATCH status update (all auth-required, store-scoped)
-9. Registered orders and webhooks routers in `app/main.py`
-10. Added Stripe config to `app/config.py` (stripe_secret_key, stripe_webhook_secret, success/cancel URLs)
-11. Added `stripe>=8.0.0` to pyproject.toml dependencies
-12. Created `tests/test_orders.py` — 21 tests covering checkout (valid, with variant, insufficient stock, invalid product, draft rejected, unknown store, empty cart, no auth, multiple items), order list (empty, after checkout, status filter), order detail, not found, status update, auth required, tenant isolation, public order lookup, total calculation, variant price capture
+1. Created `app/models/order.py` — `Order` + `OrderItem` models with price/title snapshots
+2. Created order service with checkout validation, status transitions, inventory management
+3. Created Stripe service with mock mode when no API key configured
+4. Created webhook handler for `checkout.session.completed`
+5. Created `tests/test_orders.py` — 21 tests
 
-### Frontend steps completed (Storefront)
-1. Created `storefront/src/contexts/cart-context.tsx` — CartProvider with localStorage persistence, add/remove/updateQuantity/clearCart, cartCount and cartTotal computed values
-2. Created `storefront/src/components/cart-badge.tsx` — Cart icon with item count badge for header
-3. Created `storefront/src/components/add-to-cart.tsx` — Variant selector, quantity controls, Add to Cart button with "Added!" feedback
-4. Updated `storefront/src/app/products/[slug]/page.tsx` — Replaced static variants display with interactive AddToCart component
-5. Created `storefront/src/app/cart/page.tsx` — Cart page with item list, quantity controls, remove buttons, email input, checkout button
-6. Created `storefront/src/app/checkout/success/page.tsx` — Order confirmation page with success icon and continue shopping links
-7. Updated `storefront/src/app/layout.tsx` — Added CartProvider, updated header with Products nav link and CartBadge
-
-### Frontend steps completed (Dashboard)
-1. Built orders list page (`dashboard/src/app/stores/[id]/orders/page.tsx`) — Card list with status badges, status filter, pagination
-2. Built order detail page (`dashboard/src/app/stores/[id]/orders/[orderId]/page.tsx`) — Full order info, items, status update dropdown
-3. Added "View Orders" link to store settings page
+### Frontend steps completed
+1. Storefront: CartProvider, cart page, add-to-cart component, checkout success page
+2. Dashboard: order list and detail pages with status management
 
 ### Verification
-- `pytest` — 87 tests pass (15 auth + 1 health + 21 orders + 24 products + 6 public + 20 stores)
-- `npm run build` (storefront) — compiles without errors, new routes: `/cart`, `/checkout/success`
-- `npm run build` (dashboard) — compiles without errors, new routes: `/stores/[id]/orders`, `/stores/[id]/orders/[orderId]`
+- `pytest` — 87 tests pass
+- Cart → checkout → order confirmation flow works end-to-end
 
 ---
 
 ## Feature 7: Stripe Subscriptions (SaaS Billing)
 
-**Status:** Not started
+**Status:** Complete
 
-### Backend steps
-1. Create `app/models/subscription.py` — `Subscription` model: id, user_id, stripe_subscription_id, stripe_customer_id, plan (starter/growth/pro), status, current_period_start, current_period_end, trial_end
-2. Generate and apply Alembic migration
-3. Extend `app/services/stripe_service.py`:
-   - `create_subscription_checkout(user, plan)` — Stripe Checkout in subscription mode
-   - `create_portal_session(user)` — Stripe Customer Portal for self-service
-   - `sync_subscription(stripe_event)` — update local DB from webhook
-4. Add webhook handlers in `app/api/webhooks.py` for: `customer.subscription.created`, `.updated`, `.deleted`, `invoice.payment_failed`
-5. Create plan enforcement middleware (`app/api/deps.py`):
-   - `get_current_plan(user)` — returns plan limits (max stores, max products)
-   - Check limits before store/product creation
-6. Create `app/api/subscriptions.py`:
-   - `POST /api/v1/subscriptions/checkout` — create subscription checkout
-   - `POST /api/v1/subscriptions/portal` — create portal session
-   - `GET /api/v1/subscriptions/current` — get active subscription
-7. Write `tests/test_subscriptions.py`
+### What was built
+SaaS billing with three subscription tiers (Starter/Growth/Pro), plan limit enforcement, and customer portal integration.
 
-### Frontend steps
-1. Build pricing page (`dashboard/src/app/pricing/page.tsx`) — 3-tier comparison table
-2. Build billing page (`dashboard/src/app/settings/billing/page.tsx`) — current plan, usage, manage link
-3. Add plan limit enforcement in UI — disable "Create Store" if at limit, show upgrade prompt
-4. Integrate Stripe Customer Portal redirect from billing page
+### Steps completed
+1. Created `app/models/subscription.py` — Subscription model with Stripe integration
+2. Extended Stripe service with subscription checkout and portal sessions
+3. Added webhook handlers for subscription lifecycle events
+4. Created plan enforcement middleware in `app/api/deps.py`
+5. Created subscription API endpoints
+6. Dashboard: pricing page (3-tier comparison), billing page (current plan, portal link)
+7. Plan limit enforcement in UI (disable store/product creation at limits)
 
 ---
 
-## Feature 8: Product Research Automation
+## Phase 1 Extended: Features 8-30
 
-**Status:** Not started
+**Status:** All Complete
 
-### Backend steps
-1. Create `app/models/watchlist_item.py` — `WatchlistItem` model: id, store_id, source, source_url, title, image_url, price, score, ai_analysis, status (new/imported/dismissed), found_at
-2. Generate and apply Alembic migration
-3. Create `app/services/research/aliexpress.py` — AliExpress affiliate API client: search by niche keywords, parse results
-4. Create `app/services/research/reddit.py` — Reddit via PRAW: search trending product mentions in relevant subreddits
-5. Create `app/services/research/scoring.py` — weighted scoring algorithm: trend velocity, price margin potential, competition level, social mentions
-6. Create `app/services/ai_service.py` — Claude API integration:
-   - `analyze_products(products)` — send top 20 to Claude for market analysis, demand prediction, risk assessment
-7. Create `app/tasks/research_tasks.py`:
-   - `daily_product_research(store_id)` — orchestrate: fetch from sources → score → AI analysis → save to watchlist
-8. Configure Celery Beat schedule in `celery_app.py` — run daily for each active store
-9. Create `app/api/research.py`:
-   - `GET /api/v1/stores/{store_id}/research` — list research results (paginated, filterable)
-   - `POST /api/v1/stores/{store_id}/research/{item_id}/dismiss` — mark as dismissed
-10. Write `tests/test_research.py` — test scoring algorithm, task execution (mock external APIs)
+All 23 additional features were implemented in a single comprehensive phase. Each feature follows the same pattern: model → schema → service → API router → tests → dashboard page → storefront integration (where applicable).
 
-### Frontend steps
-1. Build research results page (`dashboard/src/app/stores/[id]/research/page.tsx`) — table with scores, AI reasoning, source link, import button
-2. Build watchlist page (`dashboard/src/app/stores/[id]/watchlist/page.tsx`) — saved/bookmarked items
-3. Build research settings (`dashboard/src/app/stores/[id]/settings/research/page.tsx`) — niche keywords, frequency
+### Features implemented
 
----
-
-## Feature 9: Automated Product Import + AI Content
-
-**Status:** Not started
-
-### Backend steps
-1. Create `app/services/import_service.py` — orchestrator:
-   - Download images from source URL
-   - Call AI for title, description, SEO metadata
-   - Calculate pricing (markup %, psychological pricing)
-   - Create product as draft
-2. Create `app/services/ai_content_service.py` — Claude API prompts:
-   - `generate_product_title(source_title, niche)` — SEO-optimized title
-   - `generate_product_description(source_data)` — compelling product copy
-   - `generate_seo_metadata(product)` — meta title, meta description, keywords
-3. Create `app/services/image_service.py` — download, optimize (WebP conversion, resize), save to storage
-4. Create `app/utils/pricing.py` — markup calculation, psychological pricing (e.g. $29.97 → $29.99)
-5. Create `app/tasks/import_tasks.py`:
-   - `import_product(store_id, watchlist_item_id)` — Celery chain: download → AI content → optimize images → create draft product
-6. Create API endpoint: `POST /api/v1/stores/{store_id}/products/import` — accepts watchlist_item_id, kicks off Celery task
-7. Write `tests/test_import.py`
-
-### Frontend steps
-1. Add "Import" button to research results table — triggers import API call
-2. Build import progress indicator (poll task status or use WebSocket)
-3. Build review page — show AI-generated draft, allow edits before publishing
-
----
-
-## Feature 10: SEO Automation
-
-**Status:** Not started
-
-### Backend steps
-1. Create `app/models/blog_post.py` — `BlogPost` model: id, store_id, title, slug, content, seo_title, seo_description, status (draft/published), published_at
-2. Generate and apply Alembic migration
-3. Create `app/services/seo_service.py`:
-   - `generate_sitemap(store)` — build XML sitemap from products + blog posts
-   - `generate_schema_markup(product)` — JSON-LD Product schema
-   - `generate_blog_post(store, keyword)` — Claude API for SEO blog content
-4. Create `app/tasks/seo_tasks.py`:
-   - `weekly_seo_optimization(store_id)` — generate blog posts for keyword gaps
-5. Create `app/api/public.py` additions:
-   - `GET /api/v1/public/stores/{slug}/blog` — list published posts
-   - `GET /api/v1/public/stores/{slug}/blog/{post_slug}` — single post
-6. Write `tests/test_seo.py`
-
-### Frontend steps (Storefront)
-1. Add `sitemap.xml` route (`storefront/src/app/sitemap.ts`)
-2. Add JSON-LD script tags to product detail pages
-3. Build blog listing page (`storefront/src/app/blog/page.tsx`)
-4. Build blog detail page (`storefront/src/app/blog/[slug]/page.tsx`)
-
-### Frontend steps (Dashboard)
-1. Build SEO overview page (`dashboard/src/app/stores/[id]/seo/page.tsx`) — scores, suggestions, blog post list
-
----
-
-## Feature 11: Email Automation
-
-**Status:** Not started
-
-### Backend steps
-1. Create `app/models/email_flow.py` — `EmailFlow` model: id, store_id, trigger (welcome/abandoned_cart/post_purchase), enabled, delays (JSON), template_id
-2. Create `app/models/email_event.py` — `EmailEvent` model: id, flow_id, recipient_email, status (sent/failed/opened), sent_at
-3. Generate and apply Alembic migration
-4. Create `app/services/email_service.py` — SendGrid SDK integration:
-   - `send_email(to, subject, template, context)` — render Jinja2 template, send via SendGrid
-5. Create email templates in `backend/templates/` — welcome, abandoned cart (1hr, 24hr, 72hr), order confirmation, daily research report
-6. Create `app/tasks/email_tasks.py`:
-   - `send_welcome_email(customer_email, store_id)`
-   - `check_abandoned_carts(store_id)` — find carts older than thresholds, send reminders
-   - `send_order_confirmation(order_id)`
-   - `send_daily_research_report(user_id)`
-7. Create `app/api/email_flows.py` — CRUD for email flow configuration
-8. Write `tests/test_email.py`
-
-### Frontend steps
-1. Build email flow configuration page (`dashboard/src/app/stores/[id]/settings/email/page.tsx`) — toggle flows on/off, set delays
-
----
-
-## Feature 12: Analytics Dashboard
-
-**Status:** Not started
-
-### Backend steps
-1. Create `app/services/analytics_service.py` — aggregate queries:
-   - `get_revenue_over_time(store_id, date_range)` — daily/weekly revenue
-   - `get_order_stats(store_id, date_range)` — count, average value
-   - `get_product_performance(store_id, date_range)` — views, orders, conversion rate per product
-   - `get_visitor_stats(store_id, date_range)` — page views over time
-2. Add Redis caching for expensive queries (TTL: 5 minutes)
-3. Create `app/api/analytics.py`:
-   - `GET /api/v1/stores/{store_id}/analytics/overview` — revenue, orders, visitors summary
-   - `GET /api/v1/stores/{store_id}/analytics/products` — product performance table
-   - `GET /api/v1/stores/{store_id}/analytics/revenue` — revenue chart data
-4. Create event tracking endpoint: `POST /api/v1/public/stores/{slug}/events` — track page_view, add_to_cart, purchase
-5. Write `tests/test_analytics.py`
-
-### Frontend steps (Storefront)
-1. Add event tracking calls on: page load (page_view), add to cart button (add_to_cart), checkout success (purchase)
-
-### Frontend steps (Dashboard)
-1. Install Recharts: `npm install recharts`
-2. Build analytics overview page (`dashboard/src/app/stores/[id]/analytics/page.tsx`) — summary cards + revenue line chart
-3. Build product performance table component
-4. Build date range picker component (7d, 30d, 90d, custom)
-
----
-
-## Feature 13: Kubernetes Deployment & CI/CD
-
-**Status:** Not started
-
-### Infrastructure steps
-1. Create production Dockerfiles (multi-stage builds):
-   - `backend/Dockerfile` — Python 3.12 slim, pip install, uvicorn
-   - `dashboard/Dockerfile` — Node 20 alpine, npm build, standalone output
-   - `storefront/Dockerfile` — Node 20 alpine, npm build, standalone output
-2. Create `k8s/base/` — namespace (`dropshipping`), secrets, configmaps
-3. Create `k8s/base/postgres.yaml` — StatefulSet + PVC + Service (or connect to managed DB)
-4. Create `k8s/base/redis.yaml` — Deployment + Service
-5. Create `k8s/backend/` — Deployment (3 replicas), Service (ClusterIP), Ingress (`api.platform.com`)
-6. Create `k8s/celery/worker-deployment.yaml` — Deployment (2 replicas)
-7. Create `k8s/celery/beat-deployment.yaml` — Deployment (1 replica, singleton)
-8. Create `k8s/celery/flower-deployment.yaml` — Deployment + Ingress
-9. Create `k8s/dashboard/` — Deployment (2 replicas), Service, Ingress (`dashboard.platform.com`)
-10. Create `k8s/storefront/` — Deployment (2 replicas), Service, Ingress with wildcard subdomain (`*.platform.com`)
-11. Create HPA for backend + storefront (min 2, max 10, CPU target 70%)
-12. Create `k8s/kustomization.yaml` — ties all resources together
-13. Set up cert-manager + Let's Encrypt for TLS
-14. Create `.github/workflows/backend.yml` — on push to main: run pytest → build Docker image → push to registry → kubectl apply
-15. Create `.github/workflows/dashboard.yml` — build → push → deploy
-16. Create `.github/workflows/storefront.yml` — build → push → deploy
+| # | Feature | Key Files |
+|---|---------|-----------|
+| 8 | Categories | `models/category.py`, `services/category_service.py`, `api/categories.py` |
+| 9 | Reviews & Ratings | `models/review.py`, `services/review_service.py`, `api/reviews.py` |
+| 10 | Analytics | `services/analytics_service.py`, `api/analytics.py` |
+| 11 | Discounts & Coupons | `models/discount.py`, `services/discount_service.py`, `api/discounts.py` |
+| 12 | Gift Cards | `models/gift_card.py`, `services/gift_card_service.py`, `api/gift_cards.py` |
+| 13 | Theme System | `models/theme.py`, `services/theme_service.py`, `api/themes.py`, `constants/themes.py` |
+| 14 | Customer Accounts | `models/customer.py`, `services/customer_service.py`, `api/customer_auth.py` |
+| 15 | Store Themes (Full) | Theme presets, block system, CSS variable generation |
+| 16 | Refunds | `models/refund.py`, `services/refund_service.py`, `api/refunds.py` |
+| 17 | Tax Configuration | `models/tax.py`, `services/tax_service.py`, `api/tax.py` |
+| 18 | Currency Settings | `services/currency_service.py`, `api/currency.py` |
+| 19 | Custom Domains | `models/domain.py`, `services/domain_service.py`, `api/domains.py` |
+| 20 | Team Management | `models/team.py`, `services/team_service.py`, `api/teams.py` |
+| 21 | Webhooks | `models/webhook.py`, `services/webhook_service.py`, `api/store_webhooks.py` |
+| 22 | A/B Tests | `models/ab_test.py`, `services/ab_test_service.py`, `api/ab_tests.py` |
+| 23 | Customer Segments | `models/segment.py`, `services/segment_service.py`, `api/segments.py` |
+| 24 | Supplier Management | `models/supplier.py`, `services/supplier_service.py`, `api/suppliers.py` |
+| 25 | Bulk Operations | `services/bulk_service.py`, `api/bulk.py` |
+| 26 | Fraud Detection | `models/fraud.py`, `services/fraud_service.py`, `api/fraud.py` |
+| 27 | Email Templates | `services/email_service.py` |
+| 28 | Search | `services/search_service.py`, `api/search.py` |
+| 29 | Notifications | `models/notification.py`, `services/notification_service.py`, `api/notifications.py` |
+| 30 | Upsells | `models/upsell.py`, `services/upsell_service.py`, `api/upsells.py` |
 
 ### Verification
-- All pods running in `dropshipping` namespace
-- Backend accessible at `api.platform.com`
-- Dashboard accessible at `dashboard.platform.com`
-- Storefront accessible at `*.platform.com`
-- TLS certificates issued
-- CI/CD deploys on push to main
+- `pytest` — 193 backend tests pass across 28 test files
+- Dashboard builds cleanly with 34 pages
+- Storefront builds cleanly with 18 pages
+
+---
+
+## Polish Plan (Phases A-G)
+
+**Status:** All Complete
+
+### Phase A: Order Enhancements
+
+**What was built:** Full order fulfillment lifecycle with tracking.
+
+1. Added `tracking_number`, `carrier`, `shipped_at`, `delivered_at` fields to Order model
+2. New Alembic migration for order tracking fields
+3. Created `POST /stores/{id}/orders/{orderId}/fulfill` endpoint
+4. Updated order detail page with fulfillment UI (tracking number input, ship/deliver buttons)
+5. Added shipping address display on order detail
+6. Status transitions: pending → paid → shipped → delivered with validation
+
+### Phase B: Customer Accounts
+
+**What was built:** Full customer authentication and account management for storefronts.
+
+1. Created `app/api/customer_auth.py` — register, login, me endpoints with customer-specific JWT
+2. Created `app/api/customer_orders.py` — customer order history
+3. Created `app/api/customer_addresses.py` — address book CRUD
+4. Created `app/api/customer_wishlist.py` — wishlist management
+5. Created `app/services/customer_service.py` — customer business logic
+6. Storefront: account pages (login, register, orders, wishlist, addresses, settings)
+7. Storefront: auth context with customer token management
+8. Created `tests/test_customers.py`
+
+### Phase C: Storefront Improvements
+
+**What was built:** Search autocomplete, policies pages, mobile menu.
+
+1. Created `storefront/src/components/header-search.tsx` — search autocomplete with product thumbnails
+2. Created `storefront/src/app/policies/[slug]/page.tsx` — legal policy pages
+3. Created `storefront/src/components/mobile-menu.tsx` — responsive mobile navigation
+4. Updated storefront layout with mobile menu and search integration
+
+### Phase D: Dashboard UI Overhaul
+
+**What was built:** Professional dashboard shell with sidebar, top bar, and consistent layout.
+
+1. Created `dashboard/src/components/sidebar.tsx` — collapsible sidebar with platform/store modes, 5 nav groups, active state, badges
+2. Created `dashboard/src/components/top-bar.tsx` — top navigation bar
+3. Created `dashboard/src/components/dashboard-shell.tsx` — shell wrapper combining sidebar + top bar
+4. Created `dashboard/src/components/authenticated-layout.tsx` — auth guard HOC
+5. Implemented OKLCH design system: teal primary, amber accent, Bricolage Grotesque + Instrument Sans + IBM Plex Mono fonts
+6. Updated all 34 dashboard pages to use consistent shell layout
+
+### Phase E: Store Improvements
+
+**What was built:** Store context and navigation improvements.
+
+1. Created `dashboard/src/contexts/store-context.tsx` — StoreProvider for store-scoped pages
+2. Added breadcrumb navigation throughout store pages
+
+### Phase F: Seed Data
+
+**What was built:** Comprehensive demo data for the Volt Electronics store.
+
+1. Created `scripts/seed.ts` — TypeScript seed script
+2. Seeds: user, store, categories, products with variants, orders, reviews, themes
+3. Idempotent execution (checks for existing records)
+
+### Phase G: E2E Test Coverage
+
+**What was built:** Comprehensive Playwright test suite.
+
+1. Created `e2e/tests/helpers.ts` — shared test utilities
+2. Created 23 spec files covering all major features
+3. 171 e2e tests passing across dashboard and storefront
+
+---
+
+## Phase 2 Polish (Phases 1-5)
+
+**Status:** All Complete
+
+### Phase 2.1: Theme Engine v2
+
+**What was built:** 5 new block types, hero product showcase, block config editor, 4 new preset themes.
+
+#### New Block Types
+1. Created `storefront/src/components/blocks/product-carousel.tsx` — horizontal scroll with snap, auto-advance, dots navigation
+2. Created `storefront/src/components/blocks/testimonials.tsx` — card grid or animated slider with customer quotes
+3. Created `storefront/src/components/blocks/countdown-timer.tsx` — live countdown (days/hours/min/sec), client component
+4. Created `storefront/src/components/blocks/video-banner.tsx` — responsive YouTube/Vimeo embed with overlay text
+5. Created `storefront/src/components/blocks/trust-badges.tsx` — icon grid (Truck, Shield, RotateCcw Lucide icons)
+6. Updated `storefront/src/components/blocks/block-renderer.tsx` — registered all 5 new components in BLOCK_MAP
+7. Updated `backend/app/constants/themes.py` — added 5 entries to BLOCK_TYPES with config schemas
+
+#### Hero Banner Enhancement
+8. Modified `storefront/src/components/blocks/hero-banner.tsx`:
+   - Added `bg_type: "product_showcase"` mode
+   - Featured product display with images, names, prices, "Shop Now" CTA
+   - Overlay styles: gradient, blur, dark, none
+   - Text position: left, center, right
+   - Height options: sm, md, lg, full
+
+#### Block Config Editor
+9. Modified `dashboard/src/app/stores/[id]/themes/[themeId]/page.tsx`:
+   - Replaced toggle list with expandable config panels per block
+   - Each block type gets a specific config form (title, colors, product selection, layout, etc.)
+   - "Add Block" button with block type picker
+   - "Remove Block" with confirmation
+   - Color picker: native `<input type="color">` + hex input
+
+#### New Preset Themes
+10. Added to `backend/app/constants/themes.py`:
+    - **Coastal** — Ocean Blue (#1e6091), Josefin Sans, airy beach aesthetic
+    - **Monochrome** — Black (#111111), DM Serif Display, minimal editorial
+    - **Cyberpunk** — Electric Purple (#7c3aed), neon green accent, futuristic
+    - **Terracotta** — Terracotta (#c2703e), Bitter font, earthy warm
+
+#### Enhanced Typography
+11. Added typography controls to theme config:
+    - Font weight dropdown (300-700) for heading and body
+    - Letter spacing: tight / normal / wide
+    - Line height: compact / normal / relaxed
+12. Updated `storefront/src/lib/theme-utils.ts` with new CSS variables
+
+### Phase 2.2: Animation & Motion System
+
+**What was built:** Motion primitives, page animations, micro-interactions, loading skeletons.
+
+#### Motion Primitives
+1. Created `storefront/src/components/motion-primitives.tsx`:
+   - `FadeIn` — opacity 0→1 + translateY(20px→0), configurable delay
+   - `StaggerChildren` — wraps children with staggered delays (50-80ms each)
+   - `SlideIn` — slide from left/right/bottom with configurable distance
+   - `ScaleIn` — scale 0.95→1 with opacity
+   - `ScrollReveal` — triggers animation when element enters viewport (IntersectionObserver + motion)
+
+#### Page Animations
+2. Modified storefront pages to use motion primitives:
+   - Homepage: `FadeIn` on each block with stagger
+   - Product listing: `StaggerChildren` on product grid cards
+   - Product detail: image `ScaleIn`, details `SlideIn`, reviews `ScrollReveal`
+   - Categories: `StaggerChildren` on grid
+   - Cart: `FadeIn` on items
+   - Checkout success: celebration animation + `FadeIn`
+
+#### Micro-Interactions
+3. Modified `storefront/src/components/add-to-cart.tsx`:
+   - Button: scale pulse on click (0.95→1.05→1), success checkmark animation
+   - Cart badge: bounce animation on count change
+4. Modified `storefront/src/components/mobile-menu.tsx`:
+   - Spring-based physics for drawer animation
+   - Staggered nav item entrance
+
+#### Dashboard Motion
+5. Created `dashboard/src/components/motion-wrappers.tsx`:
+   - FadeIn and StaggerChildren for dashboard pages
+   - Animated counter for KPI cards (count up from 0)
+6. Applied staggered entrances to platform home, store overview, analytics pages
+
+### Phase 2.3: Storefront Visual Upgrade
+
+**What was built:** Product badges, recently viewed, enhanced product cards.
+
+1. Enhanced product cards with theme-aware styling:
+   - "New" badge for products created within 7 days (theme accent color)
+   - "Sale" badge when `compare_at_price` exists
+   - Image hover zoom (scale 1.05) with overflow-hidden
+   - Price styled with theme primary color
+
+2. Created `storefront/src/components/recently-viewed.tsx`:
+   - Stores last 8 viewed product slugs in localStorage
+   - Horizontal scroll row below product detail
+   - Fetches product data from public API
+
+3. Created `storefront/src/components/animated-product-grid.tsx`:
+   - StaggerChildren wrapper around product grid
+   - Consistent animation across all product listing pages
+
+### Phase 2.4: Dashboard Enhancements
+
+**What was built:** KPI dashboards, command palette, notification badges, enhanced analytics.
+
+#### Store Overview KPI Dashboard
+1. Rewrote `dashboard/src/app/stores/[id]/page.tsx`:
+   - 4 KPI metric cards: Total Revenue, Total Orders, Total Products, Conversion Rate
+   - Animated count-up values
+   - Recent orders table (last 5 orders with status badges)
+   - Quick actions: "Add Product", "View Storefront", "Manage Theme"
+   - Low-stock inventory alerts integration
+
+#### Platform Home Dashboard
+2. Rewrote `dashboard/src/app/page.tsx`:
+   - Aggregate metrics across all stores
+   - Store cards with mini KPI row per store
+   - Staggered card entrance animation
+
+#### Command Palette
+3. Created `dashboard/src/components/command-palette.tsx`:
+   - Trigger: `Ctrl+K` / `Cmd+K`
+   - Modal with search input
+   - Sections: Pages, Actions, Recent
+   - Fuzzy search filtering
+   - Keyboard navigation (up/down, enter)
+   - Escape to close (handler on input `onKeyDown`)
+4. Modified `dashboard/src/components/dashboard-shell.tsx`:
+   - Added global keyboard listener for `Ctrl+K`
+   - Rendered `<CommandPalette />` at shell level
+
+#### Notification Badges
+5. Modified `dashboard/src/components/sidebar.tsx`:
+   - Fetch unread notification count on mount
+   - Red badge bubble on "Notifications" nav item
+   - Pending order count badge on "Orders" nav item
+
+#### Enhanced Analytics
+6. Modified `dashboard/src/app/stores/[id]/analytics/page.tsx`:
+   - Customer metrics section
+   - Animated count-up on metric cards
+   - Enhanced chart visualizations
+
+### Phase 2.5: Data & Quality-of-Life Features
+
+**What was built:** CSV export, order notes, inventory alerts, seed script updates.
+
+#### CSV Export
+1. Created `backend/app/services/export_service.py` — CSV generation using Python `csv` module, streaming response
+2. Created `backend/app/api/exports.py` — 3 export endpoints (orders, products, customers)
+3. Added "Export CSV" button to dashboard orders and products list pages
+
+#### Order Notes
+4. Added `notes: Text | None` field to Order model
+5. New Alembic migration for order notes field
+6. Updated order schemas with `notes` field
+7. Modified order detail page with "Internal Notes" textarea (auto-save on blur, "Saved" confirmation)
+
+#### Inventory Alerts
+8. Created `dashboard/src/components/inventory-alerts.tsx`:
+   - Fetches products with `inventory_count < 5`
+   - Renders warning cards: "Low stock: {product} — only {n} left"
+   - Integrated into store overview page
+
+#### Seed Script Updates
+9. Updated `scripts/seed.ts`:
+   - Added demo data for new block types (testimonials, countdown, trust badges)
+   - Added low-stock products for inventory alert demos
+   - Added order notes to some demo orders
+
+### Phase 2 Polish E2E Tests
+10. Created `e2e/tests/dashboard/phase2-polish.spec.ts` — 14 tests covering:
+    - Platform Home Dashboard (2 tests: store cards, aggregate metrics)
+    - Store Overview KPI Dashboard (3 tests: KPI cards, recent orders, quick actions)
+    - Order Notes (2 tests: internal notes display, auto-save persistence)
+    - CSV Export (2 tests: orders page button, products page button)
+    - Command Palette (3 tests: Ctrl+K open, navigation options, Escape close)
+    - Inventory Alerts (2 tests: low stock display, no alerts for sufficient stock)
+
+### Phase 2 Polish Verification
+- `python -m pytest tests/ -x` — 329 backend tests pass
+- `npm run build` (dashboard) — 34 pages compile cleanly
+- `npm run build` (storefront) — 18 pages compile cleanly
+- `npx playwright test` — 187+ e2e tests pass (24 spec files)
+
+---
+
+## Summary of Platform State
+
+### Architecture Metrics
+
+| Component | Count |
+|-----------|-------|
+| Backend API routers | 36 |
+| Database models | 22 |
+| Database tables | ~37 |
+| Service files | 30 |
+| Schema files | 27 |
+| Alembic migrations | 13 |
+| Backend tests | 329+ (29 files) |
+| E2E tests | 187+ (24 spec files) |
+| Dashboard pages | 34 |
+| Storefront pages | 18 |
+| Dashboard components | 10 |
+| Storefront components | 13 |
+| Block types | 13 |
+| Preset themes | 11 |
+
+### Next Phase: Automation & AI (A1-A8)
+
+The next phase will be built in a separate `automation/` service directory with its own FastAPI, Celery, and Alembic setup. It communicates with the backend via HTTP API only (no shared imports). Features planned:
+
+- A1: Product Research Automation
+- A2: AI-Powered Product Import
+- A3: SEO Automation
+- A4: Email Marketing
+- A5: Competitor Monitoring
+- A6: Social Media Automation
+- A7: Ad Campaign Management
+- A8: AI Customer Chatbot
