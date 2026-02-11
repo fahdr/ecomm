@@ -51,6 +51,15 @@ from app.api.bulk import router as bulk_router
 from app.api.currency import router as currency_router
 from app.api.themes import router as themes_router, meta_router as themes_meta_router
 
+# --- Data exports ---
+from app.api.exports import router as exports_router
+
+# --- Customer account routers (public storefront auth) ---
+from app.api.customer_auth import router as customer_auth_router
+from app.api.customer_orders import router as customer_orders_router
+from app.api.customer_wishlist import router as customer_wishlist_router
+from app.api.customer_addresses import router as customer_addresses_router
+
 from app.config import settings
 from app.constants.plans import init_price_ids
 
@@ -108,6 +117,15 @@ app.include_router(currency_router, prefix="/api/v1")
 # --- Themes ---
 app.include_router(themes_router, prefix="/api/v1")
 app.include_router(themes_meta_router, prefix="/api/v1")
+
+# --- Data exports ---
+app.include_router(exports_router, prefix="/api/v1")
+
+# --- Customer accounts (public storefront auth) ---
+app.include_router(customer_auth_router, prefix="/api/v1")
+app.include_router(customer_orders_router, prefix="/api/v1")
+app.include_router(customer_wishlist_router, prefix="/api/v1")
+app.include_router(customer_addresses_router, prefix="/api/v1")
 
 # Inject Stripe Price IDs into plan constants at startup.
 init_price_ids(

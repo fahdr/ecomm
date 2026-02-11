@@ -34,8 +34,11 @@ import { CartProvider } from "@/contexts/cart-context";
 import { CartBadge } from "@/components/cart-badge";
 import { HeaderSearch } from "@/components/header-search";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AccountLink } from "@/components/account-link";
+import { MobileMenu } from "@/components/mobile-menu";
 import { buildGoogleFontsUrl, buildThemeCssVars } from "@/lib/theme-utils";
 import { ThemeProvider } from "next-themes";
+import { CustomerAuthProvider } from "@/contexts/auth-context";
 
 /**
  * Generate dynamic metadata based on the resolved store.
@@ -136,9 +139,11 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <StoreProvider store={store}>
             <CartProvider>
-              {store && <StoreHeader store={store} theme={theme} />}
-              <main className="flex-1">{children}</main>
-              {store && <StoreFooter store={store} />}
+              <CustomerAuthProvider>
+                {store && <StoreHeader store={store} theme={theme} />}
+                <main className="flex-1">{children}</main>
+                {store && <StoreFooter store={store} />}
+              </CustomerAuthProvider>
             </CartProvider>
           </StoreProvider>
         </ThemeProvider>
@@ -169,7 +174,8 @@ function StoreHeader({
     <header className="border-b border-theme bg-theme-surface/80 backdrop-blur-sm sticky top-0 z-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <MobileMenu storeName={store.name} />
             <Link href="/" className="flex items-center gap-3">
               {theme?.logo_url ? (
                 <img
@@ -201,6 +207,7 @@ function StoreHeader({
           <div className="flex items-center gap-3">
             <HeaderSearch />
             <ThemeToggle />
+            <AccountLink />
             <CartBadge />
           </div>
         </div>
@@ -210,21 +217,102 @@ function StoreHeader({
 }
 
 /**
- * Store footer component with theme-aware styling.
+ * Store footer component with multi-column navigation and theme-aware styling.
+ *
+ * Four-column layout on desktop, two on tablet, stacked on mobile.
+ * Includes shop links, customer service pages, account links, and about pages.
  *
  * @param props - Component props.
  * @param props.store - The resolved store data.
- * @returns A footer element with store information.
+ * @returns A footer element with navigation columns and copyright.
  */
 function StoreFooter({ store }: { store: Store }) {
   return (
-    <footer className="border-t border-theme py-8 bg-theme-surface">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center gap-2 text-sm text-theme-muted">
-          <p>
-            &copy; {new Date().getFullYear()} {store.name}. All rights
-            reserved.
-          </p>
+    <footer className="border-t border-theme bg-theme-surface">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Shop */}
+          <div>
+            <h3 className="text-sm font-heading font-semibold mb-3">Shop</h3>
+            <ul className="space-y-2 text-sm text-theme-muted">
+              <li>
+                <Link href="/products" className="hover:text-theme-primary transition-colors">
+                  All Products
+                </Link>
+              </li>
+              <li>
+                <Link href="/categories" className="hover:text-theme-primary transition-colors">
+                  Categories
+                </Link>
+              </li>
+              <li>
+                <Link href="/search" className="hover:text-theme-primary transition-colors">
+                  Search
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Customer Service */}
+          <div>
+            <h3 className="text-sm font-heading font-semibold mb-3">Customer Service</h3>
+            <ul className="space-y-2 text-sm text-theme-muted">
+              <li>
+                <Link href="/policies/shipping" className="hover:text-theme-primary transition-colors">
+                  Shipping Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/policies/returns" className="hover:text-theme-primary transition-colors">
+                  Returns Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/policies/privacy" className="hover:text-theme-primary transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Account */}
+          <div>
+            <h3 className="text-sm font-heading font-semibold mb-3">Account</h3>
+            <ul className="space-y-2 text-sm text-theme-muted">
+              <li>
+                <Link href="/account/login" className="hover:text-theme-primary transition-colors">
+                  Sign In
+                </Link>
+              </li>
+              <li>
+                <Link href="/account/orders" className="hover:text-theme-primary transition-colors">
+                  Order Tracking
+                </Link>
+              </li>
+              <li>
+                <Link href="/account/wishlist" className="hover:text-theme-primary transition-colors">
+                  Wishlist
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* About */}
+          <div>
+            <h3 className="text-sm font-heading font-semibold mb-3">About</h3>
+            <ul className="space-y-2 text-sm text-theme-muted">
+              <li>
+                <Link href="/policies/terms" className="hover:text-theme-primary transition-colors">
+                  Terms &amp; Conditions
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="mt-10 pt-6 border-t border-theme flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-theme-muted">
+          <p>&copy; {new Date().getFullYear()} {store.name}. All rights reserved.</p>
           <p>Powered by Dropshipping Platform</p>
         </div>
       </div>

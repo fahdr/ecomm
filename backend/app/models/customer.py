@@ -155,3 +155,68 @@ class CustomerWishlist(Base):
 
     customer = relationship("CustomerAccount", back_populates="wishlist_items")
     product = relationship("Product", backref="wishlisted_by", lazy="selectin")
+
+
+class CustomerAddress(Base):
+    """Saved shipping address for a customer account.
+
+    Customers can save multiple addresses and mark one as default.
+    The default address is pre-filled during checkout.
+
+    Attributes:
+        id: Unique identifier (UUID v4).
+        customer_id: Foreign key to the customer account.
+        store_id: Foreign key to the store (denormalized for query efficiency).
+        label: Human-friendly label (e.g. "Home", "Office").
+        name: Full name for the shipping label.
+        line1: Street address line 1.
+        line2: Optional street address line 2.
+        city: City name.
+        state: State/province (optional for some countries).
+        postal_code: Postal/ZIP code.
+        country: ISO 3166-1 alpha-2 country code.
+        phone: Optional phone number.
+        is_default: Whether this is the customer's default address.
+        created_at: Timestamp when the address was created.
+        updated_at: Timestamp of the last update.
+        customer: Relationship back to the CustomerAccount.
+    """
+
+    __tablename__ = "customer_addresses"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    customer_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("customer_accounts.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    store_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("stores.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    label: Mapped[str] = mapped_column(String(50), nullable=False, default="Home")
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    line1: Mapped[str] = mapped_column(String(255), nullable=False)
+    line2: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    postal_code: Mapped[str] = mapped_column(String(20), nullable=False)
+    country: Mapped[str] = mapped_column(String(2), nullable=False)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    customer = relationship("CustomerAccount", backref="addresses")

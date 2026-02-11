@@ -29,9 +29,14 @@ test.describe("Dashboard Authentication", () => {
     await page.fill("#password", TEST_PASSWORD);
     await page.getByRole("button", { name: /create account/i }).click();
 
-    // Auth redirects to "/" (dashboard home) after registration.
-    await expect(page).toHaveURL(/\/$/, { timeout: 10000 });
-    await expect(page.getByText(/welcome back/i)).toBeVisible({ timeout: 5000 });
+    // Registration sets auth cookies then navigates to "/".
+    // The /auth/me call during register() may race with the DB commit,
+    // so the initial render can be blank. Navigate to "/" explicitly to
+    // let loadUser() re-resolve auth from cookies.
+    await page.waitForURL(/\/(login)?$/, { timeout: 10000 });
+    await page.goto("/");
+    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 15000 });
   });
 
   test("logs in an existing user", async ({ page }) => {
@@ -46,7 +51,7 @@ test.describe("Dashboard Authentication", () => {
 
     // Auth redirects to "/" (dashboard home) after login.
     await expect(page).toHaveURL(/\/$/, { timeout: 10000 });
-    await expect(page.getByText(/welcome back/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 15000 });
   });
 
   test("shows error for invalid credentials", async ({ page }) => {

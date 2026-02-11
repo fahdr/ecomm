@@ -27,7 +27,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { fetchStore } from "@/lib/store";
 import { api } from "@/lib/api";
-import { ProductGrid } from "@/components/product-grid";
+import { AnimatedProductGrid } from "@/components/animated-product-grid";
 import type { PaginatedCategoryProducts } from "@/lib/types";
 
 /**
@@ -159,7 +159,7 @@ export default async function CategoryDetailPage({
         </div>
 
         {/* Product grid */}
-        <ProductGrid products={mappedProducts} />
+        <AnimatedProductGrid products={mappedProducts} />
 
         {/* Pagination */}
         {totalPages > 1 && (

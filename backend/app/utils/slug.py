@@ -53,6 +53,7 @@ async def generate_unique_slug(
     model_class,
     name: str,
     slug_field: str = "slug",
+    exclude_id=None,
 ) -> str:
     """Generate a unique slug for a given model by checking the database.
 
@@ -64,6 +65,9 @@ async def generate_unique_slug(
         model_class: The SQLAlchemy model class to check against.
         name: The human-readable name to derive the slug from.
         slug_field: The name of the slug column on the model. Defaults to ``"slug"``.
+        exclude_id: Optional UUID of the current entity to exclude from the
+            uniqueness check (used during updates so a record doesn't conflict
+            with itself).
 
     Returns:
         A unique slug string that does not exist in the database for the given model.
@@ -75,7 +79,10 @@ async def generate_unique_slug(
     column = getattr(model_class, slug_field)
 
     while True:
-        result = await db.execute(select(model_class).where(column == slug))
+        query = select(model_class).where(column == slug)
+        if exclude_id is not None:
+            query = query.where(model_class.id != exclude_id)
+        result = await db.execute(query)
         if result.scalar_one_or_none() is None:
             return slug
         slug = f"{base_slug}-{counter}"

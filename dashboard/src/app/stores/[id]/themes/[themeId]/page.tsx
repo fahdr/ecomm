@@ -52,6 +52,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft,
   Save,
@@ -61,6 +62,9 @@ import {
   EyeOff,
   ChevronDown,
   ChevronUp,
+  Plus,
+  Trash2,
+  Settings2,
 } from "lucide-react";
 
 /** Shape of a theme returned by the API. */
@@ -136,6 +140,361 @@ function EditorSkeleton() {
   );
 }
 
+// ── Block Config Editor ─────────────────────────────────────────────────
+// Renders per-block-type configuration forms inside the expandable panels.
+
+/** Props for the block config editor. */
+interface BlockConfigEditorProps {
+  block: BlockConfig;
+  index: number;
+  onUpdate: (index: number, key: string, value: unknown) => void;
+}
+
+/** A reusable text input row for block config. */
+function ConfigInput({ label, value, onChange, placeholder, type = "text" }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-8 text-xs" />
+    </div>
+  );
+}
+
+/** A reusable select row for block config. */
+function ConfigSelect({ label, value, onChange, options }: {
+  label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** A reusable number input row for block config. */
+function ConfigNumber({ label, value, onChange, min, max }: {
+  label: string; value: number; onChange: (v: number) => void; min?: number; max?: number;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <Input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        min={min}
+        max={max}
+        className="h-8 text-xs w-24"
+      />
+    </div>
+  );
+}
+
+/** A reusable toggle row for block config. */
+function ConfigToggle({ label, value, onChange }: {
+  label: string; value: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <Label className="text-xs">{label}</Label>
+      <Switch checked={value} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+/**
+ * Renders the appropriate config form for a block type.
+ *
+ * @param props - Block, index, and update callback.
+ * @returns Config form fields specific to the block type.
+ */
+function BlockConfigEditor({ block, index, onUpdate }: BlockConfigEditorProps) {
+  const c = block.config;
+  const upd = (key: string, value: unknown) => onUpdate(index, key, value);
+
+  switch (block.type) {
+    case "hero_banner":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigInput label="Subtitle" value={(c.subtitle as string) || ""} onChange={(v) => upd("subtitle", v)} />
+          <ConfigInput label="CTA Text" value={(c.cta_text as string) || ""} onChange={(v) => upd("cta_text", v)} />
+          <ConfigInput label="CTA Link" value={(c.cta_link as string) || ""} onChange={(v) => upd("cta_link", v)} />
+          <ConfigSelect label="Background" value={(c.bg_type as string) || "gradient"} onChange={(v) => upd("bg_type", v)} options={[
+            { value: "gradient", label: "Gradient" }, { value: "solid", label: "Solid Color" },
+            { value: "image", label: "Image" }, { value: "product_showcase", label: "Product Showcase" },
+          ]} />
+          {(c.bg_type === "image") && (
+            <ConfigInput label="Background Image URL" value={(c.bg_image as string) || ""} onChange={(v) => upd("bg_image", v)} placeholder="https://..." />
+          )}
+          <ConfigSelect label="Text Position" value={(c.text_position as string) || "center"} onChange={(v) => upd("text_position", v)} options={[
+            { value: "left", label: "Left" }, { value: "center", label: "Center" }, { value: "right", label: "Right" },
+          ]} />
+          <ConfigSelect label="Height" value={(c.height as string) || "lg"} onChange={(v) => upd("height", v)} options={[
+            { value: "sm", label: "Small" }, { value: "md", label: "Medium" }, { value: "lg", label: "Large" }, { value: "full", label: "Full Screen" },
+          ]} />
+          <ConfigSelect label="Overlay Style" value={(c.overlay_style as string) || "gradient"} onChange={(v) => upd("overlay_style", v)} options={[
+            { value: "gradient", label: "Gradient" }, { value: "blur", label: "Blur" }, { value: "dark", label: "Dark" }, { value: "none", label: "None" },
+          ]} />
+        </div>
+      );
+
+    case "featured_products":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <div className="flex gap-4">
+            <ConfigNumber label="Count" value={typeof c.count === "number" ? c.count : 8} onChange={(v) => upd("count", v)} min={2} max={24} />
+            <ConfigNumber label="Columns" value={typeof c.columns === "number" ? c.columns : 4} onChange={(v) => upd("columns", v)} min={2} max={6} />
+          </div>
+          <ConfigToggle label="Show Prices" value={c.show_prices !== false} onChange={(v) => upd("show_prices", v)} />
+          <ConfigToggle label="Show Badges" value={c.show_badges !== false} onChange={(v) => upd("show_badges", v)} />
+        </div>
+      );
+
+    case "categories_grid":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigNumber label="Columns" value={typeof c.columns === "number" ? c.columns : 3} onChange={(v) => upd("columns", v)} min={2} max={5} />
+          <ConfigToggle label="Show Product Count" value={c.show_product_count !== false} onChange={(v) => upd("show_product_count", v)} />
+        </div>
+      );
+
+    case "product_carousel":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigNumber label="Product Count" value={typeof c.count === "number" ? c.count : 10} onChange={(v) => upd("count", v)} min={4} max={20} />
+          <ConfigToggle label="Auto Scroll" value={c.auto_scroll === true} onChange={(v) => upd("auto_scroll", v)} />
+          {c.auto_scroll === true && (
+            <ConfigNumber label="Interval (ms)" value={typeof c.interval === "number" ? c.interval : 4000} onChange={(v) => upd("interval", v)} min={2000} max={10000} />
+          )}
+          <ConfigToggle label="Show Prices" value={c.show_prices !== false} onChange={(v) => upd("show_prices", v)} />
+        </div>
+      );
+
+    case "reviews":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigNumber label="Count" value={typeof c.count === "number" ? c.count : 6} onChange={(v) => upd("count", v)} min={3} max={12} />
+          <ConfigSelect label="Layout" value={(c.layout as string) || "grid"} onChange={(v) => upd("layout", v)} options={[
+            { value: "grid", label: "Grid" }, { value: "slider", label: "Slider" },
+          ]} />
+        </div>
+      );
+
+    case "newsletter":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigInput label="Subtitle" value={(c.subtitle as string) || ""} onChange={(v) => upd("subtitle", v)} />
+          <ConfigInput label="Button Text" value={(c.button_text as string) || ""} onChange={(v) => upd("button_text", v)} />
+        </div>
+      );
+
+    case "testimonials":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigSelect label="Layout" value={(c.layout as string) || "cards"} onChange={(v) => upd("layout", v)} options={[
+            { value: "cards", label: "Card Grid" }, { value: "slider", label: "Slider" },
+          ]} />
+          <div>
+            <Label className="text-xs mb-2 block">Testimonials</Label>
+            {Array.isArray(c.items) && (c.items as Array<Record<string, string>>).map((item, i) => (
+              <div key={i} className="border border-border rounded-md p-2 mb-2 space-y-1">
+                <Input
+                  value={item.quote || ""}
+                  onChange={(e) => {
+                    const items = [...(c.items as Array<Record<string, string>>)];
+                    items[i] = { ...items[i], quote: e.target.value };
+                    upd("items", items);
+                  }}
+                  placeholder="Quote text"
+                  className="h-7 text-xs"
+                />
+                <div className="flex gap-2">
+                  <Input
+                    value={item.author || ""}
+                    onChange={(e) => {
+                      const items = [...(c.items as Array<Record<string, string>>)];
+                      items[i] = { ...items[i], author: e.target.value };
+                      upd("items", items);
+                    }}
+                    placeholder="Author"
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Input
+                    value={item.role || ""}
+                    onChange={(e) => {
+                      const items = [...(c.items as Array<Record<string, string>>)];
+                      items[i] = { ...items[i], role: e.target.value };
+                      upd("items", items);
+                    }}
+                    placeholder="Role"
+                    className="h-7 text-xs flex-1"
+                  />
+                </div>
+                <button type="button" onClick={() => {
+                  const items = (c.items as Array<Record<string, string>>).filter((_, j) => j !== i);
+                  upd("items", items);
+                }} className="text-xs text-destructive hover:underline">Remove</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => {
+              const items = [...(Array.isArray(c.items) ? c.items : []), { quote: "", author: "", role: "" }];
+              upd("items", items);
+            }} className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Plus className="h-3 w-3" /> Add Testimonial
+            </button>
+          </div>
+        </div>
+      );
+
+    case "countdown_timer":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigInput label="Subtitle" value={(c.subtitle as string) || ""} onChange={(v) => upd("subtitle", v)} />
+          <ConfigInput label="Target Date" value={(c.target_date as string) || ""} onChange={(v) => upd("target_date", v)} type="datetime-local" />
+          <ConfigInput label="CTA Text" value={(c.cta_text as string) || ""} onChange={(v) => upd("cta_text", v)} />
+          <ConfigInput label="CTA Link" value={(c.cta_link as string) || ""} onChange={(v) => upd("cta_link", v)} />
+          <ConfigSelect label="Background" value={(c.bg_style as string) || "gradient"} onChange={(v) => upd("bg_style", v)} options={[
+            { value: "gradient", label: "Gradient" }, { value: "solid", label: "Solid" }, { value: "transparent", label: "Transparent" },
+          ]} />
+        </div>
+      );
+
+    case "video_banner":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Video URL" value={(c.video_url as string) || ""} onChange={(v) => upd("video_url", v)} placeholder="YouTube, Vimeo, or .mp4 URL" />
+          <ConfigInput label="Poster Image URL" value={(c.poster_url as string) || ""} onChange={(v) => upd("poster_url", v)} />
+          <ConfigInput label="Overlay Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigInput label="Overlay Subtitle" value={(c.subtitle as string) || ""} onChange={(v) => upd("subtitle", v)} />
+          <ConfigToggle label="Autoplay (muted)" value={c.autoplay === true} onChange={(v) => upd("autoplay", v)} />
+        </div>
+      );
+
+    case "trust_badges":
+      return (
+        <div className="space-y-3">
+          <ConfigNumber label="Columns" value={typeof c.columns === "number" ? c.columns : 4} onChange={(v) => upd("columns", v)} min={2} max={6} />
+          <div>
+            <Label className="text-xs mb-2 block">Badges</Label>
+            {Array.isArray(c.badges) && (c.badges as Array<Record<string, string>>).map((badge, i) => (
+              <div key={i} className="border border-border rounded-md p-2 mb-2 space-y-1">
+                <div className="flex gap-2">
+                  <select
+                    value={badge.icon || "check-circle"}
+                    onChange={(e) => {
+                      const badges = [...(c.badges as Array<Record<string, string>>)];
+                      badges[i] = { ...badges[i], icon: e.target.value };
+                      upd("badges", badges);
+                    }}
+                    className="rounded border border-border bg-background px-2 py-1 text-xs w-32"
+                  >
+                    {["truck", "shield", "rotate-ccw", "headphones", "clock", "award", "lock", "heart", "star", "zap", "check-circle", "package"].map((icon) => (
+                      <option key={icon} value={icon}>{icon.replace(/-/g, " ")}</option>
+                    ))}
+                  </select>
+                  <Input
+                    value={badge.title || ""}
+                    onChange={(e) => {
+                      const badges = [...(c.badges as Array<Record<string, string>>)];
+                      badges[i] = { ...badges[i], title: e.target.value };
+                      upd("badges", badges);
+                    }}
+                    placeholder="Title"
+                    className="h-7 text-xs flex-1"
+                  />
+                </div>
+                <Input
+                  value={badge.description || ""}
+                  onChange={(e) => {
+                    const badges = [...(c.badges as Array<Record<string, string>>)];
+                    badges[i] = { ...badges[i], description: e.target.value };
+                    upd("badges", badges);
+                  }}
+                  placeholder="Description"
+                  className="h-7 text-xs"
+                />
+                <button type="button" onClick={() => {
+                  const badges = (c.badges as Array<Record<string, string>>).filter((_, j) => j !== i);
+                  upd("badges", badges);
+                }} className="text-xs text-destructive hover:underline">Remove</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => {
+              const badges = [...(Array.isArray(c.badges) ? c.badges : []), { icon: "check-circle", title: "", description: "" }];
+              upd("badges", badges);
+            }} className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Plus className="h-3 w-3" /> Add Badge
+            </button>
+          </div>
+        </div>
+      );
+
+    case "image_banner":
+      return (
+        <div className="space-y-3">
+          <ConfigInput label="Image URL" value={(c.image_url as string) || ""} onChange={(v) => upd("image_url", v)} placeholder="https://..." />
+          <ConfigInput label="Title" value={(c.title as string) || ""} onChange={(v) => upd("title", v)} />
+          <ConfigInput label="Subtitle" value={(c.subtitle as string) || ""} onChange={(v) => upd("subtitle", v)} />
+          <ConfigInput label="CTA Text" value={(c.cta_text as string) || ""} onChange={(v) => upd("cta_text", v)} />
+          <ConfigInput label="CTA Link" value={(c.cta_link as string) || ""} onChange={(v) => upd("cta_link", v)} />
+        </div>
+      );
+
+    case "custom_text":
+      return (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Content</Label>
+            <Textarea
+              value={(c.content as string) || ""}
+              onChange={(e) => upd("content", e.target.value)}
+              rows={4}
+              className="text-xs"
+            />
+          </div>
+          <ConfigSelect label="Alignment" value={(c.alignment as string) || "center"} onChange={(v) => upd("alignment", v)} options={[
+            { value: "left", label: "Left" }, { value: "center", label: "Center" }, { value: "right", label: "Right" },
+          ]} />
+        </div>
+      );
+
+    case "spacer":
+      return (
+        <div className="space-y-3">
+          <ConfigSelect label="Height" value={(c.height as string) || "md"} onChange={(v) => upd("height", v)} options={[
+            { value: "sm", label: "Small" }, { value: "md", label: "Medium" }, { value: "lg", label: "Large" }, { value: "xl", label: "Extra Large" },
+          ]} />
+        </div>
+      );
+
+    default:
+      return (
+        <p className="text-xs text-muted-foreground">
+          No configuration options for this block type.
+        </p>
+      );
+  }
+}
+
 /**
  * ThemeEditorPage provides a full customization interface for a single theme.
  *
@@ -165,6 +524,7 @@ export default function ThemeEditorPage() {
   const [faviconUrl, setFaviconUrl] = useState("");
   const [customCss, setCustomCss] = useState("");
   const [themeName, setThemeName] = useState("");
+  const [expandedBlock, setExpandedBlock] = useState<number | null>(null);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -281,6 +641,68 @@ export default function ThemeEditorPage() {
     if (target < 0 || target >= newBlocks.length) return;
     [newBlocks[index], newBlocks[target]] = [newBlocks[target], newBlocks[index]];
     setBlocks(newBlocks);
+    if (expandedBlock === index) setExpandedBlock(target);
+    else if (expandedBlock === target) setExpandedBlock(index);
+  }
+
+  /**
+   * Update a specific config key on a block.
+   *
+   * @param index - Block index.
+   * @param key - Config key to update.
+   * @param value - New value.
+   */
+  function updateBlockConfig(index: number, key: string, value: unknown) {
+    setBlocks((prev) =>
+      prev.map((b, i) =>
+        i === index ? { ...b, config: { ...b.config, [key]: value } } : b
+      )
+    );
+  }
+
+  /**
+   * Remove a block from the layout.
+   * @param index - Block index to remove.
+   */
+  function removeBlock(index: number) {
+    setBlocks((prev) => prev.filter((_, i) => i !== index));
+    setExpandedBlock(null);
+  }
+
+  /** All available block types for the "Add Block" picker. */
+  const AVAILABLE_BLOCK_TYPES = [
+    "hero_banner", "featured_products", "categories_grid", "product_carousel",
+    "reviews", "newsletter", "custom_text", "image_banner", "spacer",
+    "testimonials", "countdown_timer", "video_banner", "trust_badges",
+  ];
+
+  /**
+   * Add a new block with default config.
+   * @param blockType - The type of block to add.
+   */
+  function addBlock(blockType: string) {
+    const defaults: Record<string, Record<string, unknown>> = {
+      hero_banner: { title: "Welcome", subtitle: "", cta_text: "Shop Now", cta_link: "/products", bg_type: "gradient", text_position: "center", height: "lg" },
+      featured_products: { title: "Featured Products", count: 8, columns: 4, show_prices: true, show_badges: true },
+      categories_grid: { title: "Shop by Category", columns: 3, show_product_count: true },
+      product_carousel: { title: "Trending Now", count: 10, auto_scroll: false, interval: 4000, show_prices: true },
+      reviews: { title: "Customer Reviews", count: 6, layout: "grid" },
+      newsletter: { title: "Stay in the loop", subtitle: "Subscribe for updates", button_text: "Subscribe" },
+      custom_text: { content: "Your custom text here", alignment: "center" },
+      image_banner: { image_url: "", title: "", subtitle: "", cta_text: "", cta_link: "" },
+      spacer: { height: "md" },
+      testimonials: { title: "What People Are Saying", layout: "cards", items: [] },
+      countdown_timer: { title: "Sale Ends In", target_date: "", subtitle: "", cta_text: "Shop the Sale", cta_link: "/products" },
+      video_banner: { video_url: "", poster_url: "", title: "", subtitle: "", autoplay: false },
+      trust_badges: { badges: [{ icon: "truck", title: "Free Shipping", description: "On orders over $50" }, { icon: "shield", title: "Secure Checkout", description: "SSL encrypted" }, { icon: "rotate-ccw", title: "Easy Returns", description: "30-day guarantee" }], columns: 3 },
+    };
+    const newBlock: BlockConfig = {
+      type: blockType,
+      enabled: true,
+      config: defaults[blockType] || {},
+    };
+    setBlocks((prev) => [...prev, newBlock]);
+    setExpandedBlock(blocks.length);
   }
 
   if (authLoading || loading) {
@@ -462,6 +884,109 @@ export default function ThemeEditorPage() {
                     ))}
                   </select>
                 </div>
+
+                {/* Typography weights */}
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Heading Weight</Label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[
+                        { v: "300", l: "Light" },
+                        { v: "400", l: "Regular" },
+                        { v: "500", l: "Medium" },
+                        { v: "600", l: "Semi" },
+                        { v: "700", l: "Bold" },
+                        { v: "900", l: "Black" },
+                      ].map((w) => (
+                        <button
+                          key={w.v}
+                          type="button"
+                          onClick={() => setTypography((p) => ({ ...p, heading_weight: w.v }))}
+                          className={`px-2 py-1 text-xs rounded border transition-colors ${
+                            (typography.heading_weight || "700") === w.v
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border hover:border-muted-foreground/40"
+                          }`}
+                        >
+                          {w.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Body Weight</Label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[
+                        { v: "300", l: "Light" },
+                        { v: "400", l: "Regular" },
+                        { v: "500", l: "Medium" },
+                      ].map((w) => (
+                        <button
+                          key={w.v}
+                          type="button"
+                          onClick={() => setTypography((p) => ({ ...p, body_weight: w.v }))}
+                          className={`px-2 py-1 text-xs rounded border transition-colors ${
+                            (typography.body_weight || "400") === w.v
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border hover:border-muted-foreground/40"
+                          }`}
+                        >
+                          {w.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Letter spacing & line height */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Letter Spacing</Label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[
+                        { v: "tight", l: "Tight" },
+                        { v: "normal", l: "Normal" },
+                        { v: "wide", l: "Wide" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.v}
+                          type="button"
+                          onClick={() => setTypography((p) => ({ ...p, letter_spacing: opt.v }))}
+                          className={`px-2 py-1 text-xs rounded border transition-colors ${
+                            (typography.letter_spacing || "normal") === opt.v
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border hover:border-muted-foreground/40"
+                          }`}
+                        >
+                          {opt.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Line Height</Label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[
+                        { v: "compact", l: "Compact" },
+                        { v: "normal", l: "Normal" },
+                        { v: "relaxed", l: "Relaxed" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.v}
+                          type="button"
+                          onClick={() => setTypography((p) => ({ ...p, line_height: opt.v }))}
+                          className={`px-2 py-1 text-xs rounded border transition-colors ${
+                            (typography.line_height || "normal") === opt.v
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border hover:border-muted-foreground/40"
+                          }`}
+                        >
+                          {opt.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -550,7 +1075,7 @@ export default function ThemeEditorPage() {
                   Page Blocks
                 </CardTitle>
                 <CardDescription>
-                  Enable, disable, and reorder homepage sections
+                  Configure, reorder, and manage homepage sections
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -558,64 +1083,107 @@ export default function ThemeEditorPage() {
                   {blocks.map((block, index) => (
                     <div
                       key={`${block.type}-${index}`}
-                      className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${
+                      className={`rounded-lg border transition-colors ${
                         block.enabled
                           ? "border-border bg-background"
                           : "border-border/50 bg-muted/30 opacity-60"
                       }`}
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium capitalize">
-                          {block.type.replace(/_/g, " ")}
-                        </span>
+                      {/* Block header row */}
+                      <div className="flex items-center gap-3 px-3 py-2">
+                        <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium capitalize">
+                            {block.type.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedBlock(expandedBlock === index ? null : index)}
+                            className="p-1 rounded hover:bg-muted text-muted-foreground"
+                            aria-label="Edit block config"
+                          >
+                            <Settings2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveBlock(index, "up")}
+                            disabled={index === 0}
+                            className="p-1 rounded hover:bg-muted disabled:opacity-30"
+                            aria-label="Move up"
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveBlock(index, "down")}
+                            disabled={index === blocks.length - 1}
+                            className="p-1 rounded hover:bg-muted disabled:opacity-30"
+                            aria-label="Move down"
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleBlock(index)}
+                            className={`p-1 rounded hover:bg-muted ${
+                              block.enabled ? "text-primary" : "text-muted-foreground"
+                            }`}
+                            aria-label={block.enabled ? "Disable block" : "Enable block"}
+                          >
+                            {block.enabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeBlock(index)}
+                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                            aria-label="Remove block"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => moveBlock(index, "up")}
-                          disabled={index === 0}
-                          className="p-1 rounded hover:bg-muted disabled:opacity-30"
-                          aria-label="Move up"
-                        >
-                          <ChevronUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveBlock(index, "down")}
-                          disabled={index === blocks.length - 1}
-                          className="p-1 rounded hover:bg-muted disabled:opacity-30"
-                          aria-label="Move down"
-                        >
-                          <ChevronDown className="h-3 w-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleBlock(index)}
-                          className={`p-1 rounded hover:bg-muted ${
-                            block.enabled
-                              ? "text-primary"
-                              : "text-muted-foreground"
-                          }`}
-                          aria-label={
-                            block.enabled ? "Disable block" : "Enable block"
-                          }
-                        >
-                          {block.enabled ? (
-                            <Eye className="h-4 w-4" />
-                          ) : (
-                            <EyeOff className="h-4 w-4" />
-                          )}
-                        </button>
-                      </div>
+
+                      {/* Expandable config panel */}
+                      {expandedBlock === index && (
+                        <div className="border-t border-border px-4 py-3 space-y-3 bg-muted/20">
+                          <BlockConfigEditor
+                            block={block}
+                            index={index}
+                            onUpdate={updateBlockConfig}
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                   {blocks.length === 0 && (
                     <p className="text-sm text-muted-foreground py-4 text-center">
-                      No blocks configured. Save a preset theme to populate
-                      default blocks.
+                      No blocks configured. Add blocks below.
                     </p>
                   )}
+                </div>
+
+                {/* Add Block button */}
+                <div className="mt-4">
+                  <details className="group">
+                    <summary className="flex items-center gap-2 cursor-pointer text-sm text-primary hover:text-primary/80 font-medium">
+                      <Plus className="h-4 w-4" />
+                      Add Block
+                    </summary>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {AVAILABLE_BLOCK_TYPES.map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => addBlock(type)}
+                          className="text-left text-xs px-3 py-2 rounded-md border border-border hover:border-primary hover:bg-primary/5 transition-colors capitalize"
+                        >
+                          {type.replace(/_/g, " ")}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
                 </div>
               </CardContent>
             </Card>

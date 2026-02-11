@@ -1,42 +1,48 @@
 /**
- * Dashboard shell component that wraps store-scoped pages.
+ * Unified dashboard shell for all authenticated pages.
  *
- * Provides the main layout structure: a collapsible sidebar on the left
- * and a scrollable main content area on the right with a top bar
- * containing breadcrumbs and user info.
+ * Provides the main layout structure: a collapsible sidebar on the left,
+ * a top bar with breadcrumbs and store switcher, and a scrollable main
+ * content area. Used for both platform-level pages (home, stores, billing)
+ * and store-scoped pages (/stores/[id]/*).
  *
  * **For Developers:**
- *   - This component is used by the stores/[id]/layout.tsx
- *   - The sidebar and main content area are flex siblings
+ *   - Wraps ALL authenticated routes (not just store-scoped)
+ *   - The sidebar auto-switches between platform and store mode
+ *   - The top bar provides breadcrumbs and store switching
  *   - Main content has the dot-pattern background for visual depth
- *   - Breadcrumb items are passed as props from each page
  *
  * **For QA:**
+ *   - Every authenticated page should render inside this shell
  *   - Sidebar should collapse/expand independently of main content
  *   - Main content should scroll vertically when content overflows
+ *   - Breadcrumbs in top bar should update on every navigation
  *   - Dot pattern should be visible on the background
- *   - Top bar should stick to the top of the content area
  */
 
 "use client";
 
 import { Sidebar } from "@/components/sidebar";
+import { TopBar } from "@/components/top-bar";
+import { CommandPalette } from "@/components/command-palette";
 
 /**
- * Renders the dashboard shell with sidebar and main content area.
+ * Renders the unified dashboard shell with sidebar, top bar, and content.
  *
  * @param children - The page content to render in the main area.
- * @returns The shell layout with sidebar and content.
+ * @returns The shell layout with sidebar, top bar, and scrollable content.
  */
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto bg-dot-pattern">
-        <div className="min-h-full">
-          {children}
-        </div>
-      </main>
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <TopBar />
+        <main className="flex-1 overflow-y-auto bg-dot-pattern">
+          <div className="min-h-full">{children}</div>
+        </main>
+      </div>
+      <CommandPalette />
     </div>
   );
 }

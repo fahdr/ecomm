@@ -17,43 +17,8 @@ import {
   dashboardLogin,
   createStoreAPI,
   createProductAPI,
+  createOrderAPI,
 } from "../helpers";
-
-const API_BASE = "http://localhost:8000";
-
-/**
- * Create an order via the public checkout API.
- *
- * Retries on 500 errors to handle race conditions where the
- * store/product may not be fully committed yet.
- *
- * @param slug - Store slug.
- * @param productId - Product UUID.
- * @param variantId - Variant UUID.
- * @returns Checkout response with order_id.
- */
-async function createOrderViaCheckout(
-  slug: string,
-  productId: string,
-  variantId: string
-) {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const res = await fetch(`${API_BASE}/api/v1/public/stores/${slug}/checkout`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customer_email: "customer@example.com",
-        items: [{ product_id: productId, variant_id: variantId, quantity: 2 }],
-      }),
-    });
-    if (res.ok) return await res.json();
-    if ((res.status >= 400) && attempt < 4) {
-      await new Promise((r) => setTimeout(r, 300));
-      continue;
-    }
-    throw new Error(`Checkout failed: ${res.status} ${await res.text()}`);
-  }
-}
 
 test.describe("Dashboard Order Management", () => {
   let email: string;
@@ -82,7 +47,9 @@ test.describe("Dashboard Order Management", () => {
     // Create product and order via API
     const product = await createProductAPI(token, storeId);
     const variantId = product.variants[0].id;
-    await createOrderViaCheckout(storeSlug, product.id, variantId);
+    await createOrderAPI(storeSlug, "customer@example.com", [
+      { product_id: product.id, variant_id: variantId, quantity: 2 },
+    ]);
 
     await page.goto(`/stores/${storeId}/orders`);
     await expect(page.getByText("customer@example.com")).toBeVisible({ timeout: 10000 });
@@ -92,7 +59,9 @@ test.describe("Dashboard Order Management", () => {
   test("views order detail", async ({ page }) => {
     const product = await createProductAPI(token, storeId);
     const variantId = product.variants[0].id;
-    await createOrderViaCheckout(storeSlug, product.id, variantId);
+    await createOrderAPI(storeSlug, "customer@example.com", [
+      { product_id: product.id, variant_id: variantId, quantity: 2 },
+    ]);
 
     await page.goto(`/stores/${storeId}/orders`);
     await expect(page.getByText("customer@example.com")).toBeVisible({ timeout: 10000 });
@@ -110,7 +79,9 @@ test.describe("Dashboard Order Management", () => {
   test("updates order status", async ({ page }) => {
     const product = await createProductAPI(token, storeId);
     const variantId = product.variants[0].id;
-    await createOrderViaCheckout(storeSlug, product.id, variantId);
+    await createOrderAPI(storeSlug, "customer@example.com", [
+      { product_id: product.id, variant_id: variantId, quantity: 2 },
+    ]);
 
     await page.goto(`/stores/${storeId}/orders`);
     await expect(page.getByText("customer@example.com")).toBeVisible({ timeout: 10000 });
@@ -121,13 +92,15 @@ test.describe("Dashboard Order Management", () => {
     await page.locator(".w-48").click();
     await page.getByRole("option", { name: /shipped/i }).click();
 
-    await expect(page.getByText(/status updated/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Updated!")).toBeVisible({ timeout: 5000 });
   });
 
   test("filters orders by status", async ({ page }) => {
     const product = await createProductAPI(token, storeId);
     const variantId = product.variants[0].id;
-    await createOrderViaCheckout(storeSlug, product.id, variantId);
+    await createOrderAPI(storeSlug, "customer@example.com", [
+      { product_id: product.id, variant_id: variantId, quantity: 2 },
+    ]);
 
     await page.goto(`/stores/${storeId}/orders`);
     await expect(page.getByText("customer@example.com")).toBeVisible({ timeout: 10000 });

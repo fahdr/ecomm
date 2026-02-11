@@ -2,108 +2,71 @@
  * Shopping cart page for the storefront.
  *
  * Displays all items in the cart with quantity controls, individual
- * and total prices, and a checkout button. Items can be removed or
- * have their quantities adjusted.
+ * and total prices, and a "Proceed to Checkout" button that navigates
+ * to the dedicated checkout page.
  *
  * **For Developers:**
- *   This is a client component that reads from the cart context.
- *   Checkout calls the public checkout API to create a Stripe session
- *   and redirects to the checkout URL.
+ *   Client component that reads from the cart context. No API calls
+ *   happen on this page — checkout logic lives in ``/checkout``.
  *
  * **For QA Engineers:**
  *   - Empty cart shows a "Your cart is empty" message with a shop link.
  *   - Each item shows title, variant name, unit price, quantity, and line total.
  *   - Quantity can be increased/decreased with +/- buttons.
  *   - Remove button deletes the item entirely.
- *   - Checkout button is disabled during processing.
- *   - Invalid email shows a validation error.
+ *   - "Proceed to Checkout" navigates to /checkout.
  *
  * **For End Users:**
  *   Review your cart before checkout. Adjust quantities or remove items
- *   as needed. Enter your email and click "Checkout" to proceed to payment.
+ *   as needed. Click "Proceed to Checkout" to enter your shipping details
+ *   and complete your purchase.
  */
 
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/contexts/cart-context";
-import { useStore } from "@/contexts/store-context";
-import { api } from "@/lib/api";
-import type { GiftCardValidation } from "@/lib/types";
 
 /**
  * Cart page client component.
  *
- * @returns The cart page with item list, totals, and checkout form.
+ * @returns The cart page with item list, totals, and checkout link.
  */
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, cartTotal, clearCart } = useCart();
-  const store = useStore();
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [giftCardCode, setGiftCardCode] = useState("");
-  const [giftCardResult, setGiftCardResult] = useState<GiftCardValidation | null>(null);
-  const [giftCardLoading, setGiftCardLoading] = useState(false);
-
-  /**
-   * Handle checkout by calling the public checkout API.
-   * Redirects to the Stripe Checkout URL on success.
-   */
-  async function handleCheckout() {
-    if (!store) return;
-    if (!email || !email.includes("@")) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    const checkoutItems = items.map((item) => ({
-      product_id: item.productId,
-      variant_id: item.variantId || undefined,
-      quantity: item.quantity,
-    }));
-
-    const { data, error: apiError } = await api.post<{
-      checkout_url: string;
-      session_id: string;
-      order_id: string;
-    }>(
-      `/api/v1/public/stores/${encodeURIComponent(store.slug)}/checkout`,
-      {
-        customer_email: email,
-        items: checkoutItems,
-      }
-    );
-
-    if (apiError) {
-      setError(apiError.message || "Checkout failed. Please try again.");
-      setLoading(false);
-      return;
-    }
-
-    if (data?.checkout_url) {
-      clearCart();
-      window.location.href = data.checkout_url;
-    }
-  }
+  const { items, removeItem, updateQuantity, cartTotal } = useCart();
+  const router = useRouter();
 
   if (items.length === 0) {
     return (
       <div className="py-16">
         <div className="mx-auto max-w-2xl px-4 text-center">
-          <h2 className="text-2xl font-bold tracking-tight mb-4">
+          {/* Empty cart illustration */}
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="h-10 w-10 text-zinc-400 dark:text-zinc-500"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-heading font-bold tracking-tight mb-3">
             Your cart is empty
           </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mb-8">
+          <p className="text-theme-muted mb-8">
             Browse our products and add items to your cart.
           </p>
           <Link
             href="/products"
-            className="inline-flex items-center rounded-lg bg-zinc-900 dark:bg-zinc-100 px-6 py-3 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+            className="inline-flex items-center rounded-lg bg-theme-primary px-6 py-3 text-sm font-medium text-white hover:opacity-90 transition-opacity"
           >
             Continue Shopping
           </Link>
@@ -115,7 +78,9 @@ export default function CartPage() {
   return (
     <div className="py-12">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-bold tracking-tight mb-8">Shopping Cart</h2>
+        <h2 className="text-3xl font-heading font-bold tracking-tight mb-8">
+          Shopping Cart
+        </h2>
 
         {/* Cart Items */}
         <div className="space-y-4">
@@ -148,11 +113,9 @@ export default function CartPage() {
                   {item.title}
                 </Link>
                 {item.variantName && (
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {item.variantName}
-                  </p>
+                  <p className="text-sm text-theme-muted">{item.variantName}</p>
                 )}
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
+                <p className="text-sm text-theme-muted mt-1">
                   ${item.price.toFixed(2)} each
                 </p>
               </div>
@@ -161,7 +124,11 @@ export default function CartPage() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() =>
-                    updateQuantity(item.productId, item.variantId, item.quantity - 1)
+                    updateQuantity(
+                      item.productId,
+                      item.variantId,
+                      item.quantity - 1
+                    )
                   }
                   className="h-8 w-8 rounded border border-zinc-300 dark:border-zinc-700 flex items-center justify-center text-sm hover:bg-zinc-50 dark:hover:bg-zinc-900"
                 >
@@ -172,7 +139,11 @@ export default function CartPage() {
                 </span>
                 <button
                   onClick={() =>
-                    updateQuantity(item.productId, item.variantId, item.quantity + 1)
+                    updateQuantity(
+                      item.productId,
+                      item.variantId,
+                      item.quantity + 1
+                    )
                   }
                   className="h-8 w-8 rounded border border-zinc-300 dark:border-zinc-700 flex items-center justify-center text-sm hover:bg-zinc-50 dark:hover:bg-zinc-900"
                 >
@@ -212,177 +183,31 @@ export default function CartPage() {
           ))}
         </div>
 
-        {/* Cart Summary & Checkout */}
+        {/* Cart Summary */}
         <div className="mt-8 rounded-lg border border-zinc-200 dark:border-zinc-800 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <span className="text-lg font-medium">Total</span>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-lg font-medium">Subtotal</span>
             <span className="text-2xl font-bold">${cartTotal.toFixed(2)}</span>
           </div>
-
-          {/* Gift Card Code Input */}
-          <GiftCardInput
-            storeSlug={store?.slug || ""}
-            code={giftCardCode}
-            onCodeChange={setGiftCardCode}
-            result={giftCardResult}
-            onResult={setGiftCardResult}
-            loading={giftCardLoading}
-            onLoadingChange={setGiftCardLoading}
-          />
-
-          {/* Email Input */}
-          <div className="mb-4">
-            <label
-              htmlFor="checkout-email"
-              className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1"
-            >
-              Email address
-            </label>
-            <input
-              id="checkout-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400"
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-500 mb-4">{error}</p>
-          )}
+          <p className="text-sm text-theme-muted mb-6">
+            Shipping, taxes, and discounts calculated at checkout
+          </p>
 
           <button
-            onClick={handleCheckout}
-            disabled={loading}
-            className="w-full rounded-lg bg-zinc-900 dark:bg-zinc-100 px-6 py-3 text-sm font-medium text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => router.push("/checkout")}
+            className="w-full rounded-lg bg-theme-primary px-6 py-3.5 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
           >
-            {loading ? "Processing..." : "Proceed to Checkout"}
+            Proceed to Checkout
           </button>
 
           <Link
             href="/products"
-            className="block text-center mt-4 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+            className="block text-center mt-4 text-sm text-theme-muted hover:text-theme-primary transition-colors"
           >
             Continue Shopping
           </Link>
         </div>
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Gift Card sub-component
-// ---------------------------------------------------------------------------
-
-/**
- * Props for the GiftCardInput component.
- */
-interface GiftCardInputProps {
-  /** The store's URL slug for the validation API. */
-  storeSlug: string;
-  /** Current gift card code value. */
-  code: string;
-  /** Callback when the code input changes. */
-  onCodeChange: (code: string) => void;
-  /** Current validation result, or null if not yet validated. */
-  result: GiftCardValidation | null;
-  /** Callback when validation result changes. */
-  onResult: (result: GiftCardValidation | null) => void;
-  /** Whether validation is currently in progress. */
-  loading: boolean;
-  /** Callback when loading state changes. */
-  onLoadingChange: (loading: boolean) => void;
-}
-
-/**
- * Gift card code input with validation.
- *
- * Allows customers to enter a gift card code and check the balance
- * before proceeding to checkout.
- *
- * @param props - Gift card state and callbacks.
- * @returns A form section with code input, validate button, and result display.
- */
-function GiftCardInput({
-  storeSlug,
-  code,
-  onCodeChange,
-  result,
-  onResult,
-  loading,
-  onLoadingChange,
-}: GiftCardInputProps) {
-  /**
-   * Validate the gift card code against the public API.
-   */
-  async function handleValidate() {
-    if (!code.trim() || !storeSlug) return;
-
-    onLoadingChange(true);
-    onResult(null);
-
-    const { data, error } = await api.post<GiftCardValidation>(
-      `/api/v1/public/stores/${encodeURIComponent(storeSlug)}/gift-cards/validate`,
-      { code: code.trim() }
-    );
-
-    if (error) {
-      onResult({
-        valid: false,
-        balance: null,
-        message: error.message || "Could not validate gift card.",
-      });
-    } else if (data) {
-      onResult(data);
-    }
-
-    onLoadingChange(false);
-  }
-
-  return (
-    <div className="mb-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
-      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-        Gift Card Code
-      </label>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          value={code}
-          onChange={(e) => {
-            onCodeChange(e.target.value);
-            if (result) onResult(null);
-          }}
-          placeholder="Enter code"
-          className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-400 uppercase tracking-wider"
-        />
-        <button
-          onClick={handleValidate}
-          disabled={loading || !code.trim()}
-          className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
-        >
-          {loading ? "Checking..." : "Apply"}
-        </button>
-      </div>
-
-      {/* Validation result */}
-      {result && (
-        <div
-          className={`mt-2 rounded-md px-3 py-2 text-sm ${
-            result.valid
-              ? "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-              : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
-          }`}
-        >
-          <p>{result.message}</p>
-          {result.valid && result.balance && (
-            <p className="mt-1 font-medium">
-              Available balance: ${Number(result.balance).toFixed(2)}
-            </p>
-          )}
-        </div>
-      )}
     </div>
   );
 }

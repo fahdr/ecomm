@@ -33,7 +33,10 @@ import { useStore } from "@/contexts/store-context";
 import { api } from "@/lib/api";
 import { PageTransition } from "@/components/motion-wrappers";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -64,8 +67,19 @@ interface Order {
   customer_email: string;
   status: string;
   total: string;
+  subtotal: string | null;
+  discount_code: string | null;
+  discount_amount: string | null;
+  tax_amount: string | null;
+  gift_card_amount: string | null;
+  currency: string;
   stripe_session_id: string | null;
-  shipping_address: string | null;
+  shipping_address: Record<string, string> | null;
+  notes: string | null;
+  tracking_number: string | null;
+  carrier: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
   created_at: string;
   updated_at: string;
   items: OrderItem[];
@@ -110,6 +124,11 @@ export default function OrderDetailPage({
   const [notFound, setNotFound] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [carrier, setCarrier] = useState("");
+  const [notes, setNotes] = useState("");
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user || !storeId) return;
@@ -125,6 +144,7 @@ export default function OrderDetailPage({
         setNotFound(true);
       } else {
         setOrder(result.data);
+        setNotes(result.data?.notes || "");
       }
       setLoading(false);
     }
@@ -153,6 +173,72 @@ export default function OrderDetailPage({
       setTimeout(() => setUpdateSuccess(false), 3000);
     }
     setUpdating(false);
+  }
+
+  /**
+   * Mark the order as shipped with tracking information.
+   */
+  async function handleFulfill() {
+    if (!order || !trackingNumber.trim()) return;
+    setUpdating(true);
+    setUpdateSuccess(false);
+
+    const result = await api.post<Order>(
+      `/api/v1/stores/${storeId}/orders/${orderId}/fulfill`,
+      {
+        tracking_number: trackingNumber.trim(),
+        carrier: carrier.trim() || null,
+      }
+    );
+
+    if (result.data) {
+      setOrder(result.data);
+      setUpdateSuccess(true);
+      setTrackingNumber("");
+      setCarrier("");
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    }
+    setUpdating(false);
+  }
+
+  /**
+   * Mark the order as delivered.
+   */
+  async function handleDeliver() {
+    if (!order) return;
+    setUpdating(true);
+    setUpdateSuccess(false);
+
+    const result = await api.post<Order>(
+      `/api/v1/stores/${storeId}/orders/${orderId}/deliver`,
+      {}
+    );
+
+    if (result.data) {
+      setOrder(result.data);
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    }
+    setUpdating(false);
+  }
+
+  /**
+   * Save internal notes for the order (auto-save on blur).
+   */
+  async function handleSaveNotes() {
+    if (!order) return;
+    setNotesSaving(true);
+    setNotesSaved(false);
+    const result = await api.patch<Order>(
+      `/api/v1/stores/${storeId}/orders/${orderId}`,
+      { notes }
+    );
+    if (result.data) {
+      setOrder(result.data);
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    }
+    setNotesSaving(false);
   }
 
   if (loading) {
@@ -214,13 +300,122 @@ export default function OrderDetailPage({
                   <p className="font-mono text-xs">{order.stripe_session_id}</p>
                 </div>
               )}
-              {order.shipping_address && (
-                <div className="col-span-2">
-                  <p className="text-muted-foreground">Shipping Address</p>
-                  <p>{order.shipping_address}</p>
-                </div>
-              )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Fulfillment */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Fulfillment</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {order.status === "paid" && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Mark this order as shipped by entering the tracking information.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="tracking">Tracking Number *</Label>
+                    <Input
+                      id="tracking"
+                      value={trackingNumber}
+                      onChange={(e) => setTrackingNumber(e.target.value)}
+                      placeholder="e.g. 1Z999AA10123456784"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="carrier">Carrier</Label>
+                    <Input
+                      id="carrier"
+                      value={carrier}
+                      onChange={(e) => setCarrier(e.target.value)}
+                      placeholder="e.g. USPS, FedEx, UPS"
+                    />
+                  </div>
+                </div>
+                <Button
+                  onClick={handleFulfill}
+                  disabled={updating || !trackingNumber.trim()}
+                >
+                  {updating ? "Shipping..." : "Mark as Shipped"}
+                </Button>
+              </div>
+            )}
+
+            {order.status === "shipped" && (
+              <div className="space-y-3">
+                <div className="rounded-lg border p-3 text-sm space-y-1">
+                  <p>
+                    <span className="text-muted-foreground">Tracking:</span>{" "}
+                    <span className="font-mono">{order.tracking_number}</span>
+                  </p>
+                  {order.carrier && (
+                    <p>
+                      <span className="text-muted-foreground">Carrier:</span>{" "}
+                      {order.carrier}
+                    </p>
+                  )}
+                  {order.shipped_at && (
+                    <p>
+                      <span className="text-muted-foreground">Shipped:</span>{" "}
+                      {new Date(order.shipped_at).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  onClick={handleDeliver}
+                  disabled={updating}
+                >
+                  {updating ? "Updating..." : "Mark as Delivered"}
+                </Button>
+              </div>
+            )}
+
+            {order.status === "delivered" && (
+              <div className="rounded-lg border border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950 p-3 text-sm space-y-1">
+                <p className="font-medium text-green-700 dark:text-green-400">
+                  Order Delivered
+                </p>
+                {order.tracking_number && (
+                  <p>
+                    <span className="text-muted-foreground">Tracking:</span>{" "}
+                    <span className="font-mono">{order.tracking_number}</span>
+                  </p>
+                )}
+                {order.carrier && (
+                  <p>
+                    <span className="text-muted-foreground">Carrier:</span>{" "}
+                    {order.carrier}
+                  </p>
+                )}
+                {order.shipped_at && (
+                  <p>
+                    <span className="text-muted-foreground">Shipped:</span>{" "}
+                    {new Date(order.shipped_at).toLocaleString()}
+                  </p>
+                )}
+                {order.delivered_at && (
+                  <p>
+                    <span className="text-muted-foreground">Delivered:</span>{" "}
+                    {new Date(order.delivered_at).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {(order.status === "pending" || order.status === "cancelled") && (
+              <p className="text-sm text-muted-foreground">
+                {order.status === "pending"
+                  ? "Awaiting payment confirmation before fulfillment."
+                  : "This order has been cancelled."}
+              </p>
+            )}
+
+            {updateSuccess && (
+              <span className="text-sm text-green-600">Updated!</span>
+            )}
           </CardContent>
         </Card>
 
@@ -250,12 +445,53 @@ export default function OrderDetailPage({
               {updating && (
                 <span className="text-sm text-muted-foreground">Updating...</span>
               )}
-              {updateSuccess && (
-                <span className="text-sm text-green-600">Status updated!</span>
-              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Internal Notes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Internal Notes</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              onBlur={handleSaveNotes}
+              placeholder="Add internal notes about this order..."
+              rows={3}
+              className="resize-none"
+            />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              {notesSaving && <span>Saving...</span>}
+              {notesSaved && <span className="text-green-600">Saved</span>}
+              {!notesSaving && !notesSaved && <span>Auto-saves on blur</span>}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Shipping Address */}
+        {order.shipping_address && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Shipping Address</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm space-y-0.5">
+                {order.shipping_address.name && <p className="font-medium">{order.shipping_address.name}</p>}
+                {order.shipping_address.line1 && <p>{order.shipping_address.line1}</p>}
+                {order.shipping_address.line2 && <p>{order.shipping_address.line2}</p>}
+                <p>
+                  {order.shipping_address.city}
+                  {order.shipping_address.state ? `, ${order.shipping_address.state}` : ""}{" "}
+                  {order.shipping_address.postal_code}
+                </p>
+                {order.shipping_address.country && <p>{order.shipping_address.country}</p>}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Order Items */}
         <Card>
@@ -289,12 +525,36 @@ export default function OrderDetailPage({
               ))}
             </div>
 
-            {/* Total */}
-            <div className="mt-4 flex items-center justify-between border-t pt-4">
-              <span className="text-lg font-medium">Total</span>
-              <span className="text-xl font-bold">
-                ${Number(order.total).toFixed(2)}
-              </span>
+            {/* Financial breakdown */}
+            <div className="mt-4 border-t pt-4 space-y-2 text-sm">
+              {order.subtotal != null && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>${Number(order.subtotal).toFixed(2)}</span>
+                </div>
+              )}
+              {order.discount_amount != null && Number(order.discount_amount) > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Discount{order.discount_code ? ` (${order.discount_code})` : ""}</span>
+                  <span>-${Number(order.discount_amount).toFixed(2)}</span>
+                </div>
+              )}
+              {order.tax_amount != null && Number(order.tax_amount) > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span>${Number(order.tax_amount).toFixed(2)}</span>
+                </div>
+              )}
+              {order.gift_card_amount != null && Number(order.gift_card_amount) > 0 && (
+                <div className="flex justify-between text-green-600">
+                  <span>Gift Card</span>
+                  <span>-${Number(order.gift_card_amount).toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-medium pt-2 border-t">
+                <span>Total</span>
+                <span className="text-lg">${Number(order.total).toFixed(2)} {order.currency}</span>
+              </div>
             </div>
           </CardContent>
         </Card>

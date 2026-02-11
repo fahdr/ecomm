@@ -342,3 +342,102 @@ export interface UpsellRecommendation {
   /** Optional discount percentage on the target product. */
   discount_percent: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Checkout (Phase A2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Shipping address for checkout.
+ *
+ * **For Developers:**
+ *   Mirrors ``ShippingAddress`` from ``backend/app/schemas/order.py``.
+ */
+export interface ShippingAddress {
+  name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state?: string;
+  postal_code: string;
+  country: string;
+  phone?: string;
+}
+
+/**
+ * Response from the checkout API after creating a Stripe session.
+ *
+ * **For Developers:**
+ *   Mirrors ``CheckoutResponse`` from ``backend/app/schemas/order.py``.
+ */
+export interface CheckoutResponse {
+  checkout_url: string;
+  session_id: string;
+  order_id: string;
+  subtotal: string;
+  discount_amount: string;
+  tax_amount: string;
+  gift_card_amount: string;
+  total: string;
+}
+
+/**
+ * Response from the discount validation endpoint.
+ */
+export interface DiscountValidation {
+  valid: boolean;
+  discount_type: string | null;
+  value: string | null;
+  discount_amount: string;
+  message: string;
+}
+
+/**
+ * Response from the tax calculation endpoint.
+ */
+export interface TaxCalculation {
+  tax_amount: string;
+  effective_rate: string;
+  breakdown: Array<{
+    name: string;
+    rate: string;
+    tax_amount: string;
+  }>;
+}
+
+/**
+ * Order item from the public order detail endpoint.
+ */
+export interface OrderItem {
+  id: string;
+  product_title: string;
+  variant_name: string | null;
+  quantity: number;
+  unit_price: string;
+  total_price: string;
+}
+
+/**
+ * Full order detail from the public API.
+ *
+ * **For Developers:**
+ *   Mirrors ``OrderResponse`` from ``backend/app/schemas/order.py``.
+ */
+export interface OrderDetail {
+  id: string;
+  order_number: string;
+  status: string;
+  customer_email: string;
+  subtotal: string;
+  discount_code: string | null;
+  discount_amount: string;
+  tax_amount: string;
+  gift_card_amount: string;
+  total: string;
+  currency: string;
+  shipping_address: ShippingAddress | null;
+  items: OrderItem[];
+  created_at: string;
+  tracking_number: string | null;
+  carrier: string | null;
+}

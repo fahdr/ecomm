@@ -118,6 +118,14 @@ async def create_test_order(
         json={
             "customer_email": customer_email,
             "items": [{"product_id": product_id, "quantity": 1}],
+            "shipping_address": {
+                "name": "Test Customer",
+                "line1": "123 Test St",
+                "city": "Testville",
+                "state": "CA",
+                "postal_code": "90210",
+                "country": "US",
+            },
         },
     )
     return resp.json()

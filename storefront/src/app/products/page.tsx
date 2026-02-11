@@ -24,7 +24,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { fetchStore } from "@/lib/store";
 import { api } from "@/lib/api";
-import { ProductGrid } from "@/components/product-grid";
+import { AnimatedProductGrid } from "@/components/animated-product-grid";
 import type { PaginatedProducts } from "@/lib/types";
 
 /**
@@ -67,7 +67,7 @@ export default async function ProductsPage({
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl font-bold tracking-tight mb-8">All Products</h2>
 
-        <ProductGrid products={products} />
+        <AnimatedProductGrid products={products} />
 
         {/* Pagination */}
         {totalPages > 1 && (

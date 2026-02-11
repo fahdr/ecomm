@@ -30,6 +30,7 @@ import type { Product } from "@/lib/types";
 import { AddToCart } from "@/components/add-to-cart";
 import { ProductReviews } from "@/components/product-reviews";
 import { ProductUpsells } from "@/components/product-upsells";
+import { ProductViewTracker } from "@/components/product-view-tracker";
 
 /**
  * Generate dynamic metadata for the product detail page.
@@ -111,19 +112,19 @@ export default async function ProductDetailPage({
     <div className="py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Breadcrumb */}
-        <nav className="mb-8 text-sm text-zinc-500 dark:text-zinc-400">
-          <Link href="/" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+        <nav className="mb-8 text-sm text-theme-muted">
+          <Link href="/" className="hover:text-theme-primary transition-colors">
             Home
           </Link>
           <span className="mx-2">/</span>
           <Link
             href="/products"
-            className="hover:text-zinc-900 dark:hover:text-zinc-100"
+            className="hover:text-theme-primary transition-colors"
           >
             Products
           </Link>
           <span className="mx-2">/</span>
-          <span className="text-zinc-900 dark:text-zinc-100">
+          <span>
             {product.title}
           </span>
         </nav>
@@ -134,7 +135,7 @@ export default async function ProductDetailPage({
             {product.images && product.images.length > 0 ? (
               <>
                 {/* Main image */}
-                <div className="aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900">
+                <div className="aspect-square rounded-lg overflow-hidden bg-theme-surface">
                   <img
                     src={product.images[0]}
                     alt={product.title}
@@ -147,7 +148,7 @@ export default async function ProductDetailPage({
                     {product.images.slice(1).map((img, i) => (
                       <div
                         key={i}
-                        className="aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900"
+                        className="aspect-square rounded-lg overflow-hidden bg-theme-surface"
                       >
                         <img
                           src={img}
@@ -160,8 +161,8 @@ export default async function ProductDetailPage({
                 )}
               </>
             ) : (
-              <div className="aspect-square rounded-lg bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center">
-                <div className="w-24 h-24 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+              <div className="aspect-square rounded-lg bg-theme-surface flex items-center justify-center">
+                <div className="w-24 h-24 rounded-full bg-theme-surface/50" />
               </div>
             )}
           </div>
@@ -178,7 +179,7 @@ export default async function ProductDetailPage({
                 ${Number(product.price).toFixed(2)}
               </span>
               {product.compare_at_price && (
-                <span className="text-xl text-zinc-400 line-through">
+                <span className="text-xl text-theme-muted line-through">
                   ${Number(product.compare_at_price).toFixed(2)}
                 </span>
               )}
@@ -187,10 +188,10 @@ export default async function ProductDetailPage({
             {/* Description */}
             {product.description && (
               <div className="mt-8">
-                <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
+                <h3 className="text-sm font-medium text-theme-muted uppercase tracking-wide mb-3">
                   Description
                 </h3>
-                <div className="prose prose-zinc dark:prose-invert max-w-none text-zinc-600 dark:text-zinc-400">
+                <div className="text-theme-muted leading-relaxed">
                   <p>{product.description}</p>
                 </div>
               </div>
@@ -214,6 +215,9 @@ export default async function ProductDetailPage({
         {/* Upsells / Cross-Sells Section */}
         <ProductUpsells storeSlug={storeSlug} productSlug={productSlug} />
       </div>
+
+      {/* Recently Viewed Products */}
+      <ProductViewTracker slug={productSlug} />
     </div>
   );
 }

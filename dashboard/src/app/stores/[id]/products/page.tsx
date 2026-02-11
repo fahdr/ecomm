@@ -141,9 +141,22 @@ export default function ProductListPage() {
         {/* Page heading */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-heading font-bold">Products</h1>
-          <Link href={`/stores/${storeId}/products/new`}>
-            <Button>Add Product</Button>
-          </Link>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                window.open(`${API_BASE}/api/v1/stores/${storeId}/exports/products`, "_blank");
+              }}
+            >
+              Export CSV
+            </Button>
+            <Link href={`/stores/${storeId}/products/new`}>
+              <Button size="sm">Add Product</Button>
+            </Link>
+          </div>
         </div>
 
         {/* Filters */}

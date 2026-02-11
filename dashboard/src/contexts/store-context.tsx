@@ -67,18 +67,22 @@ export function StoreProvider({
   );
 }
 
+/** Default context value returned when outside a StoreProvider (platform-level pages). */
+const defaultStoreContext: StoreContextValue = {
+  store: null,
+  refreshStore: () => {},
+};
+
 /**
  * Hook to access the current store context.
  *
- * Must be used within a StoreProvider (i.e., under /stores/[id]/ routes).
+ * Returns the store context value if within a StoreProvider, or a
+ * default with ``store: null`` when used on platform-level pages
+ * (e.g. ``/``, ``/stores``, ``/billing``).
  *
  * @returns The store context value with store data and refresh function.
- * @throws Error if used outside of StoreProvider.
  */
 export function useStore(): StoreContextValue {
   const context = useContext(StoreContext);
-  if (!context) {
-    throw new Error("useStore must be used within a StoreProvider");
-  }
-  return context;
+  return context ?? defaultStoreContext;
 }

@@ -31,6 +31,26 @@ test_engine = create_async_engine(settings.database_url, echo=False, poolclass=N
 TestSessionFactory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
 
 
+def pytest_sessionfinish(session, exitstatus):
+    """Dispose all engines at session end to prevent process hang.
+
+    Uses a fresh event loop since the pytest-asyncio loop may already
+    be closing.
+    """
+    import asyncio
+    from app.database import engine as app_engine
+
+    async def _dispose():
+        await test_engine.dispose()
+        await app_engine.dispose()
+
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_dispose())
+    finally:
+        loop.close()
+
+
 @pytest.fixture
 async def client():
     """Yield an async HTTP client wired to the FastAPI app with DB override.
@@ -47,12 +67,7 @@ async def client():
     """
     # Dispose engine pools to release any lingering connections from the
     # previous test that could block the TRUNCATE AccessExclusiveLock.
-    from app.database import engine as app_engine
-    await app_engine.dispose()
     await test_engine.dispose()
-
-    # Brief pause to let async connection cleanup complete.
-    await asyncio.sleep(0.1)
 
     # Use a dedicated one-shot engine for cleanup so it never conflicts
     # with lingering test_engine connections.
@@ -60,19 +75,18 @@ async def client():
         settings.database_url, echo=False, poolclass=NullPool
     )
     try:
-        # Terminate any stale connections from previous test runs that
-        # could hold locks and block TRUNCATE.
         async with cleanup_engine.begin() as conn:
+            # Terminate all other connections to prevent TRUNCATE from
+            # hanging on AccessExclusiveLock.  This covers idle, idle in
+            # transaction, and any other non-active states left by a
+            # running backend server or previous test sessions.
             await conn.execute(text(
                 "SELECT pg_terminate_backend(pid) "
                 "FROM pg_stat_activity "
                 "WHERE datname = current_database() "
-                "AND pid != pg_backend_pid() "
-                "AND state != 'active'"
+                "AND pid <> pg_backend_pid()"
             ))
-
-        # Now truncate all tables for test isolation.
-        async with cleanup_engine.begin() as conn:
+            # Truncate all tables for test isolation.
             table_names = ", ".join(
                 table.name for table in Base.metadata.sorted_tables
             )
@@ -101,3 +115,9 @@ async def client():
         yield ac
 
     app.dependency_overrides.clear()
+    await test_engine.dispose()
+
+    # Also dispose the app engine to prevent asyncpg pool tasks from
+    # blocking the event loop shutdown.
+    from app.database import engine as app_engine
+    await app_engine.dispose()

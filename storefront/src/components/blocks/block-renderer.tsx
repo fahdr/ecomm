@@ -41,6 +41,11 @@ import { CustomText } from "./custom-text";
 import { ImageBanner } from "./image-banner";
 import { Spacer } from "./spacer";
 import { ReviewsBlock } from "./reviews-block";
+import { ProductCarousel } from "./product-carousel";
+import { Testimonials } from "./testimonials";
+import { CountdownTimer } from "./countdown-timer";
+import { VideoBanner } from "./video-banner";
+import { TrustBadges } from "./trust-badges";
 
 /**
  * Registry that maps a block ``type`` string (as stored in the theme config)
@@ -62,6 +67,11 @@ const BLOCK_MAP: Record<
   image_banner: ImageBanner,
   spacer: Spacer,
   reviews: ReviewsBlock,
+  product_carousel: ProductCarousel,
+  testimonials: Testimonials,
+  countdown_timer: CountdownTimer,
+  video_banner: VideoBanner,
+  trust_badges: TrustBadges,
 };
 
 /**

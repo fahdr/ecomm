@@ -141,7 +141,9 @@ async def update_store(
 
     # Regenerate slug if name changed.
     if "name" in fields and fields["name"] is not None:
-        store.slug = await generate_unique_slug(db, Store, fields["name"])
+        store.slug = await generate_unique_slug(
+            db, Store, fields["name"], exclude_id=store.id
+        )
 
     await db.flush()
     await db.refresh(store)

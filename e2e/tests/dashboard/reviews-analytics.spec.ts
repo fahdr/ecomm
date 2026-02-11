@@ -179,11 +179,11 @@ test.describe("Dashboard Analytics", () => {
     await page.goto(`/stores/${storeId}/analytics`);
     await page.waitForLoadState("networkidle");
 
-    // Summary cards should show real revenue data (use exact card titles)
-    await expect(page.locator('[data-slot="card-title"]').filter({ hasText: "Revenue" }).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('[data-slot="card-title"]').filter({ hasText: "Profit" }).first()).toBeVisible();
-    await expect(page.locator('[data-slot="card-title"]').filter({ hasText: "Orders" }).first()).toBeVisible();
-    await expect(page.locator('[data-slot="card-title"]').filter({ hasText: "Avg Order Value" })).toBeVisible();
+    // Summary cards should show real revenue data (metric labels are <p> elements)
+    await expect(page.getByText("Revenue", { exact: true }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Profit", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Orders", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Avg Order").first()).toBeVisible();
 
     // Top products table should show our seeded products
     await expect(page.getByRole("cell", { name: "Analytics Widget" })).toBeVisible({ timeout: 10000 });

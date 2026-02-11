@@ -92,7 +92,7 @@ def _auth(token: str) -> dict:
 
 @pytest.mark.asyncio
 async def test_list_themes_returns_presets(client):
-    """A new store automatically gets 7 preset themes."""
+    """A new store automatically gets all preset themes (currently 11)."""
     token, store_id, _ = await _setup_store(client)
 
     resp = await client.get(
@@ -101,7 +101,7 @@ async def test_list_themes_returns_presets(client):
     )
     assert resp.status_code == 200
     themes = resp.json()
-    assert len(themes) == 7
+    assert len(themes) == 11
 
     # All should be presets.
     assert all(t["is_preset"] for t in themes)

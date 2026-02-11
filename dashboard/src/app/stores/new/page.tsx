@@ -17,16 +17,14 @@
  *   - The submit button is disabled while the request is in flight.
  *   - Backend validation errors (if any) are displayed below the form.
  *   - On success, redirects to `/stores/{id}`.
+ *   - Renders inside the unified dashboard shell (sidebar + top bar).
  *
  * **For Developers:**
- *   - Uses `bg-dot-pattern` background for visual consistency with the overhaul.
- *   - Header uses backdrop blur and `font-heading` for titles.
+ *   - Wrapped in `AuthenticatedLayout` for the unified shell.
  *   - Main content wrapped in `PageTransition` for entrance animation.
- *   - ThemeToggle is present in the header for dark/light mode switching.
  *
  * **For Project Managers:**
- *   This page is part of the store creation flow. It is NOT store-scoped
- *   (no sidebar), and uses its own top bar with breadcrumbs.
+ *   This page is part of the store creation flow. It is NOT store-scoped.
  */
 
 "use client";
@@ -55,7 +53,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PageTransition } from "@/components/motion-wrappers";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthenticatedLayout } from "@/components/authenticated-layout";
 
 /** Predefined niche categories for the store. */
 const NICHES = [
@@ -83,9 +81,7 @@ interface StoreResponse {
 /**
  * CreateStorePage renders a form for creating a new dropshipping store.
  *
- * Handles form state, validation, API submission, and redirect on success.
- *
- * @returns The rendered create-store page with header and form card.
+ * @returns The rendered create-store page inside the unified shell.
  */
 export default function CreateStorePage() {
   const router = useRouter();
@@ -97,9 +93,6 @@ export default function CreateStorePage() {
 
   /**
    * Handle form submission -- call the stores API to create a new store.
-   *
-   * Validates that a niche is selected, then posts to the backend.
-   * On success, redirects to the newly created store's page.
    *
    * @param e - The form submit event.
    */
@@ -129,23 +122,14 @@ export default function CreateStorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-dot-pattern">
-      <header className="flex items-center justify-between border-b bg-background/80 backdrop-blur-sm px-6 py-4">
-        <div className="flex items-center gap-4">
-          <Link href="/stores" className="text-lg font-heading font-semibold hover:underline">
-            Stores
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <h1 className="text-lg font-heading font-semibold">Create Store</h1>
-        </div>
-        <ThemeToggle />
-      </header>
-
-      <main className="flex justify-center p-6">
+    <AuthenticatedLayout>
+      <div className="flex justify-center p-6">
         <PageTransition>
           <Card className="w-full max-w-lg">
             <CardHeader>
-              <CardTitle className="font-heading">Create a new store</CardTitle>
+              <CardTitle className="font-heading">
+                Create a new store
+              </CardTitle>
               <CardDescription>
                 Set up your dropshipping store. A unique URL will be generated
                 from the store name.
@@ -154,7 +138,9 @@ export default function CreateStorePage() {
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4">
                 {error && (
-                  <p className="text-sm text-destructive text-center">{error}</p>
+                  <p className="text-sm text-destructive text-center">
+                    {error}
+                  </p>
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="name">Store Name</Label>
@@ -183,7 +169,9 @@ export default function CreateStorePage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description (optional)</Label>
+                  <Label htmlFor="description">
+                    Description (optional)
+                  </Label>
                   <Textarea
                     id="description"
                     placeholder="Tell customers what your store is about..."
@@ -206,7 +194,7 @@ export default function CreateStorePage() {
             </form>
           </Card>
         </PageTransition>
-      </main>
-    </div>
+      </div>
+    </AuthenticatedLayout>
   );
 }
