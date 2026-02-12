@@ -7,7 +7,7 @@
  *
  * **For Developers:**
  *   - Platform mode shows: Home, Stores, Billing, Pricing, Notifications
- *   - Store mode shows: 5 groups of store management links
+ *   - Store mode shows: 6 groups of store management links (including AI & Automation)
  *   - Collapse state persisted in localStorage key "sidebar-collapsed"
  *   - Uses ``useStore()`` which returns null on platform-level pages
  *
@@ -60,6 +60,7 @@ import {
   CreditCard,
   LayoutDashboard,
   DollarSign,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -125,6 +126,12 @@ function getStoreNavGroups(storeId: string): NavGroup[] {
       ],
     },
     {
+      title: "AI & Automation",
+      items: [
+        { label: "Services Hub", href: `${base}/services`, icon: Zap },
+      ],
+    },
+    {
       title: "Settings",
       items: [
         { label: "Store", href: `${base}`, icon: Store },
@@ -172,6 +179,7 @@ export function Sidebar() {
     Customers: true,
     Marketing: true,
     Operations: true,
+    "AI & Automation": true,
     Settings: true,
   });
   const [unreadNotifications, setUnreadNotifications] = useState(0);

@@ -1,0 +1,112 @@
+# TrendScout — Full Standalone Stack
+#
+# For Developers:
+#   Run `docker-compose up` to start all services.
+#   Backend API: http://localhost:8101
+#   Dashboard: http://localhost:3101
+#   Landing: http://localhost:3201
+#
+# For QA Engineers:
+#   Run `docker-compose up -d db redis` for just the infrastructure,
+#   then run the backend and tests locally for faster iteration.
+#
+# For Project Managers:
+#   This file defines the complete production-like environment.
+#   Each service runs in its own container with isolated resources.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: "trendscout"
+      POSTGRES_PASSWORD: "trendscout_dev"
+      POSTGRES_DB: "trendscout"
+    ports:
+      - "5501:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trendscout"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6401:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    ports:
+      - "8101:8101"
+    environment:
+      SERVICE_NAME: "trendscout"
+      SERVICE_DISPLAY_NAME: "TrendScout"
+      SERVICE_PORT: "8101"
+      DATABASE_URL: "postgresql+asyncpg://trendscout:trendscout_dev@db:5432/trendscout"
+      DATABASE_URL_SYNC: "postgresql://trendscout:trendscout_dev@db:5432/trendscout"
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/1"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+      CORS_ORIGINS: "http://localhost:3101,http://localhost:3201"
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:-dev-secret-change-in-production}"
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-worker:
+    build: ./backend
+    command: celery -A app.tasks.celery_app worker --loglevel=info -Q trendscout
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://trendscout:trendscout_dev@db:5432/trendscout"
+      DATABASE_URL_SYNC: "postgresql://trendscout:trendscout_dev@db:5432/trendscout"
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/1"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build: ./backend
+    command: celery -A app.tasks.celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://trendscout:trendscout_dev@db:5432/trendscout"
+      DATABASE_URL_SYNC: "postgresql://trendscout:trendscout_dev@db:5432/trendscout"
+      REDIS_URL: "redis://redis:6379/0"
+      CELERY_BROKER_URL: "redis://redis:6379/1"
+      CELERY_RESULT_BACKEND: "redis://redis:6379/2"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3101:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:8101"
+
+  landing:
+    build: ./landing
+    ports:
+      - "3201:3000"
+
+volumes:
+  pgdata:

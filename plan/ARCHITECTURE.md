@@ -534,7 +534,9 @@ Backend tests use `pytest` with `httpx.AsyncClient` for API testing. Tests are l
 - `NullPool` for test engine to avoid async connection-sharing issues
 - Tests create their own data via API calls (register user → create store → create resource)
 
-**Test files (28+ files, 329 tests):** `test_health.py`, `test_auth.py`, `test_public.py`, `test_products.py`, `test_stores.py`, `test_subscriptions.py`, `test_orders.py`, `test_customers.py`, `test_discounts.py`, `test_categories.py`, `test_suppliers.py`, `test_reviews.py`, `test_analytics.py`, `test_refunds.py`, `test_themes.py`, `test_tax.py`, `test_search.py`, `test_upsells.py`, `test_segments.py`, `test_gift_cards.py`, `test_currency.py`, `test_domains.py`, `test_store_webhooks.py`, `test_teams.py`, `test_notifications.py`, `test_bulk.py`, `test_fraud.py`, `test_ab_tests.py`
+**Test files (35+ files, 488 tests):** `test_health.py`, `test_auth.py`, `test_public.py`, `test_products.py`, `test_stores.py`, `test_subscriptions.py`, `test_orders.py`, `test_customers.py`, `test_discounts.py`, `test_categories.py`, `test_suppliers.py`, `test_reviews.py`, `test_analytics.py`, `test_refunds.py`, `test_themes.py`, `test_tax.py`, `test_search.py`, `test_upsells.py`, `test_segments.py`, `test_gift_cards.py`, `test_currency.py`, `test_domains.py`, `test_store_webhooks.py`, `test_teams.py`, `test_notifications.py`, `test_bulk.py`, `test_fraud.py`, `test_ab_tests.py`, `test_services.py`, `test_service_schemas.py`, `test_service_integration_service.py`
+
+Additionally, **8 standalone services** each have their own test suites (~543 tests total across all services).
 
 ### E2E Tests (Playwright)
 
@@ -620,3 +622,64 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 - **Order notes**: Internal memo field on orders (auto-save textarea in dashboard)
 - **Inventory alerts**: Low-stock warning cards on store overview (variants with < 5 units)
 - **Seed enhancements**: Order notes on demo orders, Cyberpunk theme assignment
+
+---
+
+## Phase 2: Standalone SaaS Products (A1-A8)
+
+Phase 2 replaced the monolithic `automation/` service with **8 independent, separately
+hostable SaaS products**. Each product has its own backend, dashboard, landing page,
+database, users, billing, and API.
+
+### Products
+
+| # | Name | Tagline | Backend | Dashboard | Landing | Tests |
+|---|------|---------|---------|-----------|---------|-------|
+| A1 | **TrendScout** | AI-Powered Product Research | :8101 | :3101 | :3201 | 67 |
+| A2 | **ContentForge** | AI Product Content Generator | :8102 | :3102 | :3202 | 45 |
+| A3 | **RankPilot** | Automated SEO Engine | :8103 | :3103 | :3203 | 74 |
+| A4 | **FlowSend** | Smart Email Marketing | :8104 | :3104 | :3204 | 87 |
+| A5 | **SpyDrop** | Competitor Intelligence | :8105 | :3105 | :3205 | 43 |
+| A6 | **PostPilot** | Social Media Automation | :8106 | :3106 | :3206 | 62 |
+| A7 | **AdScale** | AI Ad Campaign Manager | :8107 | :3107 | :3207 | 77 |
+| A8 | **ShopChat** | AI Shopping Assistant | :8108 | :3108 | :3208 | 88 |
+
+### Architecture Principles
+
+1. **Complete Independence**: No shared libraries, databases, or imports between services
+2. **Config-Driven**: Dashboard and landing page are customized via `service.config.ts`
+3. **Scaffolded from Template**: All services share the same structure (`services/_template/`)
+4. **REST API Integration**: Services communicate only via HTTP APIs
+5. **Own Billing**: Each service has its own Stripe subscription management
+
+### Per-Service Stack
+
+Each service is a complete SaaS application:
+- **Backend**: FastAPI + SQLAlchemy 2.0 async + Celery + Alembic
+- **Dashboard**: Next.js 16 (App Router) + Tailwind + shadcn/ui
+- **Landing Page**: Next.js 16 (static export) with CSS animations
+- **Database**: Own PostgreSQL database
+- **Cache/Queue**: Own Redis instance (or DB number in dev)
+
+### Platform Integration
+
+The dropshipping backend integrates with services via:
+- `ServiceIntegration` model tracking provisioned accounts per user
+- `POST /api/v1/auth/provision` endpoint in each service for user provisioning
+- `GET /api/v1/usage` endpoint for usage metrics
+- Dashboard sidebar "AI & Automation" section with 8 service pages
+- Bundle pricing: Starter includes 2 services (Free tier), Growth/Pro includes all 8
+
+### Metrics
+
+| Component | Count |
+|---|---|
+| Standalone services | 8 |
+| Service feature tests | ~543 |
+| Platform integration tests | 152 |
+| Total backend tests | 488 |
+| Master landing page | 7 components (static export) |
+| Alembic migrations | 14 |
+| DB tables | ~38 |
+
+See [SERVICES.md](SERVICES.md) for full service architecture details.

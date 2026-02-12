@@ -12,6 +12,7 @@ All versioned endpoints are mounted under the /api/v1 prefix.
     5. Operations: refunds, analytics, tax, segments, bulk
     6. Platform: teams, notifications, domains, store webhooks
     7. Advanced: ab tests, fraud, currency
+    8. Service integrations: external SaaS microservices (A1-A8)
 """
 
 from fastapi import FastAPI
@@ -50,6 +51,9 @@ from app.api.fraud import router as fraud_router
 from app.api.bulk import router as bulk_router
 from app.api.currency import router as currency_router
 from app.api.themes import router as themes_router, meta_router as themes_meta_router
+
+# --- Service integrations (Phase 2 - Automation & AI microservices A1-A8) ---
+from app.api.services import router as services_router
 
 # --- Data exports ---
 from app.api.exports import router as exports_router
@@ -117,6 +121,9 @@ app.include_router(currency_router, prefix="/api/v1")
 # --- Themes ---
 app.include_router(themes_router, prefix="/api/v1")
 app.include_router(themes_meta_router, prefix="/api/v1")
+
+# --- Service integrations (Phase 2) ---
+app.include_router(services_router, prefix="/api/v1")
 
 # --- Data exports ---
 app.include_router(exports_router, prefix="/api/v1")

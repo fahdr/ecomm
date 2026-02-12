@@ -31,6 +31,10 @@ Feature models:
     - ABTest, ABTestVariant, ABTestStatus (F29): A/B testing experiments.
     - CustomerAccount, CustomerWishlist (F7.5): Storefront customer accounts
       and wishlists.
+
+Service integration models:
+    - ServiceIntegration, ServiceName, ServiceTier: External SaaS microservice
+      connections (Phase 2 Automation A1-A8).
 """
 
 # Core models
@@ -111,3 +115,10 @@ from app.models.customer import CustomerAccount, CustomerWishlist  # noqa: F401
 
 # F15 - Store Themes (enhanced with JSON config, blocks, and presets)
 from app.models.theme import StoreTheme  # noqa: F401
+
+# Service Integrations (Phase 2 - Automation & AI microservices A1-A8)
+from app.models.service_integration import (  # noqa: F401
+    ServiceIntegration,
+    ServiceName,
+    ServiceTier,
+)

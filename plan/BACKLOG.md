@@ -1262,14 +1262,19 @@ Deploy the complete platform to the existing K8s cluster. CI/CD pipeline.
 
 ---
 
-## Phase 2: Automation & AI Features
+## Phase 2: Standalone SaaS Products (A1-A8) ✅
 
-> **Phase 2 scope:** These features are built on the **Automation service** (`automation/`), a standalone
-> FastAPI + Celery service that communicates with the core backend via HTTP API. Phase 2 is implemented
-> after Phase 1 is stable and well-tested. The automation service is designed to be extractable as a
-> separate product in the future. All features below use the `[A]` tag for automation service tasks.
+> **STATUS: COMPLETE.** All 8 automation features have been implemented as **independent, separately
+> hostable SaaS products** in `services/`. Each product has its own FastAPI backend, Next.js dashboard,
+> landing page, database, Stripe billing, user auth, and test suite. The original monolithic
+> `automation/` service design was replaced with this more scalable architecture.
 >
-> See [ARCHITECTURE.md](ARCHITECTURE.md) for the Automation service design principles and separation rules.
+> **Key metrics:** 8 standalone services, ~543 feature tests, 152 platform integration tests,
+> master landing page (7 components), platform integration (ServiceIntegration model, 8 API endpoints,
+> 2 dashboard pages).
+>
+> See [SERVICES.md](SERVICES.md) for the full services architecture and [ARCHITECTURE.md](ARCHITECTURE.md)
+> for how they integrate with the core platform.
 
 ---
 
