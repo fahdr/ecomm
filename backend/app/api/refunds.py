@@ -311,6 +311,18 @@ async def process_refund_endpoint(
             else status.HTTP_404_NOT_FOUND
         )
         raise HTTPException(status_code=code, detail=detail)
+
+    # Dispatch background tasks for refund notifications
+    from app.tasks.email_tasks import send_refund_notification
+    from app.tasks.webhook_tasks import dispatch_webhook_event
+
+    send_refund_notification.delay(str(refund_id))
+    dispatch_webhook_event.delay(str(store_id), "refund.completed", {
+        "refund_id": str(refund_id),
+        "order_id": str(refund.order_id),
+        "amount": str(refund.amount),
+    })
+
     return ProcessRefundResponse(
         refund=RefundResponse.model_validate(refund),
         message="Refund processed successfully",

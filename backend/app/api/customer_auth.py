@@ -119,6 +119,10 @@ async def register(
     await db.commit()
     await db.refresh(customer)
 
+    # Send welcome email in the background
+    from app.tasks.email_tasks import send_welcome_email
+    send_welcome_email.delay(str(customer.id), str(store.id))
+
     return CustomerTokenResponse(
         access_token=create_customer_access_token(customer.id, store.id),
         refresh_token=create_customer_refresh_token(customer.id, store.id),
@@ -293,8 +297,9 @@ async def forgot_password(
     customer = result.scalar_one_or_none()
     if customer:
         _token = create_password_reset_token(customer.id)
-        # In production: email_service.send_password_reset(customer, store, token)
-        # For dev: token is logged or returned in test mode
+        # Send password reset email in the background
+        from app.tasks.email_tasks import send_password_reset
+        send_password_reset.delay(customer.email, _token, str(store.id))
 
 
 @router.post("/reset-password", status_code=status.HTTP_204_NO_CONTENT)

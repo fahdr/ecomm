@@ -47,8 +47,14 @@ dropshipping-platform/
 │   │   │   ├── product_service.py
 │   │   │   └── stripe_service.py
 │   │   ├── tasks/               # Celery tasks (core backend only)
-│   │   │   ├── celery_app.py    # Celery instance + config
-│   │   │   └── store_tasks.py   # Store-related background tasks
+│   │   │   ├── celery_app.py    # Celery instance + config + Beat schedule
+│   │   │   ├── db.py            # Sync session factory for workers
+│   │   │   ├── email_tasks.py   # 9 transactional email tasks
+│   │   │   ├── webhook_tasks.py # Webhook delivery with HMAC signing
+│   │   │   ├── notification_tasks.py  # 4 dashboard notification tasks
+│   │   │   ├── fraud_tasks.py   # Automated fraud risk scoring
+│   │   │   ├── order_tasks.py   # Order orchestration + auto-fulfill
+│   │   │   └── analytics_tasks.py # Daily analytics + notification cleanup
 │   │   └── utils/               # Shared utilities
 │   ├── alembic/                 # Database migrations
 │   │   └── versions/
@@ -521,6 +527,59 @@ To extract the automation service as a separate product:
 
 ---
 
+## Background Tasks (Celery)
+
+The platform uses Celery with Redis as the message broker for background task processing.
+Tasks are defined in `backend/app/tasks/` and cover all asynchronous operations.
+
+### Task Modules
+
+| Module | Tasks | Purpose |
+|--------|-------|---------|
+| `email_tasks.py` | 9 tasks | Transactional emails (order confirmation, shipping, delivery, refund, welcome, password reset, gift card, team invite, low stock) |
+| `webhook_tasks.py` | 1 task | HTTP webhook delivery with HMAC-SHA256 signing, failure tracking, auto-disable after 10 failures |
+| `notification_tasks.py` | 4 tasks | In-app dashboard notifications (order events, reviews, low stock, fraud alerts) |
+| `fraud_tasks.py` | 1 task | Automated fraud risk scoring (5 heuristic signals, 0-100 score, auto-flag high/critical) |
+| `order_tasks.py` | 3 tasks | Post-payment orchestration, auto-fulfillment via suppliers, fulfillment status checks |
+| `analytics_tasks.py` | 2 tasks | Daily revenue aggregation, notification cleanup (90-day read notifications) |
+
+**Total: 20 task functions across 6 modules.**
+
+### Infrastructure
+
+- **Sync DB access:** Tasks use `SyncSessionFactory` (`backend/app/tasks/db.py`) with `psycopg2` driver since Celery workers run synchronously
+- **Celery Beat schedule:** 3 periodic tasks — daily analytics (2 AM), notification cleanup (3 AM), fulfillment checks (every 30 min)
+- **JSON serialization:** All UUIDs passed as strings to `.delay()`, converted back inside tasks
+- **Retry policy:** Most tasks use `max_retries=3` with 30-60s backoff
+
+### Event Flow
+
+```
+Stripe Webhook (checkout.session.completed)
+  └─→ process_paid_order.delay(order_id)
+        ├─→ run_fraud_check(order_id)           [sync — needs result]
+        ├─→ send_order_confirmation.delay()       [async]
+        ├─→ dispatch_webhook_event.delay()        [async]
+        ├─→ create_order_notification.delay()     [async]
+        ├─→ send_low_stock_alert.delay()          [if variant <= 5 units]
+        └─→ auto_fulfill_order.delay()            [if not fraud-flagged]
+              ├─→ send_order_shipped.delay()
+              ├─→ dispatch_webhook_event.delay("order.shipped")
+              └─→ create_order_notification.delay("order_shipped")
+```
+
+### Integration Points
+
+Tasks are dispatched from these API endpoints:
+- `POST /api/v1/webhooks/stripe` → `process_paid_order.delay()`
+- `POST /stores/{id}/orders/{id}/fulfill` → shipped email + webhook + notification
+- `POST /stores/{id}/orders/{id}/deliver` → delivered email + webhook + notification
+- `POST /stores/{id}/customers/register` → `send_welcome_email.delay()`
+- `POST /stores/{id}/customers/forgot-password` → `send_password_reset.delay()`
+- `POST /stores/{id}/refunds` → refund email + webhook
+
+---
+
 ## Testing Strategy
 
 ### Backend Unit/Integration Tests
@@ -534,7 +593,7 @@ Backend tests use `pytest` with `httpx.AsyncClient` for API testing. Tests are l
 - `NullPool` for test engine to avoid async connection-sharing issues
 - Tests create their own data via API calls (register user → create store → create resource)
 
-**Test files (35+ files, 488 tests):** `test_health.py`, `test_auth.py`, `test_public.py`, `test_products.py`, `test_stores.py`, `test_subscriptions.py`, `test_orders.py`, `test_customers.py`, `test_discounts.py`, `test_categories.py`, `test_suppliers.py`, `test_reviews.py`, `test_analytics.py`, `test_refunds.py`, `test_themes.py`, `test_tax.py`, `test_search.py`, `test_upsells.py`, `test_segments.py`, `test_gift_cards.py`, `test_currency.py`, `test_domains.py`, `test_store_webhooks.py`, `test_teams.py`, `test_notifications.py`, `test_bulk.py`, `test_fraud.py`, `test_ab_tests.py`, `test_services.py`, `test_service_schemas.py`, `test_service_integration_service.py`
+**Test files (41+ files, 541 tests):** `test_health.py`, `test_auth.py`, `test_public.py`, `test_products.py`, `test_stores.py`, `test_subscriptions.py`, `test_orders.py`, `test_customers.py`, `test_discounts.py`, `test_categories.py`, `test_suppliers.py`, `test_reviews.py`, `test_analytics.py`, `test_refunds.py`, `test_themes.py`, `test_tax.py`, `test_search.py`, `test_upsells.py`, `test_segments.py`, `test_gift_cards.py`, `test_currency.py`, `test_domains.py`, `test_store_webhooks.py`, `test_teams.py`, `test_notifications.py`, `test_bulk.py`, `test_fraud.py`, `test_ab_tests.py`, `test_services.py`, `test_service_schemas.py`, `test_service_integration_service.py`, `test_email_tasks.py`, `test_webhook_tasks.py`, `test_notification_tasks.py`, `test_fraud_tasks.py`, `test_order_tasks.py`, `test_analytics_tasks.py`
 
 Additionally, **8 standalone services** each have their own test suites (~543 tests total across all services).
 
@@ -677,7 +736,10 @@ The dropshipping backend integrates with services via:
 | Standalone services | 8 |
 | Service feature tests | ~543 |
 | Platform integration tests | 152 |
-| Total backend tests | 488 |
+| Celery task tests | 53 |
+| Total backend tests | 541 |
+| Celery task functions | 20 |
+| Celery task modules | 6 |
 | Master landing page | 7 components (static export) |
 | Alembic migrations | 14 |
 | DB tables | ~38 |

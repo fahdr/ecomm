@@ -109,21 +109,10 @@ async def stripe_webhook(
             if order:
                 logger.info("Order %s confirmed via Stripe webhook", order.id)
 
-                # Send order confirmation email
-                try:
-                    from sqlalchemy import select as sa_select
-                    store_result = await db.execute(
-                        sa_select(Store).where(Store.id == order.store_id)
-                    )
-                    store = store_result.scalar_one_or_none()
-                    if store:
-                        await email_service.send_order_confirmation(order, store)
-                except Exception as email_err:
-                    logger.warning(
-                        "Failed to send order confirmation email for %s: %s",
-                        order.id,
-                        email_err,
-                    )
+                # Dispatch post-payment processing via Celery
+                # (fraud check, email, webhook, notification, auto-fulfill)
+                from app.tasks.order_tasks import process_paid_order
+                process_paid_order.delay(str(order.id))
 
                 # Track discount usage if a code was applied
                 if order.discount_code and order.discount_amount:

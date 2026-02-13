@@ -137,12 +137,14 @@ Per-store customer authentication, order history, and wishlists.
 **Status:** All Phase 1 features (F8-F30) are implemented, plus the full Polish Plan (Phases A-G) and Phase 2 Polish (5 phases). The platform is now demo-able end-to-end with premium visual polish.
 
 **Current totals:**
-- **329 backend tests passing** (28+ test files)
+- **541 backend tests passing** (41+ test files, including 53 Celery task tests)
 - **187+ e2e tests passing** (24 Playwright spec files — empty state + populated data + seed data + phase 2 polish)
-- **34 dashboard pages** building cleanly
+- **36 dashboard pages** building cleanly
 - **18 storefront pages** building cleanly
-- **13 Alembic migrations**, ~37 DB tables
+- **14 Alembic migrations**, ~38 DB tables
 - **11 preset themes**, 13 block types, motion animations throughout
+- **20 Celery task functions** across 6 modules (email, webhook, notification, fraud, order, analytics)
+- **3 Celery Beat scheduled tasks** (daily analytics, notification cleanup, fulfillment checks)
 - Backend API endpoints (FastAPI + SQLAlchemy async)
 - Dashboard UI pages (Next.js + Shadcn/ui)
 - Storefront UI components (Next.js + Tailwind)

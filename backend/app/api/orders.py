@@ -201,6 +201,19 @@ async def fulfill_order(
         code = status.HTTP_400_BAD_REQUEST if "Cannot fulfill" in detail else status.HTTP_404_NOT_FOUND
         raise HTTPException(status_code=code, detail=detail)
 
+    # Dispatch background tasks for shipped notifications
+    from app.tasks.email_tasks import send_order_shipped
+    from app.tasks.notification_tasks import create_order_notification
+    from app.tasks.webhook_tasks import dispatch_webhook_event
+
+    send_order_shipped.delay(str(order_id), body.tracking_number)
+    dispatch_webhook_event.delay(str(store_id), "order.shipped", {
+        "order_id": str(order_id),
+        "tracking_number": body.tracking_number,
+        "carrier": body.carrier,
+    })
+    create_order_notification.delay(str(store_id), str(order_id), "order_shipped")
+
     return OrderResponse.from_order(order)
 
 
@@ -235,5 +248,16 @@ async def deliver_order(
         detail = str(e)
         code = status.HTTP_400_BAD_REQUEST if "Cannot deliver" in detail else status.HTTP_404_NOT_FOUND
         raise HTTPException(status_code=code, detail=detail)
+
+    # Dispatch background tasks for delivery notifications
+    from app.tasks.email_tasks import send_order_delivered
+    from app.tasks.notification_tasks import create_order_notification
+    from app.tasks.webhook_tasks import dispatch_webhook_event
+
+    send_order_delivered.delay(str(order_id))
+    dispatch_webhook_event.delay(str(store_id), "order.delivered", {
+        "order_id": str(order_id),
+    })
+    create_order_notification.delay(str(store_id), str(order_id), "order_delivered")
 
     return OrderResponse.from_order(order)
