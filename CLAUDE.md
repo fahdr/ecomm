@@ -1,39 +1,70 @@
-Write docs for types of users.
-1. **Developer**: A software engineer who will be working on the codebase, implementing features, fixing bugs, and maintaining the project.
-2. **Project Manager**: A non-technical stakeholder responsible for overseeing the project, tracking progress, and ensuring that the project meets its goals and deadlines.
-3. **QA Engineer**: A quality assurance specialist who will be responsible for testing the application, identifying bugs, and ensuring that the product meets quality standards before release.
-4. **End User**: The final consumer of the product, who will interact with the application through the dashboard and storefront, using its features to manage their dropshipping business.
+# Project Instructions
 
+## Documentation Requirements
 
-Every code and function/method should have a docstring explaining its purpose, parameters, and return values. This is crucial for maintaining code readability and helping other developers understand the functionality of the code. Additionally, comments should be used to explain complex logic or important decisions made in the code. This practice not only aids in collaboration but also ensures that the codebase remains maintainable and scalable as the project evolves.
+When creating or modifying features, always produce documentation for these four audiences:
 
-Add plan documentation and impltation steps everytime
-Update all relevant docs evrytime
-Always write comprehensive tests
+1. **Developer** — implementation details, API contracts, architecture decisions. Target: engineers building and maintaining the code.
+2. **Project Manager** — feature scope, progress milestones, dependencies. Target: non-technical stakeholders tracking delivery.
+3. **QA Engineer** — test plans, edge cases, acceptance criteria. Target: testers validating quality before release.
+4. **End User** — workflows, UI behavior, feature guides. Target: merchants using the dashboard and storefront.
 
-Keep updating history to remember the conversations
+Place per-service docs in `<service>/docs/` (e.g., `trendscout/docs/DEVELOPER.md`). Place cross-cutting architecture docs in `plan/`.
 
-We need to think from the perspective of a user and go through each option and each button and each value. Then we need to find the intention of the particluar button or item. Then form a flow of what should happen next and go check the relevant thing next.
-We should also keep ux in mind. A human will never be able to read dark text on dark background. Let us form a solid plan to detect such anomalies when running texts.
+## Code Quality
 
-DISTILLED_AESTHETICS_PROMPT = """
-<frontend_aesthetics>
-You tend to converge toward generic, "on distribution" outputs. In frontend design, this creates what users call the "AI slop" aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight. Focus on:
- 
-Typography: Choose fonts that are beautiful, unique, and interesting. Avoid generic fonts like Arial and Inter; opt instead for distinctive choices that elevate the frontend's aesthetics.
- 
-Color & Theme: Commit to a cohesive aesthetic. Use CSS variables for consistency. Dominant colors with sharp accents outperform timid, evenly-distributed palettes. Draw from IDE themes and cultural aesthetics for inspiration.
- 
-Motion: Use animations for effects and micro-interactions. Prioritize CSS-only solutions for HTML. Use Motion library for React when available. Focus on high-impact moments: one well-orchestrated page load with staggered reveals (animation-delay) creates more delight than scattered micro-interactions.
- 
-Backgrounds: Create atmosphere and depth rather than defaulting to solid colors. Layer CSS gradients, use geometric patterns, or add contextual effects that match the overall aesthetic.
- 
-Avoid generic AI-generated aesthetics:
-- Overused font families (Inter, Roboto, Arial, system fonts)
-- Clichéd color schemes (particularly purple gradients on white backgrounds)
-- Predictable layouts and component patterns
-- Cookie-cutter design that lacks context-specific character
- 
-Interpret creatively and make unexpected choices that feel genuinely designed for the context. Vary between light and dark themes, different fonts, different aesthetics. You still tend to converge on common choices (Space Grotesk, for example) across generations. Avoid this: it is critical that you think outside the box!
-</frontend_aesthetics>
-"""
+- Every function, method, and class MUST have a docstring covering purpose, parameters, and return values.
+- Add inline comments only for complex logic or non-obvious decisions — do not comment self-explanatory code.
+
+## Workflow Rules
+
+These apply to every task:
+
+1. **Plan first** — add implementation steps to `plan/` or the relevant service's `docs/IMPLEMENTATION_STEPS.md` before writing code.
+2. **Write comprehensive tests** — every feature or fix must include tests. Follow the schema-based test isolation pattern (see memory).
+3. **Update docs** — after any code change, update all affected documentation (developer, PM, QA, end-user).
+4. **Update memory** — record key decisions, patterns, and lessons learned in the auto-memory directory.
+
+## UX Validation
+
+When building or modifying UI, manually trace the user's journey:
+
+1. Identify every interactive element (button, input, link, toggle) on the affected page.
+2. Determine the intent of each element — what should happen when a user interacts with it?
+3. Trace the full flow: what screen comes next? What data changes? What feedback does the user see?
+4. Verify the flow end-to-end by checking the relevant backend endpoints and frontend state.
+
+### Accessibility & Contrast Checks
+
+Always verify text remains readable against its background:
+- Never place dark text on a dark background or light text on a light background.
+- Test both light and dark themes when the app supports theme switching.
+- Use sufficient color contrast (WCAG AA minimum: 4.5:1 for normal text, 3:1 for large text).
+
+## Frontend Aesthetics
+
+Avoid generic "AI slop" design. Every frontend should feel intentionally crafted.
+
+### Typography
+- Choose distinctive, beautiful fonts. **Never default to** Inter, Roboto, Arial, or system fonts.
+- Vary font choices across services — do not reuse the same font (e.g., Space Grotesk) everywhere.
+
+### Color & Theme
+- Commit to a cohesive palette using CSS variables.
+- Use dominant colors with sharp accents — avoid timid, evenly-distributed palettes.
+- Draw inspiration from IDE themes, cultural aesthetics, and real-world brand identities.
+- **Never use** the cliched purple-gradient-on-white pattern.
+
+### Motion & Animation
+- Use CSS-only animations where possible; use the Motion library (framer-motion) in React.
+- Focus on high-impact moments: a well-orchestrated page load with staggered `animation-delay` creates more delight than scattered micro-interactions.
+
+### Backgrounds & Depth
+- Create atmosphere with layered CSS gradients, geometric patterns, or contextual effects.
+- Never default to flat solid-color backgrounds when depth would improve the design.
+
+### Anti-Patterns to Avoid
+- Overused font families (Inter, Roboto, Arial, system fonts, Space Grotesk)
+- Cliched color schemes (purple gradients, generic blue-and-white)
+- Predictable component layouts that look like every other AI-generated UI
+- Cookie-cutter designs that ignore the service's specific context and personality

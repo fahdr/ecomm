@@ -1,7 +1,11 @@
-# Makefile — Dropshipping Platform developer workflow
+# Makefile — Dropshipping Platform + SaaS Suite developer workflow
 #
-# Common targets for starting services, running tests, seeding data,
-# and cleaning up zombie processes.
+# Monorepo structure:
+#   dropshipping/ — Core platform (backend, dashboard, storefront)
+#   trendscout/, contentforge/, ... — 8 standalone SaaS services
+#   packages/ — Shared libraries (py-core, py-connectors, ts-ui-kit)
+#   llm-gateway/ — Centralized LLM microservice
+#   admin/ — Super admin dashboard
 #
 # **For Developers:**
 #   Run `make help` to see all available targets.
@@ -18,14 +22,18 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-# Paths
+# Paths — monorepo layout
 ROOT        := /workspaces/ecomm
-BACKEND     := $(ROOT)/backend
-DASHBOARD   := $(ROOT)/dashboard
-STOREFRONT  := $(ROOT)/storefront
+PLATFORM    := $(ROOT)/dropshipping
+BACKEND     := $(PLATFORM)/backend
+DASHBOARD   := $(PLATFORM)/dashboard
+STOREFRONT  := $(PLATFORM)/storefront
 E2E         := $(ROOT)/e2e
 SCRIPTS     := $(ROOT)/scripts
 LOG_DIR     := $(ROOT)/.devcontainer/logs
+
+# Services
+SERVICES    := trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat
 
 # Database
 DB_USER     := dropship
@@ -182,6 +190,20 @@ test-e2e-ui: ## Run E2E tests with Playwright UI
 .PHONY: test-e2e-file
 test-e2e-file: ## Run a single E2E spec file (usage: make test-e2e-file F=tests/dashboard/auth.spec.ts)
 	@cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test $(F) --reporter=list
+
+.PHONY: test-service
+test-service: ## Run tests for a specific service (usage: make test-service S=trendscout)
+	@echo "==> Running $(S) backend tests..."
+	@cd $(ROOT)/$(S)/backend && python -m pytest tests/ -x -q --tb=short
+	@echo ""
+
+.PHONY: test-services
+test-services: ## Run tests for all 8 SaaS services
+	@for svc in $(SERVICES); do \
+		echo "==> Testing $$svc..."; \
+		cd $(ROOT)/$$svc/backend && python -m pytest tests/ -x -q --tb=short || exit 1; \
+		echo ""; \
+	done
 
 # ──────────────────────────────────────────────────────────────────
 # Background / Detached Tests (survives session disconnect)

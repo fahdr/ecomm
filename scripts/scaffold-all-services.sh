@@ -20,7 +20,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SCAFFOLD="${SCRIPT_DIR}/../services/_template/scripts/scaffold.sh"
+SCAFFOLD="${SCRIPT_DIR}/../_template/scripts/scaffold.sh"
 
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║         Scaffolding All 8 Service Products                    ║"

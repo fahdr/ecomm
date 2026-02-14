@@ -9,7 +9,7 @@ LOG_DIR="/workspaces/ecomm/.devcontainer/logs"
 mkdir -p "$LOG_DIR"
 
 echo "==> Installing backend dependencies..."
-cd /workspaces/ecomm/backend
+cd /workspaces/ecomm/dropshipping/backend
 pip install -e '.[dev]' --quiet 2>&1 | tail -1
 
 echo "==> Running database migrations..."
@@ -21,7 +21,7 @@ nohup uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload \
 echo $! > "$LOG_DIR/backend.pid"
 
 echo "==> Installing dashboard dependencies..."
-cd /workspaces/ecomm/dashboard
+cd /workspaces/ecomm/dropshipping/dashboard
 npm install --silent 2>&1 | tail -1
 
 echo "==> Starting Dashboard on port 3000..."
@@ -29,7 +29,7 @@ nohup npm run dev > "$LOG_DIR/dashboard.log" 2>&1 &
 echo $! > "$LOG_DIR/dashboard.pid"
 
 echo "==> Installing storefront dependencies..."
-cd /workspaces/ecomm/storefront
+cd /workspaces/ecomm/dropshipping/storefront
 npm install --silent 2>&1 | tail -1
 
 echo "==> Starting Storefront on port 3001..."
