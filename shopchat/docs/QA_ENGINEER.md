@@ -1,6 +1,6 @@
 # QA Engineer Guide
 
-**For QA Engineers:** This guide covers everything needed to test the ShopChat AI Shopping Assistant service. It includes the test stack, how to run the 88 backend tests, coverage breakdown, API endpoint reference, and verification checklists for every feature area.
+**For QA Engineers:** This guide covers everything needed to test the ShopChat AI Shopping Assistant service. It includes the test stack, how to run the 113 backend tests, coverage breakdown, API endpoint reference, and verification checklists for every feature area.
 
 ---
 
@@ -18,7 +18,7 @@
 
 ## Running Tests
 
-### Full Test Suite (88 tests)
+### Full Test Suite (113 tests)
 
 ```bash
 # From the service root
@@ -65,7 +65,8 @@ cd backend && pytest tests/test_widget.py::test_widget_chat_with_knowledge_base 
 | `test_billing.py` | 9 | Plan listing, checkout, duplicate subscription, billing overview, current subscription |
 | `test_api_keys.py` | 5 | Create, list, revoke, auth via X-API-Key, invalid key |
 | `test_health.py` | 1 | Health check endpoint returns 200 with service metadata |
-| **Total** | **88** | |
+| `test_platform_webhooks.py` | -- | Platform event webhook handling |
+| **Total** | **113** | |
 
 ---
 

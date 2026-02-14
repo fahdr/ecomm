@@ -18,21 +18,21 @@
 
 ## Running Tests
 
-### All 43 Backend Tests
+### All 156 Backend Tests
 
 ```bash
-# From /workspaces/ecomm/services/spydrop/
+# From /workspaces/ecomm/spydrop/
 make test-backend
 
 # Or directly:
-cd /workspaces/ecomm/services/spydrop/backend
+cd /workspaces/ecomm/spydrop/backend
 pytest -v
 ```
 
 ### Run a Specific Test File
 
 ```bash
-cd /workspaces/ecomm/services/spydrop/backend
+cd /workspaces/ecomm/spydrop/backend
 pytest tests/test_competitors.py -v
 pytest tests/test_products.py -v
 pytest tests/test_auth.py -v
@@ -44,7 +44,7 @@ pytest tests/test_health.py -v
 ### Run a Single Test
 
 ```bash
-cd /workspaces/ecomm/services/spydrop/backend
+cd /workspaces/ecomm/spydrop/backend
 pytest tests/test_competitors.py::test_create_competitor_plan_limit_free_tier -v
 ```
 
@@ -60,7 +60,8 @@ pytest tests/test_competitors.py::test_create_competitor_plan_limit_free_tier -v
 | `test_billing.py` | 9 | List plans (returns 3 tiers, has pricing), checkout (pro plan, free plan fails, duplicate subscription fails), billing overview (free plan, after subscribe), current subscription (none, after subscribe) |
 | `test_api_keys.py` | 5 | Create key (returns raw key), list keys (no raw key exposed), revoke key (marks inactive), auth via API key (X-API-Key header), invalid API key (returns 401) |
 | `test_health.py` | 1 | Health check returns 200 with service name, status "ok", and timestamp |
-| **Total** | **43** | |
+| `test_platform_webhooks.py` | -- | Platform event webhook handling |
+| **Total** | **156** | |
 
 ---
 

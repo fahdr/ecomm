@@ -21,7 +21,7 @@
 ### Commands
 
 ```bash
-# Run all 62 backend tests
+# Run all 157 backend tests
 make test-backend
 
 # Verbose output with test names
@@ -40,7 +40,7 @@ cd backend && pytest -k "calendar" -v
 cd backend && pytest --durations=10
 ```
 
-### Test Count: 62 Total
+### Test Count: 157 Total
 
 | Test File | Count | Coverage Area |
 |-----------|-------|---------------|
@@ -51,6 +51,7 @@ cd backend && pytest --durations=10
 | `test_billing.py` | 9 | Plan listing, pricing details, checkout (pro), checkout free fails (400), duplicate subscription (400), billing overview, overview after subscribe, current subscription (null), current subscription after subscribe |
 | `test_api_keys.py` | 5 | Key creation (raw key returned), listing (no raw keys), revocation, auth via X-API-Key, invalid API key (401) |
 | `test_health.py` | 1 | Health check returns status, service name, timestamp |
+| `test_platform_webhooks.py` | -- | Platform event webhook handling |
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-RankPilot is an Automated SEO Engine with 74 backend unit tests across 8 test files. This guide covers the test infrastructure, how to run tests, what each test file verifies, and a checklist for manual feature verification.
+RankPilot is an Automated SEO Engine with 165 backend unit tests across 8 test files. This guide covers the test infrastructure, how to run tests, what each test file verifies, and a checklist for manual feature verification.
 
 ---
 
@@ -21,7 +21,7 @@ RankPilot is an Automated SEO Engine with 74 backend unit tests across 8 test fi
 ## Running Tests
 
 ```bash
-# Run all 74 backend tests
+# Run all 165 backend tests
 make test-backend
 
 # Verbose output (shows each test name and result)
@@ -54,7 +54,8 @@ pytest backend/tests -v -s
 | `test_audits.py` | 15 | Audit execution, score validation, history, pagination |
 | `test_billing.py` | 10 | Plan listing, checkout, overview, subscription lifecycle |
 | `test_api_keys.py` | 5 | Key creation, listing, revocation, API key authentication |
-| **Total** | **74** | |
+| `test_platform_webhooks.py` | -- | Platform event webhook handling |
+| **Total** | **165** | |
 
 ---
 

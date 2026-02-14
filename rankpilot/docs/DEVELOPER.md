@@ -74,7 +74,7 @@ make install && make migrate && make start
 ## Project Structure
 
 ```
-services/rankpilot/
+rankpilot/
 |-- README.md                          # Service overview and API reference
 |-- Makefile                           # Build, test, and run targets
 |-- docker-compose.yml                 # Local dev orchestration
@@ -292,7 +292,7 @@ The dashboard uses a config-driven design system defined in `dashboard/src/servi
 - **Primary Color**: Emerald Green -- `oklch(0.65 0.18 155)` / `#10b981`
 - **Accent Color**: Light Green -- `oklch(0.72 0.15 140)` / `#34d399`
 - **Heading Font**: General Sans (clean, trustworthy)
-- **Body Font**: Inter
+- **Body Font**: Nunito Sans
 
 ### Dashboard Navigation
 
@@ -360,3 +360,14 @@ The sidebar is driven by the `navigation` array in `service.config.ts`:
 1. Create `dashboard/src/app/<route>/page.tsx`.
 2. Add a navigation entry in `dashboard/src/service.config.ts`.
 3. The sidebar picks up the new route automatically.
+
+---
+
+## Platform Event Webhook
+
+### Platform Event Webhook
+
+Each service receives platform events from the dropshipping backend via
+`POST /api/v1/webhooks/platform-events`. Events are HMAC-SHA256 signed
+using `platform_webhook_secret`. The receiver verifies the signature and
+routes events to service-specific handlers.

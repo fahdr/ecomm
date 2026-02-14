@@ -42,7 +42,7 @@ The backend is a standalone FastAPI application with its own database, independe
 
 | Metric | Value |
 |--------|-------|
-| Backend tests | **43 passing** (6 test files) |
+| Backend tests | **156 passing** (6 test files) |
 | Dashboard pages | **8 pages** (home, competitors, products, billing, API keys, settings, login, register) |
 | API endpoints | **20+ endpoints** across 8 route modules |
 | Database models | **8 models** (User, Subscription, ApiKey, Competitor, CompetitorProduct, PriceAlert, AlertHistory, ScanResult, SourceMatch) |
@@ -79,7 +79,7 @@ The backend is a standalone FastAPI application with its own database, independe
 
 | Category | Detail |
 |----------|--------|
-| Test coverage | 43 backend tests across auth, competitors, products, billing, API keys, health |
+| Test coverage | 156 backend tests across auth, competitors, products, billing, API keys, health |
 | Dashboard pages | 8 implemented pages with full CRUD flows |
 | API surface | Auth (6), Competitors (6), Products (2), Billing (5), API Keys (3), Usage (1), Webhooks (1), Health (1) |
 | Models | 8 domain models + 2 enums (PlanTier, SubscriptionStatus) |
@@ -137,7 +137,7 @@ SpyDrop integrates with the main dropshipping platform through:
 ### Phase 1: Core Platform (COMPLETE)
 - User auth, competitor CRUD, product tracking, billing
 - Dashboard with competitors and products pages
-- 43 backend tests passing
+- 156 backend tests passing
 
 ### Phase 2: Production Scraping (NEXT)
 - Replace mock scan engine with Playwright

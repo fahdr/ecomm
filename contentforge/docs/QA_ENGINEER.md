@@ -55,7 +55,8 @@ cd backend && pytest tests/test_content.py::test_create_generation_job_from_url 
 | `test_billing.py` | 9 | Plan listing, checkout, duplicate subscription, billing overview, current subscription |
 | `test_api_keys.py` | 5 | Key creation, listing, revocation, API key authentication, invalid key |
 | `test_health.py` | 1 | Health endpoint returns status ok |
-| **Total** | **45** | |
+| `test_platform_webhooks.py` | -- | Platform event webhook handling |
+| **Total** | **116** | |
 
 ---
 

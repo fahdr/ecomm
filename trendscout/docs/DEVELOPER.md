@@ -37,15 +37,15 @@
 
 ```bash
 # Backend
-cd services/trendscout/backend
+cd trendscout/backend
 pip install -r requirements.txt
 
 # Dashboard
-cd services/trendscout/dashboard
+cd trendscout/dashboard
 npm install
 
 # Landing page
-cd services/trendscout/landing
+cd trendscout/landing
 npm install
 ```
 
@@ -62,19 +62,19 @@ Or start each service individually:
 
 ```bash
 # Backend API (port 8101)
-cd services/trendscout/backend
+cd trendscout/backend
 uvicorn app.main:app --host 0.0.0.0 --port 8101 --reload
 
 # Celery worker
-cd services/trendscout/backend
+cd trendscout/backend
 celery -A app.tasks.celery_app worker -l info -Q trendscout
 
 # Dashboard (port 3101)
-cd services/trendscout/dashboard
+cd trendscout/dashboard
 npm run dev -- -p 3101
 
 # Landing page (port 3201)
-cd services/trendscout/landing
+cd trendscout/landing
 npm run dev -- -p 3201
 ```
 
@@ -140,7 +140,7 @@ docker-compose up
 ## Project Structure
 
 ```
-services/trendscout/
+trendscout/
 ├── backend/
 │   ├── app/
 │   │   ├── api/                    # API route modules
@@ -218,7 +218,7 @@ services/trendscout/
 
 ```bash
 # Generate a new migration after model changes
-cd services/trendscout/backend
+cd trendscout/backend
 alembic revision --autogenerate -m "description of changes"
 
 # Apply all pending migrations
@@ -253,7 +253,7 @@ alembic upgrade head
 
 ```bash
 # Run all backend tests
-cd services/trendscout/backend
+cd trendscout/backend
 pytest
 
 # Run with verbose output
@@ -337,8 +337,8 @@ Standard HTTP status codes:
 |---------|-------|
 | Primary Color | Electric Blue -- `oklch(0.65 0.20 250)` / `#3b82f6` |
 | Accent Color | Cyan -- `oklch(0.75 0.15 200)` / `#38bdf8` |
-| Heading Font | Space Grotesk (geometric sans-serif, tech/data feel) |
-| Body Font | Inter (highly legible, UI-optimized) |
+| Heading Font | Syne (expressive geometric sans-serif, bold tech personality) |
+| Body Font | DM Sans (clean, modern, highly readable) |
 
 The design system is configured in `dashboard/src/service.config.ts` and applied globally via CSS variables and the Next.js layout.
 
@@ -361,3 +361,14 @@ The design system is configured in `dashboard/src/service.config.ts` and applied
 7. **Scoring Algorithm**: Products are scored across 5 weighted dimensions (Social 40%, Market 30%, Competition 15%, SEO 10%, Fundamentals 5%). Users can override weights via `score_config` on individual research runs.
 
 8. **Celery for Background Processing**: Research runs are dispatched to Celery tasks for asynchronous execution. The API returns immediately with a `pending` status, and clients poll for completion.
+
+---
+
+## Platform Event Webhook
+
+### Platform Event Webhook
+
+Each service receives platform events from the dropshipping backend via
+`POST /api/v1/webhooks/platform-events`. Events are HMAC-SHA256 signed
+using `platform_webhook_secret`. The receiver verifies the signature and
+routes events to service-specific handlers.

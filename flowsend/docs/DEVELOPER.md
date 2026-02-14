@@ -75,7 +75,7 @@ make start       # Start backend, dashboard, and landing page
 ## Project Structure
 
 ```
-services/flowsend/
+flowsend/
   backend/
     app/
       api/                    # FastAPI route modules
@@ -257,7 +257,7 @@ The FlowSend dashboard uses a distinctive Coral Red color scheme to differentiat
 | **Primary Color** | Coral Red -- `oklch(0.65 0.20 25)` / `#f43f5e` |
 | **Accent Color** | Orange -- `oklch(0.75 0.18 40)` / `#fb923c` |
 | **Heading Font** | Satoshi (friendly, approachable) |
-| **Body Font** | Inter |
+| **Body Font** | Source Sans 3 |
 | **Color Mode** | OKLCH-based with hex fallbacks for non-OKLCH contexts |
 
 The design system is defined in `dashboard/src/service.config.ts` as the single source of truth for all branding, navigation, and plan tiers. Changing `name`, `tagline`, `colors`, or `fonts` in this file updates the entire dashboard.
@@ -289,3 +289,14 @@ The sidebar navigation is driven by `serviceConfig.navigation`:
 5. **API key auth**: Keys are hashed with SHA-256 before storage. The raw key is only returned once at creation time. The `key_prefix` (first 12 chars) is stored for identification.
 6. **Cross-service provisioning**: The `/auth/provision` endpoint allows the dropshipping platform to create FlowSend users and receive API keys for integration.
 7. **Config-driven dashboard**: All branding, navigation, and billing tiers are defined in `service.config.ts`, making the dashboard fully configurable for white-labeling.
+
+---
+
+## Platform Event Webhook
+
+### Platform Event Webhook
+
+Each service receives platform events from the dropshipping backend via
+`POST /api/v1/webhooks/platform-events`. Events are HMAC-SHA256 signed
+using `platform_webhook_secret`. The receiver verifies the signature and
+routes events to service-specific handlers.

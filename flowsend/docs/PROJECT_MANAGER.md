@@ -11,7 +11,7 @@ FlowSend is the **Smart Email Marketing** service in the platform suite (Feature
 | Differentiator | Detail |
 |---------------|--------|
 | **Most complex data model** | 10+ database tables across contacts, lists, templates, flows, executions, campaigns, events, and unsubscribes -- the largest schema of all services |
-| **Highest test count** | 87 backend tests across 8 test files, ensuring comprehensive coverage of all features and edge cases |
+| **Highest test count** | 151 backend tests across 8 test files, ensuring comprehensive coverage of all features and edge cases |
 | **CAN-SPAM compliant** | Built-in unsubscribe handling, subscription tracking, and contact opt-in/opt-out management |
 | **Visual flow builder** | Automated email sequences with trigger-based activation (signup, purchase, abandoned cart, custom events, scheduled) |
 | **Cross-service integration** | Provisioning API allows the dropshipping platform to create FlowSend accounts and manage them via API keys |
@@ -47,7 +47,7 @@ User -> Dashboard (Next.js) -> Backend API (FastAPI) -> PostgreSQL
 
 | Metric | Value |
 |--------|-------|
-| Backend tests | 87 (passing) |
+| Backend tests | 151 (passing) |
 | Test files | 8 |
 | Database tables | 10+ |
 | API endpoints | 35+ |
@@ -83,7 +83,7 @@ User -> Dashboard (Next.js) -> Backend API (FastAPI) -> PostgreSQL
 
 | Category | Count |
 |----------|-------|
-| Backend tests | 87 |
+| Backend tests | 151 |
 | Dashboard feature pages | 9 (home, contacts, flows, campaigns, templates, analytics, API keys, billing, settings) |
 | Auth pages | 2 (login, register) |
 | API route modules | 13 (auth, contacts, flows, campaigns, templates, analytics, billing, api_keys, deps, health, usage, webhooks, __init__) |

@@ -2,7 +2,7 @@
 
 ## Overview
 
-FlowSend (Smart Email Marketing) is the most feature-rich and test-heavy service in the platform. It has **87 backend tests** -- the highest count across all services -- covering contacts, flows, campaigns, templates, analytics, billing, API keys, and authentication. This guide provides everything a QA engineer needs to test the service thoroughly.
+FlowSend (Smart Email Marketing) is the most feature-rich and test-heavy service in the platform. It has **151 backend tests** covering contacts, flows, campaigns, templates, analytics, billing, API keys, and authentication. This guide provides everything a QA engineer needs to test the service thoroughly.
 
 ---
 
@@ -21,7 +21,7 @@ FlowSend (Smart Email Marketing) is the most feature-rich and test-heavy service
 ## Running Tests
 
 ```bash
-# Run all 87 tests
+# Run all 151 tests
 make test-backend
 
 # Verbose output with test names
@@ -37,7 +37,7 @@ pytest tests/test_flows.py -v -k "test_activate_flow_with_steps"
 pytest -v -s
 ```
 
-**Note:** FlowSend has **87 tests** -- the highest count of all services. All tests run in Stripe mock mode (no real API calls).
+**Note:** FlowSend has **151 tests**. All tests run in Stripe mock mode (no real API calls).
 
 ---
 
@@ -53,7 +53,8 @@ pytest -v -s
 | `test_billing.py` | 9 | List plans (public), plan pricing, checkout pro, checkout free fails, duplicate subscription fails, billing overview, overview after subscribe, current subscription (none, after subscribe) |
 | `test_api_keys.py` | 5 | Create key (raw key returned), list keys (no raw keys), revoke key, auth via API key, invalid API key |
 | `test_health.py` | 1 | Health check returns 200 with service metadata |
-| **Total** | **87** | |
+| `test_platform_webhooks.py` | -- | Platform event webhook handling |
+| **Total** | **151** | |
 
 ---
 

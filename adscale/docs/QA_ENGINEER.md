@@ -18,7 +18,7 @@
 
 ## Running Tests
 
-### Execute All 77 Tests
+### Execute All 164 Tests
 
 ```bash
 # From the service root
@@ -79,6 +79,7 @@ cd backend && pytest tests/test_campaigns.py::test_create_campaign_success -v
 | `test_billing.py` | 9 | List plans (200, 3 tiers), plan pricing details, checkout Pro (201), checkout Free (400), duplicate subscription (400), billing overview (200), overview after subscribe, current subscription none/after subscribe |
 | `test_api_keys.py` | 5 | Create key (201, raw key returned), list keys (no raw key), revoke key (204), auth via X-API-Key (200), invalid API key (401) |
 | `test_health.py` | 1 | Health check returns status, service name, timestamp |
+| `test_platform_webhooks.py` | -- | Platform event webhook handling |
 
 ---
 

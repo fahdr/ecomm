@@ -71,7 +71,7 @@ RankPilot stands out among the platform's microservices in several ways:
 | Backend API | Complete | 13 route files, 20+ endpoints, all CRUD + business logic |
 | Database | Complete | 8 domain tables + standard auth/billing tables |
 | Service Layer | Complete | 7 service modules with full business logic |
-| Test Suite | Complete | **74 backend tests** across 8 test files |
+| Test Suite | Complete | **165 backend tests** across 8 test files |
 | Dashboard | Complete | 9 pages: login, register, home, sites, keywords, audits, billing, API keys, settings |
 | Landing Page | Complete | Static marketing page |
 | Plan Enforcement | Complete | Blog post monthly limits + keyword total limits |
@@ -84,7 +84,7 @@ RankPilot stands out among the platform's microservices in several ways:
 
 | Metric | Value |
 |--------|-------|
-| Backend Tests | 74 |
+| Backend Tests | 165 |
 | Test Files | 8 |
 | API Route Files | 13 (5 domain-specific + 8 standard) |
 | Service Modules | 7 |

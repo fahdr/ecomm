@@ -54,7 +54,7 @@ ShopChat follows the standard microservice template used across the platform:
 
 | Metric | Value |
 |--------|-------|
-| Backend tests | **88** (highest tied with FlowSend) |
+| Backend tests | **113** |
 | Dashboard pages | **9** (home, chatbots, knowledge, conversations, billing, API keys, settings, login, register) |
 | API endpoints | **25+** across auth, chatbots, knowledge, conversations, widget, analytics, billing, API keys, usage, health |
 | Database models | **7** (User, Subscription, ApiKey, Chatbot, KnowledgeBase, Conversation, Message) |
@@ -115,7 +115,7 @@ ShopChat integrates with the main dropshipping platform through:
 | **Widget abuse** | Medium | Medium | Public widget endpoints have no rate limiting in current implementation. Production needs rate limiting per widget_key and per visitor_id. |
 | **Knowledge base scaling** | Low | Medium | Current keyword search is O(n) per query. For large knowledge bases (1000+ entries), implement vector embeddings and semantic search. |
 | **Stripe integration** | Low | High | Currently uses mock mode for testing. Stripe Price IDs must be configured via environment variables before production launch. |
-| **Multi-tenant data leakage** | Low | Critical | All queries are scoped by user_id through chatbot ownership. Cross-user access returns 404. Thoroughly tested in 88 backend tests. |
+| **Multi-tenant data leakage** | Low | Critical | All queries are scoped by user_id through chatbot ownership. Cross-user access returns 404. Thoroughly tested in 113 backend tests. |
 | **Conversation limit bypass** | Low | Medium | Limits are checked server-side before conversation creation. The widget chat endpoint looks up the chatbot owner to enforce their plan limits. |
 
 ---

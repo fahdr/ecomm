@@ -12,7 +12,7 @@ The TrendScout service was created from the `_template` service scaffold. This p
 
 ### Steps completed
 
-1. Ran the scaffold script to generate the service directory structure at `services/trendscout/`
+1. Ran the scaffold script to generate the service directory structure at `trendscout/`
 2. Replaced all `{{service_name}}` placeholders with `trendscout` and `{{service_display_name}}` with `TrendScout`
 3. Configured port assignments: backend 8101, dashboard 3101, landing 3201, PostgreSQL 5501, Redis 6401
 4. Created `backend/app/config.py` with Pydantic Settings loading from environment variables
@@ -32,16 +32,16 @@ The TrendScout service was created from the `_template` service scaffold. This p
 
 ```bash
 # Backend starts
-cd services/trendscout/backend
+cd trendscout/backend
 uvicorn app.main:app --port 8101
 # Verify: http://localhost:8101/docs loads Swagger UI
 
 # Dashboard builds
-cd services/trendscout/dashboard
+cd trendscout/dashboard
 npm run build
 
 # Landing builds
-cd services/trendscout/landing
+cd trendscout/landing
 npm run build
 ```
 
@@ -72,7 +72,7 @@ Four feature-specific database models that power the core product research workf
 ### Verification
 
 ```bash
-cd services/trendscout/backend
+cd trendscout/backend
 alembic upgrade head
 # Verify all 7 tables exist in the database:
 # users, subscriptions, api_keys, research_runs, research_results, watchlist_items, source_configs
@@ -106,7 +106,7 @@ Three feature-specific service modules that contain all the business logic for p
 ### Verification
 
 ```bash
-cd services/trendscout/backend
+cd trendscout/backend
 python -c "from app.services.scoring_service import calculate_score; print(calculate_score({'social': {'likes': 5000, 'shares': 1000, 'views': 100000, 'comments': 500, 'trending': True}, 'market': {'search_volume': 50000, 'order_count': 3000, 'growth_rate': 25}}))"
 # Should print a float between 0 and 100
 ```
@@ -153,7 +153,7 @@ Three feature-specific API route modules that expose the research, watchlist, an
 ### Verification
 
 ```bash
-cd services/trendscout/backend
+cd trendscout/backend
 uvicorn app.main:app --port 8101
 # Visit http://localhost:8101/docs
 # Verify all endpoints appear:
@@ -213,7 +213,7 @@ Comprehensive test coverage for all TrendScout-specific features, adding to the 
 ### Verification
 
 ```bash
-cd services/trendscout/backend
+cd trendscout/backend
 pytest -v
 # Expected: 67 tests passed
 ```
@@ -270,7 +270,7 @@ Feature-specific dashboard pages for research, watchlist, and other TrendScout-s
 ### Verification
 
 ```bash
-cd services/trendscout/dashboard
+cd trendscout/dashboard
 npm run build
 # All 8 existing pages should build successfully
 ```
@@ -304,7 +304,7 @@ A branded landing page for TrendScout, customized from the service template with
 ### Verification
 
 ```bash
-cd services/trendscout/landing
+cd trendscout/landing
 npm run build
 # Both pages should build successfully
 # Visit http://localhost:3201 and http://localhost:3201/pricing
@@ -343,7 +343,7 @@ The Celery background task that executes research runs, including mock data gene
 
 ```bash
 # Start Celery worker
-cd services/trendscout/backend
+cd trendscout/backend
 celery -A app.tasks.celery_app worker -l info -Q trendscout
 
 # In another terminal, create a research run via API:

@@ -10,7 +10,7 @@ This document records every implementation step taken to build FlowSend, from in
 The FlowSend service was scaffolded from the shared service template, establishing the project structure, configuration files, Docker setup, and boilerplate code for backend, dashboard, and landing page.
 
 ### Steps completed
-1. Ran `scripts/create-service.sh` (or manual scaffold) to generate the FlowSend directory structure under `services/flowsend/`.
+1. Ran `scripts/create-service.sh` (or manual scaffold) to generate the FlowSend directory structure under `flowsend/`.
 2. Configured `service.config.ts` with FlowSend-specific branding:
    - Name: "FlowSend", tagline: "Smart Email Marketing", slug: "flowsend"
    - API URL: `http://localhost:8104`
@@ -26,7 +26,7 @@ The FlowSend service was scaffolded from the shared service template, establishi
 9. Created `dashboard/` with Next.js 16 App Router, Tailwind CSS, and Shadcn/ui component library.
 
 ### Verification
-- `ls services/flowsend/` shows backend/, dashboard/, master-landing/ directories.
+- `ls flowsend/` shows backend/, dashboard/, master-landing/ directories.
 - `cat dashboard/src/service.config.ts` confirms FlowSend branding values.
 - Backend starts without errors on port 8104.
 - Dashboard starts without errors on port 3104.

@@ -65,7 +65,7 @@ User -> Dashboard (3106)
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Backend tests | **62 passing** | 7 test files, async tests with full DB isolation |
+| Backend tests | **157 passing** | 7 test files, async tests with full DB isolation |
 | Dashboard pages | **9 pages** | Home, Queue, Accounts, Posts, Billing, API Keys, Settings, Login, Register |
 | Landing page sections | **8 components** | Hero, Features, How It Works, Stats, Pricing, CTA, Navbar, Footer |
 | API endpoints | **27 endpoints** | Auth (6), Accounts (3), Posts (7), Queue (8), Analytics (3), Billing (5), API Keys (3), System (2) |
@@ -126,7 +126,7 @@ PostPilot integrates with the core dropshipping platform through:
 
 | Metric | Current Value | Target |
 |--------|---------------|--------|
-| Backend test count | 62 | Maintain 100% coverage on critical paths |
+| Backend test count | 157 | Maintain 100% coverage on critical paths |
 | Dashboard pages | 9 | Add Calendar and Analytics pages |
 | API response time | < 100ms (mock) | < 200ms with real platform APIs |
 | Test reliability | Fully isolated | No flaky tests |

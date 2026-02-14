@@ -8,7 +8,7 @@ This document details how the AdScale service was implemented, step by step, fro
 
 The AdScale service was scaffolded from the shared service template using `scripts/create-service.sh`. The scaffold script performed the following:
 
-1. **Copied the template directory** into `services/adscale/`
+1. **Copied the template directory** into `adscale/`
 2. **Replaced all template placeholders** with AdScale-specific values:
    - `{{SERVICE_NAME}}` -> `AdScale`
    - `{{SERVICE_SLUG}}` -> `adscale`

@@ -35,7 +35,7 @@
 ### Quick Start
 
 ```bash
-# From /workspaces/ecomm/services/spydrop/
+# From /workspaces/ecomm/spydrop/
 make install     # Install Python + Node dependencies
 make migrate     # Run Alembic migrations
 make start       # Start all services (backend, dashboard, landing)
@@ -88,7 +88,7 @@ make start       # Start all services (backend, dashboard, landing)
 ## Project Structure
 
 ```
-services/spydrop/
+spydrop/
 +-- Makefile                       # Build/test/run targets
 +-- README.md                      # Service overview
 +-- docker-compose.yml             # Local dev containers
@@ -275,3 +275,14 @@ The dashboard is config-driven via `dashboard/src/service.config.ts` which defin
 7. **Cascading deletes:** Deleting a competitor cascades through products, scan results, alerts, and source matches via SQLAlchemy relationship configuration (`cascade="all, delete-orphan"`).
 
 8. **Config-driven dashboard:** The `service.config.ts` file is the single source of truth for all branding, navigation, and billing tiers in the dashboard. The scaffold script replaces template placeholders to generate new service dashboards.
+
+---
+
+## Platform Event Webhook
+
+### Platform Event Webhook
+
+Each service receives platform events from the dropshipping backend via
+`POST /api/v1/webhooks/platform-events`. Events are HMAC-SHA256 signed
+using `platform_webhook_secret`. The receiver verifies the signature and
+routes events to service-specific handlers.

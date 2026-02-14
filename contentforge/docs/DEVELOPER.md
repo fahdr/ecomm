@@ -114,7 +114,7 @@ cd master-landing && npm install
 ## Project Structure
 
 ```
-services/contentforge/
+contentforge/
   backend/
     app/
       api/
@@ -323,3 +323,14 @@ The sidebar is driven by `serviceConfig.navigation`:
 7. **Template system**: System templates (Professional, Casual, Luxury, SEO-Focused) are seeded at startup via `template_seeder.py` and are read-only. Users create custom templates with their preferred tone, style, and content types. Templates control AI prompt parameters.
 
 8. **Pricing service**: The `pricing_service.py` module provides standalone markup calculation with psychological rounding strategies (round_99, round_95, round_00, none). It is a pure utility with no database dependencies.
+
+---
+
+## Platform Event Webhook
+
+### Platform Event Webhook
+
+Each service receives platform events from the dropshipping backend via
+`POST /api/v1/webhooks/platform-events`. Events are HMAC-SHA256 signed
+using `platform_webhook_secret`. The receiver verifies the signature and
+routes events to service-specific handlers.

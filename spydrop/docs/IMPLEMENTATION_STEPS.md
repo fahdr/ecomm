@@ -28,7 +28,7 @@ SpyDrop was generated from the service template using the scaffold script (`scri
 ### Generated File Structure
 
 ```
-services/spydrop/
+spydrop/
 +-- Makefile
 +-- README.md
 +-- docker-compose.yml
@@ -369,7 +369,7 @@ Cross-competitor product browsing:
 
 ## Step 8: Landing Page
 
-The landing page at `services/spydrop/landing/` is a static Next.js site with:
+The landing page at `spydrop/landing/` is a static Next.js site with:
 - Hero section introducing SpyDrop's Competitor Intelligence tagline
 - Feature highlights (monitoring, tracking, alerts, source finding)
 - Pricing table matching the plan tiers

@@ -37,7 +37,7 @@
 ### Quick Start
 
 ```bash
-# From /workspaces/ecomm/services/postpilot/
+# From /workspaces/ecomm/postpilot/
 make install      # Install Python + Node dependencies
 make migrate      # Run Alembic migrations
 make start        # Start backend + dashboard + landing
@@ -75,7 +75,7 @@ Set in `.env` or via Docker Compose. See `.env.example` for defaults.
 ## Project Structure
 
 ```
-services/postpilot/
+postpilot/
 |-- README.md                          # Service overview and quick reference
 |-- Makefile                           # Build, test, and run targets
 |-- .env.example                       # Environment variable template
@@ -302,7 +302,7 @@ The `update_post` function uses Python's `Ellipsis` (`...`) as a sentinel to dis
 | Role | Font Family | Notes |
 |------|-------------|-------|
 | Heading | Plus Jakarta Sans | Rounded geometric sans, friendly and modern |
-| Body | Inter | Highly legible for content-heavy dashboards |
+| Body | Quicksand | Rounded, friendly, pairs well with Plus Jakarta Sans |
 
 ### Dashboard Navigation
 
@@ -406,3 +406,14 @@ Driven by `service.config.ts`. The sidebar renders these items:
 | `get_analytics_overview(db, user)` | Aggregated totals (impressions, reach, likes, etc.) + avg engagement rate |
 | `get_post_metrics(db, user, post_id)` | Metrics for a single post |
 | `get_all_post_metrics(db, user, page, per_page)` | Paginated metrics for all published posts |
+
+---
+
+## Platform Event Webhook
+
+### Platform Event Webhook
+
+Each service receives platform events from the dropshipping backend via
+`POST /api/v1/webhooks/platform-events`. Events are HMAC-SHA256 signed
+using `platform_webhook_secret`. The receiver verifies the signature and
+routes events to service-specific handlers.

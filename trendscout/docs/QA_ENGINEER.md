@@ -20,7 +20,7 @@
 
 ```bash
 # Run all backend tests
-cd services/trendscout/backend
+cd trendscout/backend
 pytest
 
 # Run with verbose output (see individual test names)
@@ -48,14 +48,14 @@ pytest -k "watchlist" -v
 ### Verify Dashboard Build
 
 ```bash
-cd services/trendscout/dashboard
+cd trendscout/dashboard
 npm run build
 ```
 
 ### Verify Landing Page Build
 
 ```bash
-cd services/trendscout/landing
+cd trendscout/landing
 npm run build
 ```
 
@@ -72,7 +72,8 @@ npm run build
 | `tests/test_sources.py` | 22 | Source config CRUD (all 4 valid types, invalid type rejection), credential redaction verification, settings/credentials/active-toggle update, list ordering, user isolation, delete |
 | `tests/test_api_keys.py` | 5 | Key creation (raw key returned), listing (no raw key), revocation (key deactivated), auth via X-API-Key header, invalid key rejection |
 | `tests/test_health.py` | 1 | Health check endpoint returns 200 with service metadata |
-| **Total** | **67** | **Full feature coverage** |
+| `tests/test_platform_webhooks.py` | -- | Platform event webhook handling |
+| **Total** | **158** | **Full feature coverage** |
 
 ---
 
@@ -218,7 +219,7 @@ All list endpoints return:
 
 Before marking a release as ready:
 
-- [ ] All backend tests pass: `pytest` (67 tests)
+- [ ] All backend tests pass: `pytest` (158 tests)
 - [ ] Dashboard builds successfully: `cd dashboard && npm run build`
 - [ ] Landing page builds successfully: `cd landing && npm run build`
 - [ ] Backend starts without errors: `uvicorn app.main:app --port 8101`

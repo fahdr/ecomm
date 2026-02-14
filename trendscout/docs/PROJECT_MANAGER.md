@@ -1,6 +1,6 @@
 # Project Manager Guide
 
-**For Project Managers:** TrendScout is an AI-powered product research SaaS product (Feature A1 in the platform roadmap). It discovers trending, high-potential products using multi-source data aggregation and AI-powered scoring. TrendScout is fully scaffolded with authentication, billing, API keys, 67 backend tests, 8 dashboard pages, and 2 landing pages. It can be sold as a standalone SaaS product or integrated with the dropshipping platform as an add-on service.
+**For Project Managers:** TrendScout is an AI-powered product research SaaS product (Feature A1 in the platform roadmap). It discovers trending, high-potential products using multi-source data aggregation and AI-powered scoring. TrendScout is fully scaffolded with authentication, billing, API keys, 158 backend tests, 8 dashboard pages, and 2 landing pages. It can be sold as a standalone SaaS product or integrated with the dropshipping platform as an add-on service.
 
 ---
 
@@ -51,7 +51,7 @@ The product targets dropshipping sellers, e-commerce store owners, and product r
 - TrendScout feature models (research_runs, research_results, watchlist_items, source_configs)
 - Feature services (research_service, scoring_service, ai_analysis_service)
 - Feature API routes (research.py, watchlist.py, sources.py)
-- Feature tests (67 backend tests across 7 test files)
+- Feature tests (158 backend tests across 7 test files)
 - Dashboard pages (8 pages: home, research, watchlist, billing, API keys, settings, login, register)
 - Landing page (2 pages: hero/features, pricing)
 - Celery background task with mock data generators for all 4 sources
@@ -74,7 +74,7 @@ The product targets dropshipping sellers, e-commerce store owners, and product r
 
 | Metric | Value |
 |--------|-------|
-| Backend Tests | 67 |
+| Backend Tests | 158 |
 | Dashboard Pages | 8 |
 | Landing Pages | 2 |
 | API Endpoints | 22+ |
@@ -145,13 +145,13 @@ TrendScout integrates with the main dropshipping platform through:
 
 | Document | Path | Description |
 |----------|------|-------------|
-| Service README | `services/trendscout/README.md` | Service overview, quick start, API reference |
-| Developer Guide | `services/trendscout/docs/DEVELOPER.md` | Setup, architecture, conventions |
-| QA Engineer Guide | `services/trendscout/docs/QA_ENGINEER.md` | Testing procedures, coverage, verification |
-| End User Guide | `services/trendscout/docs/END_USER.md` | Feature guide for end users |
-| Implementation Steps | `services/trendscout/docs/IMPLEMENTATION_STEPS.md` | Step-by-step build history |
-| Service Config | `services/trendscout/dashboard/src/service.config.ts` | Branding, navigation, plans |
-| Plan Constants | `services/trendscout/backend/app/constants/plans.py` | Plan limits and Stripe mapping |
+| Service README | `trendscout/README.md` | Service overview, quick start, API reference |
+| Developer Guide | `trendscout/docs/DEVELOPER.md` | Setup, architecture, conventions |
+| QA Engineer Guide | `trendscout/docs/QA_ENGINEER.md` | Testing procedures, coverage, verification |
+| End User Guide | `trendscout/docs/END_USER.md` | Feature guide for end users |
+| Implementation Steps | `trendscout/docs/IMPLEMENTATION_STEPS.md` | Step-by-step build history |
+| Service Config | `trendscout/dashboard/src/service.config.ts` | Branding, navigation, plans |
+| Plan Constants | `trendscout/backend/app/constants/plans.py` | Plan limits and Stripe mapping |
 | Platform Architecture | `plan/ARCHITECTURE.md` | Overall platform architecture |
 | Platform Backlog | `plan/BACKLOG.md` | Feature backlog and roadmap |
 

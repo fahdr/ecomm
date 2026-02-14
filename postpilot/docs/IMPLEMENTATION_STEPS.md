@@ -35,7 +35,7 @@ This document records the step-by-step implementation of PostPilot -- from initi
 ### Files Created
 
 ```
-services/postpilot/
+postpilot/
 |-- README.md
 |-- Makefile
 |-- .env.example

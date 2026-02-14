@@ -66,7 +66,7 @@ make install && make migrate && make start
 ## Project Structure
 
 ```
-services/shopchat/
+shopchat/
 ├── backend/
 │   ├── app/
 │   │   ├── api/                    # FastAPI route modules
@@ -204,7 +204,7 @@ Tests use a shared `conftest.py` with these key fixtures:
 | Primary Color | Indigo -- `oklch(0.55 0.20 275)` / `#6366f1` |
 | Accent Color | Light Indigo -- `oklch(0.70 0.18 290)` / `#818cf8` |
 | Heading Font | Outfit (conversational, friendly) |
-| Body Font | Inter |
+| Body Font | Lexend |
 
 The design system is configured in `dashboard/src/service.config.ts` and drives all sidebar navigation, plan cards, and branding across the dashboard.
 
@@ -248,3 +248,14 @@ Plan limits are defined in `constants/plans.py`:
 - `max_secondary`: Knowledge base page limit (10 free, 500 pro, unlimited enterprise).
 
 Limits are checked via dependency injection before resource creation. The widget chat endpoint enforces conversation limits by looking up the chatbot owner's plan.
+
+---
+
+## Platform Event Webhook
+
+### Platform Event Webhook
+
+Each service receives platform events from the dropshipping backend via
+`POST /api/v1/webhooks/platform-events`. Events are HMAC-SHA256 signed
+using `platform_webhook_secret`. The receiver verifies the signature and
+routes events to service-specific handlers.

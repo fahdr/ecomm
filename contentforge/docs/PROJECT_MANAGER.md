@@ -53,7 +53,7 @@ The backend uses 7 database tables: `users`, `api_keys`, `subscriptions`, `gener
 | Billing / Stripe | Complete (mock) | Plans, checkout, portal, webhooks in mock mode |
 | Dashboard | Complete | 8 pages: home, generate, templates, images, billing, API keys, settings, login/register |
 | Landing Page | Scaffolded | Static marketing page structure in place |
-| Backend Tests | Complete | 45 passing tests across 7 test files |
+| Backend Tests | Complete | 116 passing tests across 7 test files |
 | AI Integration | Mock | Currently generates realistic mock content; Claude API integration ready |
 
 ---
@@ -62,7 +62,7 @@ The backend uses 7 database tables: `users`, `api_keys`, `subscriptions`, `gener
 
 | Metric | Value |
 |--------|-------|
-| Backend unit tests | 45 |
+| Backend unit tests | 116 |
 | Test files | 7 |
 | Dashboard pages | 8 |
 | API endpoints | 26 |

@@ -61,7 +61,7 @@ make install && make migrate && make start
 ## Project Structure
 
 ```
-services/adscale/
+adscale/
 ├── README.md
 ├── Makefile
 ├── docker-compose.yml
@@ -268,8 +268,8 @@ Ad groups validate ownership through their parent campaign. Creatives validate t
 |----------|-------|
 | Primary Color | Amber Gold -- `oklch(0.72 0.18 80)` / `#f59e0b` |
 | Accent Color | Light Amber -- `oklch(0.78 0.15 60)` / `#fbbf24` |
-| Heading Font | Inter Tight |
-| Body Font | Inter |
+| Heading Font | Anybody |
+| Body Font | Manrope |
 | Icon Library | lucide-react |
 
 The dashboard is config-driven via `/dashboard/src/service.config.ts`. Changing `name`, `tagline`, `colors`, or `navigation` in that file updates the entire dashboard UI.
@@ -332,3 +332,14 @@ AdScale integrates with the dropshipping platform via:
 2. **Usage Reporting:** `GET /usage` returns billing-period metrics for the platform billing dashboard
 3. **API Key Auth:** Platform uses `X-API-Key` header for server-to-server requests
 4. **Webhook Handling:** `POST /webhooks/stripe` processes Stripe subscription events
+
+---
+
+## Platform Event Webhook
+
+### Platform Event Webhook
+
+Each service receives platform events from the dropshipping backend via
+`POST /api/v1/webhooks/platform-events`. Events are HMAC-SHA256 signed
+using `platform_webhook_secret`. The receiver verifies the signature and
+routes events to service-specific handlers.
