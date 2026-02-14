@@ -1,18 +1,20 @@
 # MVP Implementation Plan — Path to Production
 
-**Document Version:** 1.0
+**Document Version:** 1.1
 **Created:** 2026-02-14
-**Status:** Draft — Awaiting Approval
+**Last Updated:** 2026-02-14
+**Status:** Phase 1-2 COMPLETE, Phase 3 mostly complete, Phase 4+ pending real API credentials
 
 ---
 
 ## Executive Summary
 
-This plan outlines the work required to complete the MVP (Minimum Viable Product) for the dropshipping automation platform. The codebase is **~35-40% complete** with excellent foundations but missing critical automation features.
+This plan outlines the work required to complete the MVP (Minimum Viable Product) for the dropshipping automation platform. The codebase is **~85% complete** — all services are built, tested, and documented. The remaining work is integrating real supplier APIs and deploying to production.
 
-**Key Gap Identified:** No dedicated service for importing/scraping products from suppliers (AliExpress, CJDropship, Spocket, etc.)
+**Key Gap Resolved:** SourcePilot (A9) service built with full import pipeline (demo mode).
+**Remaining Gap:** Real API credentials needed for live supplier/AI/email integrations.
 
-**Estimated Effort:** 8-12 weeks (1 developer full-time)
+**Estimated Remaining Effort:** 4-6 weeks (real APIs + infrastructure + launch)
 **MVP Launch Target:** Q2 2026
 
 ---
@@ -37,39 +39,46 @@ This plan outlines the work required to complete the MVP (Minimum Viable Product
 
 ## Current State Assessment
 
-### ✅ What's Complete (90%+)
+### ✅ What's Complete (90-100%)
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Dropshipping Core | 90% | Store CRUD, products, orders, payments, themes all working |
-| 8 SaaS Services Structure | 100% | All have backends, dashboards, landing pages, databases |
+| Dropshipping Core | 95% | Store CRUD, products, orders, payments, themes, analytics, ServiceBridge |
+| 9 SaaS Services Structure | 100% | All have backends, dashboards, landing pages, tests, docs |
+| **SourcePilot (A9)** | **100%** | **Complete service with 130 tests + 54 e2e tests (demo mode)** |
 | LLM Gateway | 100% | Multi-provider AI routing operational |
 | Admin Dashboard | 100% | Super admin controls functional |
 | ServiceBridge | 100% | Event-driven integration framework complete |
-| Database Design | 100% | All 27 models implemented with proper constraints |
-| Test Infrastructure | 100% | 1,856 tests passing, schema isolation working |
+| Database Design | 100% | All models implemented with proper constraints |
+| Test Infrastructure | 100% | 2,025+ backend tests + 62 e2e spec files, schema isolation |
+| Documentation | 100% | 4-audience docs (Dev/PM/QA/User) for all services |
+| py-suppliers Package | 100% | AliExpress + CJDropship clients (demo mode), normalizer, image service |
 
-### ⚠️ What's Partial (30-50%)
+### ⚠️ What Uses Demo Data (needs real API credentials)
 
-| Component | Status | Blocker |
-|-----------|--------|---------|
-| TrendScout | 30% | Uses mock data, no real API integrations |
-| ContentForge | 40% | Mock content generation, doesn't call Claude |
-| RankPilot | 35% | No Celery tasks, no automation workflows |
-| FlowSend | 45% | No event triggers, no scheduled sends |
-| ShopChat | 50% | Basic chat works, needs better context |
+| Component | Code Status | Blocker |
+|-----------|-------------|---------|
+| TrendScout | 100% built | Uses mock data — needs Apify, PRAW, pytrends credentials |
+| ContentForge | 100% built | Mock content — needs Claude API via LLM Gateway |
+| RankPilot | 100% built | Mock SEO data — needs SerpAPI credentials |
+| FlowSend | 100% built | Mock email — needs SendGrid credentials |
+| SpyDrop | 100% built | Mock competitor data — needs scraping infra |
+| PostPilot | 100% built | Mock social posts — needs Meta/Twitter API |
+| AdScale | 100% built | Mock ad campaigns — needs Google/Meta Ads API |
+| ShopChat | 100% built | Basic chat — needs Claude API via LLM Gateway |
+| SourcePilot | 100% built | Demo products — needs AliExpress/CJDropship API keys |
 
-### ❌ What's Missing (0-10%)
+### ❌ What's Not Started (Infrastructure & Ops)
 
 | Component | Status | Impact |
 |-----------|--------|--------|
-| **Supplier Import Service** | **0%** | **CRITICAL — Can't source products** |
-| Product Import Workflow | 0% | CRITICAL — Can't auto-add products to stores |
-| SEO Automation Tasks | 10% | HIGH — Key differentiator |
-| Email Flow Execution | 20% | HIGH — Marketing automation blocked |
-| Social Media Posting | 5% | MEDIUM — Nice to have |
-| Ad Campaign Automation | 5% | MEDIUM — Post-MVP |
-| Store Provisioning | 15% | MEDIUM — Manual workaround exists |
+| Real API integration | 0% | CRITICAL — Demo data only, needs live credentials |
+| Monitoring (Sentry/Flower) | 0% | HIGH — Can't operate at scale safely |
+| K8s deployment | 0% | HIGH — No production deployment |
+| Rate limiting | 0% | HIGH — Security vulnerability |
+| Backup/DR system | 0% | HIGH — Operational risk |
+| CI/CD pipeline | 0% | MEDIUM — Manual deployments don't scale |
+| Beta onboarding | 0% | MEDIUM — Launch prep |
 
 ---
 
