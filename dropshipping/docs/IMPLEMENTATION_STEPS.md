@@ -1,8 +1,8 @@
 # Implementation Steps
 
-**For Developers & Project Managers:**
-Step-by-step implementation guide for each feature in the dropshipping platform.
-Features are ordered by dependency and were completed sequentially.
+> Part of [Dropshipping Platform](README.md) documentation
+>
+> Step-by-step build history for each feature, ordered by dependency.
 
 ---
 

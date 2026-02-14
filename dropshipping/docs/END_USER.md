@@ -1,7 +1,6 @@
-# End User Guide — Dropshipping Platform
+# End User Guide
 
-**For End Users:**
-This guide explains what the Dropshipping Platform does, what features are available, and how to use them to run your online store.
+> Part of [Dropshipping Platform](README.md) documentation
 
 ## What Is This Platform?
 

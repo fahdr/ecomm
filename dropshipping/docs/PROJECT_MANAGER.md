@@ -1,7 +1,6 @@
-# Project Manager Guide — Dropshipping Platform
+# Project Manager Guide
 
-**For Project Managers:**
-This guide provides a high-level overview of the project's scope, current status, feature roadmap, and key metrics for tracking progress.
+> Part of [Dropshipping Platform](README.md) documentation
 
 ## Project Overview
 
