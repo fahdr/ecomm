@@ -101,7 +101,7 @@ ecomm/
 │   └── dashboard/
 ├── master-landing/              # Suite-wide marketing landing page
 ├── _template/                   # Service scaffold for new services
-├── e2e/                         # Playwright end-to-end tests (25+ spec files)
+├── e2e/                         # Playwright end-to-end tests (62 spec files)
 └── plan/                        # Architecture docs, backlog
 ```
 
@@ -491,7 +491,7 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 - `createProductAPI()`, `createOrderAPI()`, `createCategoryAPI()`, etc. — resource creation helpers
 - `createRefundAPI()`, `createReviewAPI()` — complex resource creation (requires order/product chain)
 
-**E2E test files (187+ tests across 24 spec files):**
+**E2E test files (62 spec files across 12 projects):**
 
 | File | Covers |
 |------|--------|
@@ -520,6 +520,14 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 | `storefront/customer-accounts.spec.ts` | Customer auth, orders, wishlist |
 | `storefront/policies.spec.ts` | Policy pages |
 | `storefront/seed-data.spec.ts` | Seed data verification (12 tests) |
+| `sourcepilot/auth.spec.ts` | Registration, login, logout, redirects |
+| `sourcepilot/imports.spec.ts` | Import creation, listing, cancel, retry, bulk |
+| `sourcepilot/suppliers.spec.ts` | Supplier account CRUD, platform badges |
+| `sourcepilot/connections.spec.ts` | Store connection CRUD, set default |
+| `sourcepilot/price-watch.spec.ts` | Price watch CRUD, sync, multi-source |
+| `sourcepilot/products.spec.ts` | Product search, preview, source filters |
+| `sourcepilot/dashboard.spec.ts` | Dashboard KPIs, quick actions, nav |
+| `sourcepilot/billing.spec.ts` | Billing page, API keys, plan info |
 
 ### Common Frontend Bug Patterns (Caught by E2E Tests)
 
@@ -581,6 +589,7 @@ introducing `packages/py-core` and `packages/py-connectors` for shared code.
 | A6 | **PostPilot** | Social Media Automation | Plus Jakarta Sans / Quicksand | :8106 | 157 |
 | A7 | **AdScale** | AI Ad Campaign Manager | Anybody / Manrope | :8107 | 164 |
 | A8 | **ShopChat** | AI Shopping Assistant | Outfit / Lexend | :8108 | 113 |
+| A9 | **SourcePilot** | Automated Supplier Import | Outfit / DM Sans | :8109 | 130 |
 
 ### Architecture Principles
 
@@ -629,7 +638,7 @@ The dropshipping backend integrates with services via:
 | LLM Gateway tests | 42 |
 | Admin tests | 34 |
 | **Total backend tests** | **~2,025** |
-| E2E test spec files | 25+ |
+| E2E test spec files | 62 |
 | Celery task functions | 21 (incl. bridge) |
 | ServiceBridge event types | 5 |
 

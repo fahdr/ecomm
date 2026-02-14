@@ -2,16 +2,16 @@
  * Shared helpers for SaaS service e2e tests.
  *
  * Provides utility functions for authentication, API calls, and data setup
- * across all 8 SaaS services (TrendScout, ContentForge, RankPilot, FlowSend,
- * SpyDrop, PostPilot, AdScale, ShopChat) and the Admin dashboard.
+ * across all 9 SaaS services (TrendScout, ContentForge, RankPilot, FlowSend,
+ * SpyDrop, PostPilot, AdScale, ShopChat, SourcePilot) and the Admin dashboard.
  *
  * **For Developers:**
  *   Import these helpers in service test files. Each helper accepts a service
  *   base URL parameter so the same functions work across all services.
  *
  * **For QA Engineers:**
- *   Helpers call service APIs directly at their respective ports (8101-8108, 8300).
- *   Each service's dashboard runs on ports 3101-3108 and 3300.
+ *   Helpers call service APIs directly at their respective ports (8101-8109, 8300).
+ *   Each service's dashboard runs on ports 3101-3109 and 3300.
  *
  * **For Project Managers:**
  *   This file centralizes test infrastructure for all SaaS services,
@@ -33,6 +33,7 @@ export const SERVICE_APIS: Record<string, string> = {
   postpilot: "http://localhost:8106",
   adscale: "http://localhost:8107",
   shopchat: "http://localhost:8108",
+  sourcepilot: "http://localhost:8109",
   admin: "http://localhost:8300",
 };
 
@@ -671,6 +672,129 @@ export async function createKnowledgeEntryAPI(
     question: `FAQ ${Date.now()}: What is your return policy?`,
     answer: "We offer 30-day hassle-free returns on all orders.",
     ...overrides,
+  });
+}
+
+// ── SourcePilot ──────────────────────────────────────────────────────────────
+
+/**
+ * Create an import job on SourcePilot.
+ *
+ * @param token - JWT token.
+ * @param overrides - Optional field overrides.
+ * @returns The created import job.
+ */
+export async function createImportJobAPI(
+  token: string,
+  overrides: Record<string, unknown> = {}
+) {
+  return serviceApiPost("sourcepilot", token, "/api/v1/imports", {
+    product_url: `https://www.aliexpress.com/item/${Date.now()}.html`,
+    source: "aliexpress",
+    ...overrides,
+  });
+}
+
+/**
+ * Create a supplier account on SourcePilot.
+ *
+ * @param token - JWT token.
+ * @param overrides - Optional field overrides.
+ * @returns The created supplier account.
+ */
+export async function createSupplierAccountAPI(
+  token: string,
+  overrides: Record<string, unknown> = {}
+) {
+  return serviceApiPost("sourcepilot", token, "/api/v1/suppliers/accounts", {
+    name: `Supplier ${Date.now()}`,
+    platform: "aliexpress",
+    credentials: { api_key: "test_key_" + Date.now() },
+    ...overrides,
+  });
+}
+
+/**
+ * Create a store connection on SourcePilot.
+ *
+ * @param token - JWT token.
+ * @param overrides - Optional field overrides.
+ * @returns The created store connection.
+ */
+export async function createStoreConnectionAPI(
+  token: string,
+  overrides: Record<string, unknown> = {}
+) {
+  return serviceApiPost("sourcepilot", token, "/api/v1/connections", {
+    store_name: `Store ${Date.now()}`,
+    platform: "shopify",
+    store_url: `https://store-${Date.now()}.myshopify.com`,
+    ...overrides,
+  });
+}
+
+/**
+ * Create a price watch on SourcePilot.
+ *
+ * @param token - JWT token.
+ * @param overrides - Optional field overrides.
+ * @returns The created price watch.
+ */
+export async function createPriceWatchAPI(
+  token: string,
+  overrides: Record<string, unknown> = {}
+) {
+  return serviceApiPost("sourcepilot", token, "/api/v1/price-watches", {
+    product_url: `https://www.aliexpress.com/item/${Date.now()}.html`,
+    source: "aliexpress",
+    threshold_percent: 10.0,
+    ...overrides,
+  });
+}
+
+/**
+ * Trigger a price sync on SourcePilot.
+ *
+ * @param token - JWT token.
+ * @returns Sync result with totals.
+ */
+export async function triggerPriceSyncAPI(token: string) {
+  return serviceApiPost("sourcepilot", token, "/api/v1/price-watches/sync", {});
+}
+
+/**
+ * Search supplier products on SourcePilot.
+ *
+ * @param token - JWT token.
+ * @param query - Search query string.
+ * @param source - Supplier platform filter.
+ * @returns Search results.
+ */
+export async function searchProductsAPI(
+  token: string,
+  query: string,
+  source = "aliexpress"
+) {
+  return serviceApiGet(
+    "sourcepilot",
+    token,
+    `/api/v1/products/search?q=${encodeURIComponent(query)}&source=${source}`
+  );
+}
+
+/**
+ * Preview a supplier product on SourcePilot.
+ *
+ * @param token - JWT token.
+ * @param url - Product URL to preview.
+ * @returns Product preview data.
+ */
+export async function previewProductAPI(
+  token: string,
+  url: string
+) {
+  return serviceApiPost("sourcepilot", token, "/api/v1/products/preview", {
+    url,
   });
 }
 

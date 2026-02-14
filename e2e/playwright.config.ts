@@ -12,6 +12,7 @@
  * - PostPilot (port 3106) — social media scheduling dashboard
  * - AdScale (port 3107) — ad campaign optimization dashboard
  * - ShopChat (port 3108) — AI chatbot dashboard
+ * - SourcePilot (port 3109) — supplier product import dashboard
  * - Admin (port 3300) — super admin dashboard
  *
  * **For Developers:**
@@ -137,6 +138,15 @@ export default defineConfig({
         baseURL: "http://localhost:3108",
       },
       testMatch: /shopchat\/.+\.spec\.ts/,
+    },
+    {
+      name: "sourcepilot",
+      use: {
+        browserName: "chromium",
+        viewport: { width: 1280, height: 720 },
+        baseURL: "http://localhost:3109",
+      },
+      testMatch: /sourcepilot\/.+\.spec\.ts/,
     },
     {
       name: "admin",

@@ -526,3 +526,39 @@ Before each release, verify:
 - [ ] Health check returns 200 with correct payload
 - [ ] Dashboard loads all pages without errors
 - [ ] KPI cards show correct counts
+
+---
+
+## E2E Tests (Playwright)
+
+**8 spec files covering all dashboard features.**
+
+Run from the project root:
+
+```bash
+# Run SourcePilot e2e tests only
+cd e2e && npx playwright test --project=sourcepilot
+
+# Run via Makefile
+make test-e2e   # runs all services including SourcePilot
+```
+
+### E2E Test Files
+
+| File | Tests | Covers |
+|---|---|---|
+| `auth.spec.ts` | 6 | Registration, login, logout, redirects, password validation |
+| `imports.spec.ts` | 10 | Import creation, listing, cancel, retry, bulk, pagination |
+| `suppliers.spec.ts` | 6 | Supplier account CRUD, platform badges, grid display |
+| `connections.spec.ts` | 7 | Store connection CRUD, default management, platform badges |
+| `price-watch.spec.ts` | 7 | Price watch CRUD, sync trigger, multi-source display |
+| `products.spec.ts` | 7 | Product search, preview, source filtering, UI interaction |
+| `dashboard.spec.ts` | 6 | Dashboard KPIs, quick actions, navigation, plan display |
+| `billing.spec.ts` | 5 | Billing overview, API keys, usage stats |
+
+### Test Patterns
+
+- **API-first setup**: Data seeded via REST API before UI assertions
+- **Retry logic**: Built-in 5-attempt retry on 400/401/404 for race conditions
+- **Unique emails**: Timestamp-based email generation prevents test collisions
+- **Page load waits**: `networkidle` + generous assertion timeouts (10-15s)
