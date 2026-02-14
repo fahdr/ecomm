@@ -68,3 +68,9 @@ Avoid generic "AI slop" design. Every frontend should feel intentionally crafted
 - Cliched color schemes (purple gradients, generic blue-and-white)
 - Predictable component layouts that look like every other AI-generated UI
 - Cookie-cutter designs that ignore the service's specific context and personality
+
+### e2e tests
+1. Always create or update e2e test for every new change and test
+2. While designing the tests refer to the UX validation guideline in CLAUDE.md and design in e2e so that we are covering all parts the code both frontend and backend
+3. Make sure to seed data where eer necessary so that the e2e tests can be designed more thoroughly
+4. Run e2e tests with less workers so that we do not crash the system. Use makefile to run the tests in the background so that we can read output from log file

@@ -10,10 +10,16 @@ For QA Engineers:
     Tests use a separate engine with NullPool. See tests/conftest.py.
 """
 
-from ecomm_core.db import create_db_engine, create_get_db, create_session_factory
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from ecomm_core.db import create_get_db, create_session_factory
 
 from app.config import settings
 
-engine = create_db_engine(settings.database_url, echo=settings.debug)
+engine = create_async_engine(
+    settings.database_url,
+    echo=settings.debug,
+    connect_args={"server_settings": {"search_path": "contentforge,public"}},
+)
 async_session_factory = create_session_factory(engine)
 get_db = create_get_db(async_session_factory)

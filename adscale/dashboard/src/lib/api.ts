@@ -81,16 +81,19 @@ class ApiClient {
         headers,
       });
 
-      /* Auto-redirect to login on authentication failure */
+      /* Auto-redirect to login on authentication failure (except on login page itself) */
       if (response.status === 401) {
-        clearToken();
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
+        const isLoginPage = typeof window !== "undefined" && window.location.pathname.includes("/login");
+        if (!isLoginPage) {
+          clearToken();
+          if (typeof window !== "undefined") {
+            window.location.href = "/login";
+          }
+          return {
+            data: null,
+            error: { code: "401", message: "Session expired. Please log in again." },
+          };
         }
-        return {
-          data: null,
-          error: { code: "401", message: "Session expired. Please log in again." },
-        };
       }
 
       if (!response.ok) {

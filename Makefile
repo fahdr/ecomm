@@ -129,7 +129,7 @@ start: ## Start core platform (backend, dashboard, storefront)
 	@bash $(ROOT)/.devcontainer/start-services.sh
 
 .PHONY: start-all
-start-all: start start-llm-gateway start-admin start-master-landing start-saas ## Start everything (core + infra + all SaaS)
+start-all: db-create-schemas start start-llm-gateway start-admin start-master-landing start-saas ## Start everything (core + infra + all SaaS)
 
 .PHONY: start-backend
 start-backend: ## Start only the FastAPI backend (port 8000)
@@ -212,7 +212,41 @@ start-master-landing: ## Start master landing page (port 3200)
 # ──────────────────────────────────────────────────────────────────
 
 .PHONY: start-saas
-start-saas: ## Start all 8 SaaS service backends
+start-saas: ## Start all 8 SaaS services (backends + dashboards)
+	@echo "==> Starting all SaaS service backends + dashboards..."
+	@mkdir -p $(LOG_DIR)
+	@for svc in $(SERVICES); do \
+		port=$$(echo $${svc} | awk '{ \
+			if ($$0=="trendscout") print 8101; \
+			else if ($$0=="contentforge") print 8102; \
+			else if ($$0=="rankpilot") print 8103; \
+			else if ($$0=="flowsend") print 8104; \
+			else if ($$0=="spydrop") print 8105; \
+			else if ($$0=="postpilot") print 8106; \
+			else if ($$0=="adscale") print 8107; \
+			else if ($$0=="shopchat") print 8108; \
+		}'); \
+		dash_port=$$(echo $${svc} | awk '{ \
+			if ($$0=="trendscout") print 3101; \
+			else if ($$0=="contentforge") print 3102; \
+			else if ($$0=="rankpilot") print 3103; \
+			else if ($$0=="flowsend") print 3104; \
+			else if ($$0=="spydrop") print 3105; \
+			else if ($$0=="postpilot") print 3106; \
+			else if ($$0=="adscale") print 3107; \
+			else if ($$0=="shopchat") print 3108; \
+		}'); \
+		echo "  Starting $$svc backend on port $$port..."; \
+		cd $(ROOT)/$$svc/backend && nohup uvicorn app.main:app --host 0.0.0.0 --port $$port --reload \
+			> $(LOG_DIR)/$$svc-backend.log 2>&1 & \
+		echo "  Starting $$svc dashboard on port $$dash_port..."; \
+		cd $(ROOT)/$$svc/dashboard && nohup npm run dev -- -p $$dash_port \
+			> $(LOG_DIR)/$$svc-dashboard.log 2>&1 & \
+	done
+	@echo "  All SaaS backends + dashboards started."
+
+.PHONY: start-saas-backends
+start-saas-backends: ## Start only SaaS backends (no dashboards)
 	@echo "==> Starting all SaaS service backends..."
 	@mkdir -p $(LOG_DIR)
 	@for svc in $(SERVICES); do \
@@ -321,7 +355,7 @@ db-migrate: ## Run Alembic migrations (core platform)
 	@echo "  Migrations complete."
 
 .PHONY: db-migrate-all
-db-migrate-all: db-migrate ## Run migrations for core + all SaaS services
+db-migrate-all: ## Run migrations for core + all SaaS services
 	@for svc in $(SERVICES); do \
 		echo "==> Running $$svc migrations..."; \
 		cd $(ROOT)/$$svc/backend && alembic upgrade head 2>&1 || true; \
@@ -430,10 +464,21 @@ test-backend: ## Run core backend pytest suite
 	@echo ""
 
 .PHONY: test-e2e
-test-e2e: ## Run Playwright E2E tests (memory-limited)
-	@echo "==> Running E2E tests (heap limited to 4GB)..."
-	@cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test --reporter=list
-	@echo ""
+test-e2e: ## Run Playwright E2E tests in batches (prevents OOM)
+	@echo "==> Running E2E tests in batches (heap limited to 4GB, 1 worker)..."
+	@echo "--- Batch 1: TrendScout + ContentForge + RankPilot ---"
+	@cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+		--project=trendscout --project=contentforge --project=rankpilot \
+		--workers=1 --reporter=list
+	@echo "--- Batch 2: FlowSend + SpyDrop + PostPilot ---"
+	@cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+		--project=flowsend --project=spydrop --project=postpilot \
+		--workers=1 --reporter=list
+	@echo "--- Batch 3: AdScale + ShopChat + Admin ---"
+	@cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+		--project=adscale --project=shopchat --project=admin \
+		--workers=1 --reporter=list
+	@echo "  All E2E tests complete."
 
 .PHONY: test-e2e-ui
 test-e2e-ui: ## Run E2E tests with Playwright UI
@@ -498,12 +543,34 @@ test-backend-bg: ## Run backend tests detached in background (logs to file)
 	@echo "  Follow: tail -f $(TEST_LOG_DIR)/pytest-$(TIMESTAMP).log"
 
 .PHONY: test-e2e-bg
-test-e2e-bg: ## Run E2E tests detached in background (logs to file)
+test-e2e-bg: ## Run E2E tests detached in background (batched, logs to file)
 	@mkdir -p $(TEST_LOG_DIR)
-	@echo "==> Running E2E tests in background (heap limited to 4GB)..."
-	@nohup bash -c 'cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test --reporter=list \
-		> $(TEST_LOG_DIR)/e2e-$(TIMESTAMP).log 2>&1; \
-		echo "EXIT_CODE=$$?" >> $(TEST_LOG_DIR)/e2e-$(TIMESTAMP).log' \
+	@echo "==> Running E2E tests in background (heap limited to 4GB, batched)..."
+	@nohup bash -c '\
+		LOG=$(TEST_LOG_DIR)/e2e-$(TIMESTAMP).log; \
+		echo "=== Batch 1: TrendScout + ContentForge + RankPilot ===" > $$LOG; \
+		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+			--project=trendscout --project=contentforge --project=rankpilot \
+			--workers=1 --reporter=list >> $$LOG 2>&1; \
+		B1=$$?; \
+		echo "" >> $$LOG; \
+		echo "=== Batch 2: FlowSend + SpyDrop + PostPilot ===" >> $$LOG; \
+		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+			--project=flowsend --project=spydrop --project=postpilot \
+			--workers=1 --reporter=list >> $$LOG 2>&1; \
+		B2=$$?; \
+		echo "" >> $$LOG; \
+		echo "=== Batch 3: AdScale + ShopChat + Admin ===" >> $$LOG; \
+		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+			--project=adscale --project=shopchat --project=admin \
+			--workers=1 --reporter=list >> $$LOG 2>&1; \
+		B3=$$?; \
+		echo "" >> $$LOG; \
+		echo "=== Summary ===" >> $$LOG; \
+		echo "Batch 1 (TS/CF/RP): exit $$B1" >> $$LOG; \
+		echo "Batch 2 (FS/SD/PP): exit $$B2" >> $$LOG; \
+		echo "Batch 3 (AS/SC/AD): exit $$B3" >> $$LOG; \
+		echo "Finished: $$(date)" >> $$LOG' \
 		> /dev/null 2>&1 &
 	@echo "  PID: $$!"
 	@echo "  Log: $(TEST_LOG_DIR)/e2e-$(TIMESTAMP).log"
@@ -551,15 +618,29 @@ test-all-bg: ## Run all tests sequentially in background (core + services + e2e)
 			echo "EXIT_CODE=$$?" >> $$LOG; \
 			echo "" >> $$LOG; \
 		done; \
-		echo "=== E2E Tests ===" >> $$LOG; \
-		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test --reporter=list >> $$LOG 2>&1; \
-		E2E_RC=$$?; \
+		echo "=== E2E Tests (Batch 1: TS/CF/RP) ===" >> $$LOG; \
+		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+			--project=trendscout --project=contentforge --project=rankpilot \
+			--workers=1 --reporter=list >> $$LOG 2>&1; \
+		E2E1_RC=$$?; \
+		echo "=== E2E Tests (Batch 2: FS/SD/PP) ===" >> $$LOG; \
+		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+			--project=flowsend --project=spydrop --project=postpilot \
+			--workers=1 --reporter=list >> $$LOG 2>&1; \
+		E2E2_RC=$$?; \
+		echo "=== E2E Tests (Batch 3: AS/SC/AD) ===" >> $$LOG; \
+		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+			--project=adscale --project=shopchat --project=admin \
+			--workers=1 --reporter=list >> $$LOG 2>&1; \
+		E2E3_RC=$$?; \
 		echo "" >> $$LOG; \
 		echo "=== Summary ===" >> $$LOG; \
 		echo "Core Backend: exit $$CORE_RC" >> $$LOG; \
 		echo "LLM Gateway:  exit $$GW_RC" >> $$LOG; \
 		echo "Admin:        exit $$ADM_RC" >> $$LOG; \
-		echo "E2E:          exit $$E2E_RC" >> $$LOG; \
+		echo "E2E Batch 1:  exit $$E2E1_RC" >> $$LOG; \
+		echo "E2E Batch 2:  exit $$E2E2_RC" >> $$LOG; \
+		echo "E2E Batch 3:  exit $$E2E3_RC" >> $$LOG; \
 		echo "Finished: $$(date)" >> $$LOG' \
 		> /dev/null 2>&1 &
 	@echo "  PID: $$!"
@@ -712,3 +793,26 @@ ci: test-backend build test-e2e ## CI pipeline: backend tests -> build -> e2e te
 
 .PHONY: ci-full
 ci-full: test-all build-all ## Full CI: all tests -> all builds
+
+.PHONY: db-create-schemas
+db-create-schemas: ## Create PostgreSQL schemas for all services (idempotent)
+	@echo "==> Creating PostgreSQL schemas (IF NOT EXISTS)..."
+	@$(PSQL) -c "CREATE SCHEMA IF NOT EXISTS public; GRANT ALL ON SCHEMA public TO dropship; GRANT ALL ON SCHEMA public TO public;" 2>&1 | grep -v "already exists" || true
+	@for svc in $(SERVICES); do \
+		$(PSQL) -c "CREATE SCHEMA IF NOT EXISTS $$svc; GRANT ALL ON SCHEMA $$svc TO dropship;" 2>&1 | grep -v "already exists" || true; \
+	done
+	@$(PSQL) -c "CREATE SCHEMA IF NOT EXISTS admin; GRANT ALL ON SCHEMA admin TO dropship;" 2>&1 | grep -v "already exists" || true
+	@$(PSQL) -c "CREATE SCHEMA IF NOT EXISTS llm_gateway; GRANT ALL ON SCHEMA llm_gateway TO dropship;" 2>&1 | grep -v "already exists" || true
+	@echo "  All schemas ready."
+
+.PHONY: db-create-tables
+db-create-tables: ## Create tables in service schemas (alternative to migrations)
+	@echo "==> Creating tables from models..."
+	@echo "  Creating dropshipping tables in public schema..."
+	@cd $(BACKEND) && python -c "from app.database import Base, engine; import asyncio; asyncio.run((lambda: engine.begin()).__await__().then(lambda conn: conn.run_sync(Base.metadata.create_all)))" 2>&1 | tail -1
+	@for svc in $(SERVICES); do \
+		echo "  Creating $$svc tables in $$svc schema..."; \
+		cd $(ROOT)/$$svc/backend && PYTHONPATH=$(ROOT)/$$svc/backend:$$PYTHONPATH python -c "from app.database import engine; from app.models.base import Base; from sqlalchemy import text; import asyncio; async def create(): async with engine.begin() as c: await c.execute(text('SET search_path TO $$svc, public')); await c.run_sync(Base.metadata.create_all); asyncio.run(create())" 2>&1 | tail -1; \
+	done
+	@echo "  All tables created."
+

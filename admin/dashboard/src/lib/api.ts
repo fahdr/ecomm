@@ -98,11 +98,14 @@ class AdminApiClient {
    */
   private async handleResponse<T>(response: Response): Promise<T> {
     if (response.status === 401) {
-      this.clearToken();
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
+      const isLoginPage = typeof window !== "undefined" && window.location.pathname.includes("/login");
+      if (!isLoginPage) {
+        this.clearToken();
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        throw new Error("Unauthorized — redirecting to login");
       }
-      throw new Error("Unauthorized — redirecting to login");
     }
 
     if (response.status === 204) {

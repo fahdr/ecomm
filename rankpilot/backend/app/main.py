@@ -38,6 +38,7 @@ from ecomm_core.billing.service import get_usage
 async def lifespan(app: FastAPI):
     """Application lifecycle handler. Initializes Stripe price IDs on startup."""
     init_price_ids(
+        PLAN_LIMITS,
         pro_price_id=settings.stripe_pro_price_id,
         enterprise_price_id=settings.stripe_enterprise_price_id,
     )

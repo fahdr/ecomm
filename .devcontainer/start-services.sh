@@ -24,6 +24,20 @@ pip install -e '.[dev]' --quiet 2>&1 | tail -1
 cd /workspaces/ecomm/packages/py-connectors
 pip install -e '.[dev]' --quiet 2>&1 | tail -1
 
+# ── Database schemas ──────────────────────────────────────────────────────────
+echo "==> Creating database schemas (IF NOT EXISTS)..."
+PGPASSWORD=dropship_dev psql -h db -U dropship -d dropshipping -c \
+  "CREATE SCHEMA IF NOT EXISTS public; GRANT ALL ON SCHEMA public TO dropship;" 2>/dev/null || true
+for svc in trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat; do
+  PGPASSWORD=dropship_dev psql -h db -U dropship -d dropshipping -c \
+    "CREATE SCHEMA IF NOT EXISTS $svc; GRANT ALL ON SCHEMA $svc TO dropship;" 2>/dev/null || true
+done
+PGPASSWORD=dropship_dev psql -h db -U dropship -d dropshipping -c \
+  "CREATE SCHEMA IF NOT EXISTS admin; GRANT ALL ON SCHEMA admin TO dropship;" 2>/dev/null || true
+PGPASSWORD=dropship_dev psql -h db -U dropship -d dropshipping -c \
+  "CREATE SCHEMA IF NOT EXISTS llm_gateway; GRANT ALL ON SCHEMA llm_gateway TO dropship;" 2>/dev/null || true
+echo "  Schemas ready."
+
 # ── Core backend ─────────────────────────────────────────────────────────────
 echo "==> Installing backend dependencies..."
 cd /workspaces/ecomm/dropshipping/backend

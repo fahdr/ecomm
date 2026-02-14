@@ -109,7 +109,7 @@ export default function RegisterPage() {
 
     if (data) {
       setToken(data.access_token);
-      setUserEmail(data.user.email);
+      setUserEmail(email);
       router.push("/");
     }
   }

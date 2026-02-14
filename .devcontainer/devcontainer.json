@@ -16,7 +16,7 @@
     8101, 8102, 8103, 8104, 8105, 8106, 8107, 8108,
     3101, 3102, 3103, 3104, 3105, 3106, 3107, 3108,
     3201, 3202, 3203, 3204, 3205, 3206, 3207, 3208,
-    5432, 6379, 5555
+    "db:5432", 6379, 5555
   ],
   "portsAttributes": {
     "8000": { "label": "Backend API (FastAPI)" },
@@ -94,7 +94,7 @@
           {
             "name": "Local Dev DB",
             "driver": "PostgreSQL",
-            "server": "localhost",
+            "server": "db",
             "port": 5432,
             "database": "dropshipping",
             "username": "dropship",
