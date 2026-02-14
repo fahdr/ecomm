@@ -1,5 +1,7 @@
 # Project Manager Guide
 
+> Part of [ContentForge](README.md) documentation
+
 **For Project Managers:** ContentForge is Feature A2 in the dropshipping platform roadmap. It is an independently hostable SaaS product that generates SEO-optimized product content using AI. This guide provides an overview of the project scope, current status, architecture, pricing, and risk areas.
 
 ---
@@ -148,3 +150,7 @@ Each service follows the same architectural pattern: independent FastAPI backend
 | Settings | `/settings` | User profile and preferences |
 | Login | `/login` | Sign in to existing account |
 | Register | `/register` | Create new account |
+
+---
+
+*See also: [README](README.md) · [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

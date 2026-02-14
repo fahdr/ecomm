@@ -1,5 +1,7 @@
 # End User Guide
 
+> Part of [SpyDrop](README.md) documentation
+
 ## What Is SpyDrop?
 
 SpyDrop is a **Competitor Intelligence** tool designed for dropshippers and e-commerce sellers. It automates the process of monitoring your competitors so you can stay ahead of market changes without manually checking competitor stores every day.
@@ -169,3 +171,7 @@ Yes. Pro and Enterprise plans include API access. Generate an API key in the **A
 
 **What if I reach my plan limit?**
 You will see an error message when trying to add more competitors than your plan allows. Upgrade to a higher tier or delete existing competitors to make room.
+
+---
+
+*See also: [README](README.md) · [Setup](SETUP.md) · [API Reference](API_REFERENCE.md)*

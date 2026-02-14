@@ -1,5 +1,7 @@
 # End User Guide
 
+> Part of [AdScale](README.md) documentation
+
 **For End Users:** AdScale is your AI-powered advertising companion that helps you launch, manage, and optimize ad campaigns across Google Ads and Meta (Facebook + Instagram) -- all from a single dashboard. No need to switch between multiple ad managers. Let AI write your ad copy, set up automated rules to manage your budget, and track your performance with clear ROAS metrics.
 
 ---

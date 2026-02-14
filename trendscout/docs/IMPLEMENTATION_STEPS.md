@@ -1,5 +1,7 @@
 # Implementation Steps
 
+> Part of [TrendScout](README.md) documentation
+
 **For Developers & Project Managers:** This document tracks the step-by-step implementation of the TrendScout service, from initial template scaffolding through feature-complete status. Each step documents what was built, the tasks completed, and how to verify the work.
 
 ---
@@ -408,3 +410,7 @@ TrendScout Service
 4. **Playwright E2E tests** -- Browser-based testing of the dashboard UI
 5. **Production configuration** -- Stripe Price IDs, Anthropic API key, production database URL
 6. **Email notifications** -- Password reset, research run completed notifications
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

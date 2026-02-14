@@ -1,220 +1,11 @@
 # QA Engineer Guide
 
-**For QA Engineers:** This guide covers testing strategy, test execution, API endpoint verification, and quality checklists for the AdScale AI Ad Campaign Manager service. AdScale manages advertising campaigns across Google Ads and Meta Ads with AI-generated ad copy, automated optimization rules, and ROAS-based performance tracking.
+> Part of [AdScale](README.md) documentation
 
----
+**For QA Engineers:** This guide covers acceptance criteria, verification checklists, and edge case testing for the AdScale AI Ad Campaign Manager service. AdScale manages advertising campaigns across Google Ads and Meta Ads with AI-generated ad copy, automated optimization rules, and ROAS-based performance tracking.
 
-## Test Stack
-
-| Tool | Purpose |
-|------|---------|
-| pytest | Test framework and runner |
-| pytest-asyncio | Async test support for FastAPI |
-| httpx.AsyncClient | HTTP client for API-level testing (no server required) |
-| SQLAlchemy + NullPool | Database isolation with per-test truncation |
-| PostgreSQL 16 | Same database engine as production |
-
----
-
-## Running Tests
-
-### Execute All 164 Tests
-
-```bash
-# From the service root
-make test-backend
-
-# Verbose output with test names
-cd backend && pytest -v
-
-# With timing information
-cd backend && pytest -v --durations=10
-```
-
-### Run Specific Test Suites
-
-```bash
-# Auth tests (11 tests)
-cd backend && pytest tests/test_auth.py -v
-
-# Ad account tests (15 tests)
-cd backend && pytest tests/test_accounts.py -v
-
-# Campaign tests (20 tests)
-cd backend && pytest tests/test_campaigns.py -v
-
-# Creative tests (16 tests)
-cd backend && pytest tests/test_creatives.py -v
-
-# Optimization rule tests (20+ tests)
-cd backend && pytest tests/test_rules.py -v
-
-# Billing tests (9 tests)
-cd backend && pytest tests/test_billing.py -v
-
-# API key tests (5 tests)
-cd backend && pytest tests/test_api_keys.py -v
-
-# Health check test (1 test)
-cd backend && pytest tests/test_health.py -v
-```
-
-### Run a Single Test
-
-```bash
-cd backend && pytest tests/test_campaigns.py::test_create_campaign_success -v
-```
-
----
-
-## Test Coverage by Module
-
-| Test File | Count | Covers |
-|-----------|-------|--------|
-| `test_auth.py` | 11 | Register (success, duplicate 409, short password 422), login (success, wrong password 401, nonexistent 401), refresh (success, wrong token type 401), profile (success, unauth 401) |
-| `test_accounts.py` | 15 | Connect Google/Meta (201), duplicate (409), same ID different platform, unauthenticated (401), list empty/with data/pagination, user isolation, disconnect success (204)/not found (404)/invalid UUID (400)/other user (404) |
-| `test_campaigns.py` | 20 | Create success (201)/all objectives/lifetime budget/unauthenticated (401), list empty/with data/pagination/user isolation, get by ID (200)/not found (404)/invalid UUID (400), update name/budget/status/objective/not found (404), delete success (204)/not found (404)/other user (404)/invalid UUID (400) |
-| `test_creatives.py` | 16 | Create success (201)/custom CTA/invalid ad group (400)/unauthenticated (401), list empty/with data/filter by ad group/user isolation, get by ID (200)/not found (404)/invalid UUID (400), update headline/status/not found (404), delete success (204)/not found (404)/other user (404), AI copy generation (200)/minimal fields/unauthenticated (401) |
-| `test_rules.py` | 20+ | Create success (201)/all types/inactive/custom conditions/unauthenticated (401), list empty/with data/pagination/user isolation, get by ID (200)/not found (404)/invalid UUID (400)/other user (404), update name/threshold/deactivate/type/conditions/not found (404), delete success (204)/not found (404)/other user (404)/invalid UUID (400), execute-now no campaigns/not found (404)/invalid UUID (400)/unauthenticated (401) |
-| `test_billing.py` | 9 | List plans (200, 3 tiers), plan pricing details, checkout Pro (201), checkout Free (400), duplicate subscription (400), billing overview (200), overview after subscribe, current subscription none/after subscribe |
-| `test_api_keys.py` | 5 | Create key (201, raw key returned), list keys (no raw key), revoke key (204), auth via X-API-Key (200), invalid API key (401) |
-| `test_health.py` | 1 | Health check returns status, service name, timestamp |
-| `test_platform_webhooks.py` | -- | Platform event webhook handling |
-
----
-
-## Test Structure and Patterns
-
-### Fixtures (conftest.py)
-
-| Fixture | Scope | Description |
-|---------|-------|-------------|
-| `event_loop` | session | Single event loop shared across all tests |
-| `setup_db` | function (autouse) | Creates tables before test, truncates all tables after each test |
-| `db` | function | Raw async database session for direct DB queries |
-| `client` | function | `httpx.AsyncClient` configured for the FastAPI app |
-| `auth_headers` | function | Pre-registered user with `{"Authorization": "Bearer <token>"}` |
-
-### Helper Functions
-
-| Helper | Location | Purpose |
-|--------|----------|---------|
-| `register_and_login(client, email)` | conftest.py | Registers a user and returns auth headers dict |
-| `_connect_account(client, headers, ...)` | test_accounts.py | Connects a Google/Meta ad account |
-| `_create_ad_account(client, headers, ...)` | test_campaigns.py | Creates an ad account, returns its UUID |
-| `_create_campaign(client, headers, ...)` | test_campaigns.py | Creates a campaign, returns the raw response |
-| `_setup_chain(client, headers, ...)` | test_creatives.py | Creates the full account -> campaign -> ad group chain |
-| `_create_creative(client, headers, ...)` | test_creatives.py | Creates an ad creative in an ad group |
-| `_create_rule(client, headers, ...)` | test_rules.py | Creates an optimization rule |
-
-### Database Isolation
-
-Each test is fully isolated:
-1. Tables are created via `Base.metadata.create_all` before each test
-2. After each test, all non-self PostgreSQL connections are terminated (prevents deadlocks)
-3. All tables are `TRUNCATE CASCADE`-d in reverse dependency order
-
----
-
-## API Documentation
-
-Interactive Swagger UI is available at **http://localhost:8107/docs** when the backend is running.
-
-### Endpoint Summary
-
-#### Auth (`/api/v1/auth`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/auth/register` | None | 201 | Register new user, returns JWT tokens |
-| POST | `/auth/login` | None | 200 | Login with email/password, returns JWT tokens |
-| POST | `/auth/refresh` | None | 200 | Refresh tokens using refresh_token |
-| GET | `/auth/me` | JWT | 200 | Get authenticated user profile |
-| POST | `/auth/forgot-password` | None | 200 | Request password reset (always succeeds) |
-| POST | `/auth/provision` | API Key | 201 | Provision user from platform |
-
-#### Ad Accounts (`/api/v1/accounts`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/accounts` | JWT | 201 | Connect Google/Meta ad account |
-| GET | `/accounts` | JWT | 200 | List ad accounts (paginated) |
-| DELETE | `/accounts/{id}` | JWT | 204 | Disconnect ad account (soft delete) |
-
-#### Campaigns (`/api/v1/campaigns`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/campaigns` | JWT | 201 | Create campaign (enforces plan limits) |
-| GET | `/campaigns` | JWT | 200 | List campaigns (paginated) |
-| GET | `/campaigns/{id}` | JWT | 200 | Get campaign by ID |
-| PATCH | `/campaigns/{id}` | JWT | 200 | Update campaign (partial) |
-| DELETE | `/campaigns/{id}` | JWT | 204 | Delete campaign (cascade ad groups, creatives, metrics) |
-
-#### Ad Groups (`/api/v1/ad-groups`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/ad-groups` | JWT | 201 | Create ad group (enforces plan limits) |
-| GET | `/ad-groups` | JWT | 200 | List ad groups (optional `?campaign_id=` filter) |
-| GET | `/ad-groups/{id}` | JWT | 200 | Get ad group by ID |
-| PATCH | `/ad-groups/{id}` | JWT | 200 | Update ad group (partial) |
-| DELETE | `/ad-groups/{id}` | JWT | 204 | Delete ad group (cascade creatives) |
-
-#### Creatives (`/api/v1/creatives`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/creatives` | JWT | 201 | Create ad creative |
-| GET | `/creatives` | JWT | 200 | List creatives (optional `?ad_group_id=` filter) |
-| GET | `/creatives/{id}` | JWT | 200 | Get creative by ID |
-| PATCH | `/creatives/{id}` | JWT | 200 | Update creative (partial) |
-| DELETE | `/creatives/{id}` | JWT | 204 | Delete creative |
-| POST | `/creatives/generate-copy` | JWT | 200 | AI-generate headline, description, CTA |
-
-#### Metrics (`/api/v1/metrics`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| GET | `/metrics/overview` | JWT | 200 | Aggregated metrics (spend, revenue, ROAS, CTR, CPA) |
-| GET | `/metrics/campaign/{id}` | JWT | 200 | Daily metrics for specific campaign (paginated) |
-| GET | `/metrics/date-range` | JWT | 200 | Metrics within date range across all campaigns |
-
-#### Optimization Rules (`/api/v1/rules`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/rules` | JWT | 201 | Create optimization rule |
-| GET | `/rules` | JWT | 200 | List rules (paginated) |
-| GET | `/rules/{id}` | JWT | 200 | Get rule by ID |
-| PATCH | `/rules/{id}` | JWT | 200 | Update rule (partial) |
-| DELETE | `/rules/{id}` | JWT | 204 | Delete rule |
-| POST | `/rules/{id}/execute` | JWT | 200 | Execute rule immediately against active campaigns |
-
-#### Billing (`/api/v1/billing`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| GET | `/billing/plans` | None | 200 | List all plan tiers with pricing |
-| POST | `/billing/checkout` | JWT | 201 | Create Stripe checkout session |
-| POST | `/billing/portal` | JWT | 200 | Create Stripe customer portal session |
-| GET | `/billing/current` | JWT | 200 | Get current subscription (or null) |
-| GET | `/billing/overview` | JWT | 200 | Full billing overview (plan + usage) |
-
-#### API Keys (`/api/v1/api-keys`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/api-keys` | JWT | 201 | Create API key (raw key returned once) |
-| GET | `/api-keys` | JWT | 200 | List API keys (no raw keys) |
-| DELETE | `/api-keys/{id}` | JWT | 204 | Revoke (deactivate) API key |
-
-#### Usage & Health
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| GET | `/usage` | JWT or API Key | 200 | Usage metrics for billing period |
-| GET | `/health` | None | 200 | Service health check |
+For test infrastructure details, see **[Testing Guide](TESTING.md)**.
+For API endpoint specifications, see **[API Reference](API_REFERENCE.md)**.
 
 ---
 
@@ -334,3 +125,47 @@ Validation errors (422) include field-level details:
   ]
 }
 ```
+
+---
+
+## Edge Cases to Test
+
+### Resource Ownership Chain
+
+- Creating a creative with an ad group owned by another user
+- Updating a campaign that belongs to another user
+- Deleting an ad account while campaigns are active (should cascade properly)
+
+### Plan Limits
+
+- Upgrading from Free to Pro should unlock additional campaign slots immediately
+- Downgrading from Pro to Free with 10 active campaigns (should be handled gracefully)
+- Creating resources at exact plan limit boundary
+
+### Pagination
+
+- Listing with offset=0, limit=0 (should return empty items, total > 0)
+- Listing with offset > total (should return empty items)
+- Listing with negative offset or limit (should return 422)
+
+### Metrics Computation
+
+- Campaign with zero spend (ROAS should be null, not division error)
+- Campaign with zero conversions (CPA should be null)
+- Campaign with zero impressions (CTR should be null)
+
+### AI Copy Generation
+
+- Product name with special characters or emojis
+- Very long product description (> 1000 chars)
+- Empty target audience or tone (should use defaults)
+
+### Rule Execution
+
+- Executing a rule when user has no campaigns
+- Executing a rule when all campaigns are paused (not active)
+- Executing a rule with threshold=0 (should handle edge case)
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

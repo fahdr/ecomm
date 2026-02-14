@@ -1,167 +1,12 @@
 # QA Engineer Guide
 
-**For QA Engineers:** This guide covers the complete testing infrastructure, API endpoint inventory, verification checklists, and quality assurance procedures for PostPilot -- the Social Media Automation service. PostPilot manages social account connections, post creation and scheduling, AI-powered content generation, and engagement analytics across Instagram, Facebook, and TikTok.
+> Part of [PostPilot](README.md) documentation
 
----
+**For QA Engineers:** This guide covers acceptance criteria, verification checklists, and quality assurance procedures for PostPilot -- the Social Media Automation service. PostPilot manages social account connections, post creation and scheduling, AI-powered content generation, and engagement analytics across Instagram, Facebook, and TikTok.
 
-## Test Stack
-
-| Component | Technology | Notes |
-|-----------|-----------|-------|
-| Test Framework | pytest + pytest-asyncio | Async test support for FastAPI |
-| HTTP Client | httpx.AsyncClient | In-process ASGI testing (no network) |
-| Database | PostgreSQL 16 | Same instance, tables truncated between tests |
-| Stripe | Mock mode | `STRIPE_SECRET_KEY` is empty -- no real API calls |
-| AI Generation | Mock mode | Template-based captions, no real LLM calls |
-
----
-
-## Running Tests
-
-### Commands
-
-```bash
-# Run all 157 backend tests
-make test-backend
-
-# Verbose output with test names
-cd backend && pytest -v
-
-# Run a specific test file
-cd backend && pytest tests/test_posts.py -v
-
-# Run a single test by name
-cd backend && pytest tests/test_queue.py::test_generate_caption_for_queue_item -v
-
-# Run tests matching a keyword
-cd backend && pytest -k "calendar" -v
-
-# Show test durations
-cd backend && pytest --durations=10
-```
-
-### Test Count: 157 Total
-
-| Test File | Count | Coverage Area |
-|-----------|-------|---------------|
-| `test_queue.py` | 22 | Content queue CRUD, AI caption generation, approve/reject workflow, status transitions, deletion rules, user isolation |
-| `test_posts.py` | 20 | Post CRUD, draft vs scheduled creation, pagination, status/platform filtering, update, delete, scheduling, calendar view, user isolation |
-| `test_accounts.py` | 16 | Social account connect (all 3 platforms), list, disconnect, auto-generated external IDs, validation (invalid platform, empty name), user isolation |
-| `test_auth.py` | 10 | Registration, duplicate email (409), short password (422), login, wrong password (401), nonexistent user, token refresh, invalid refresh token, profile, unauthenticated profile |
-| `test_billing.py` | 9 | Plan listing, pricing details, checkout (pro), checkout free fails (400), duplicate subscription (400), billing overview, overview after subscribe, current subscription (null), current subscription after subscribe |
-| `test_api_keys.py` | 5 | Key creation (raw key returned), listing (no raw keys), revocation, auth via X-API-Key, invalid API key (401) |
-| `test_health.py` | 1 | Health check returns status, service name, timestamp |
-| `test_platform_webhooks.py` | -- | Platform event webhook handling |
-
----
-
-## Test Structure
-
-### Fixtures (conftest.py)
-
-| Fixture | Scope | Description |
-|---------|-------|-------------|
-| `event_loop` | session | Single event loop for all tests |
-| `setup_db` | function (autouse) | Creates tables before test, truncates all tables + terminates other DB connections after each test |
-| `db` | function | Raw async database session |
-| `client` | function | `httpx.AsyncClient` configured against the FastAPI app |
-| `auth_headers` | function | Registers a fresh user and returns `{"Authorization": "Bearer <token>"}` |
-
-### Helper: `register_and_login(client, email=None)`
-
-Registers a user with a random email (or specified one) and returns auth headers. Used in tests that need multiple isolated users for user isolation verification.
-
----
-
-## API Documentation
-
-### Interactive Docs
-
-- **Swagger UI**: http://localhost:8106/docs
-- **ReDoc**: http://localhost:8106/redoc
-- **OpenAPI JSON**: http://localhost:8106/openapi.json
-
----
-
-## Endpoint Summary
-
-### Auth (`/api/v1/auth`)
-
-| Method | Path | Status | Description | Auth |
-|--------|------|--------|-------------|------|
-| POST | `/auth/register` | 201 | Register new user, returns tokens | No |
-| POST | `/auth/login` | 200 | Login with email/password | No |
-| POST | `/auth/refresh` | 200 | Refresh expired access token | No |
-| GET | `/auth/me` | 200 | Get user profile | JWT |
-| POST | `/auth/forgot-password` | 200 | Request password reset (stub) | No |
-| POST | `/auth/provision` | 201 | Provision user from platform | API Key |
-
-### Social Accounts (`/api/v1/accounts`)
-
-| Method | Path | Status | Description | Auth |
-|--------|------|--------|-------------|------|
-| POST | `/accounts` | 201 | Connect social account (Instagram/Facebook/TikTok) | JWT |
-| GET | `/accounts` | 200 | List all connected accounts | JWT |
-| DELETE | `/accounts/{account_id}` | 200 | Disconnect account (soft delete) | JWT |
-
-### Posts (`/api/v1/posts`)
-
-| Method | Path | Status | Description | Auth |
-|--------|------|--------|-------------|------|
-| POST | `/posts` | 201 | Create post (draft or scheduled) | JWT |
-| GET | `/posts` | 200 | List posts with pagination + filters | JWT |
-| GET | `/posts/calendar` | 200 | Calendar view (grouped by date) | JWT |
-| GET | `/posts/{post_id}` | 200 | Get single post | JWT |
-| PATCH | `/posts/{post_id}` | 200 | Update post (draft/scheduled only) | JWT |
-| DELETE | `/posts/{post_id}` | 204 | Delete post (draft/scheduled only) | JWT |
-| POST | `/posts/{post_id}/schedule` | 200 | Schedule post for future publication | JWT |
-
-### Content Queue (`/api/v1/queue`)
-
-| Method | Path | Status | Description | Auth |
-|--------|------|--------|-------------|------|
-| POST | `/queue` | 201 | Add product to content queue | JWT |
-| GET | `/queue` | 200 | List queue items with pagination + status filter | JWT |
-| GET | `/queue/{item_id}` | 200 | Get single queue item | JWT |
-| DELETE | `/queue/{item_id}` | 204 | Delete queue item (pending/rejected only) | JWT |
-| POST | `/queue/{item_id}/generate` | 200 | Generate AI caption for queue item | JWT |
-| POST | `/queue/{item_id}/approve` | 200 | Approve item (pending only) | JWT |
-| POST | `/queue/{item_id}/reject` | 200 | Reject item (pending only) | JWT |
-| POST | `/queue/generate-caption` | 200 | Standalone caption generation (no persistence) | JWT |
-
-### Analytics (`/api/v1/analytics`)
-
-| Method | Path | Status | Description | Auth |
-|--------|------|--------|-------------|------|
-| GET | `/analytics/overview` | 200 | Aggregated metrics across all posts | JWT |
-| GET | `/analytics/posts` | 200 | Metrics for all published posts (paginated) | JWT |
-| GET | `/analytics/posts/{post_id}` | 200 | Metrics for a single post | JWT |
-
-### Billing (`/api/v1/billing`)
-
-| Method | Path | Status | Description | Auth |
-|--------|------|--------|-------------|------|
-| GET | `/billing/plans` | 200 | List all plan tiers | No |
-| POST | `/billing/checkout` | 201 | Create Stripe checkout session | JWT |
-| POST | `/billing/portal` | 200 | Create Stripe customer portal session | JWT |
-| GET | `/billing/current` | 200 | Get current subscription (or null) | JWT |
-| GET | `/billing/overview` | 200 | Full billing overview with usage metrics | JWT |
-
-### API Keys (`/api/v1/api-keys`)
-
-| Method | Path | Status | Description | Auth |
-|--------|------|--------|-------------|------|
-| POST | `/api-keys` | 201 | Create API key (raw key returned once) | JWT |
-| GET | `/api-keys` | 200 | List all keys (no raw key values) | JWT |
-| DELETE | `/api-keys/{key_id}` | 204 | Revoke (deactivate) an API key | JWT |
-
-### System
-
-| Method | Path | Status | Description | Auth |
-|--------|------|--------|-------------|------|
-| GET | `/api/v1/health` | 200 | Health check with service metadata | No |
-| GET | `/api/v1/usage` | 200 | Current usage metrics | JWT or API Key |
-| POST | `/api/v1/webhooks/stripe` | 200 | Stripe webhook handler | Stripe signature |
+**See also:**
+- [Testing Guide](TESTING.md) -- Test infrastructure, running tests, writing tests
+- [API Reference](API_REFERENCE.md) -- Complete API documentation with endpoints and response formats
 
 ---
 
@@ -343,6 +188,45 @@ Verify data isolation between users:
 3. Verify user B sees empty lists for accounts, posts, queue
 4. Verify user B gets 404 when accessing user A's resources by ID
 ```
+
+---
+
+## Edge Cases
+
+### Post Scheduling
+
+- [ ] Verify scheduling for exactly midnight works correctly
+- [ ] Verify scheduling for leap year dates (Feb 29)
+- [ ] Verify timezone handling for scheduled_for timestamps
+- [ ] Verify scheduling far future dates (1+ year ahead)
+- [ ] Verify calendar view boundary dates (month transitions)
+
+### Social Account Connection
+
+- [ ] Verify connecting same platform multiple times (e.g., 2 Instagram accounts)
+- [ ] Verify reconnecting a disconnected account
+- [ ] Verify account_name with special characters (@, #, emoji)
+- [ ] Verify very long account names (255 char limit)
+
+### Content Queue
+
+- [ ] Verify product_data with missing optional fields
+- [ ] Verify product_data with very long descriptions (>1000 chars)
+- [ ] Verify platforms array with duplicate platforms
+- [ ] Verify caption generation with empty product_data
+- [ ] Verify caption generation with non-ASCII characters
+
+### Analytics
+
+- [ ] Verify metrics for posts with zero engagement
+- [ ] Verify engagement rate calculation when impressions = 0
+- [ ] Verify date range queries spanning multiple months
+
+### Plan Limits
+
+- [ ] Verify limit enforcement at exact boundary (10th post on free plan)
+- [ ] Verify limit reset on new calendar month
+- [ ] Verify limit after plan upgrade/downgrade
 
 ---
 

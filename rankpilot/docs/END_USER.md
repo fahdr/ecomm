@@ -1,5 +1,7 @@
 # RankPilot End User Guide
 
+> Part of [RankPilot](README.md) documentation
+
 ## What Is RankPilot?
 
 RankPilot is an **Automated SEO Engine** that helps you boost your website's search engine rankings. Instead of spending hours manually optimizing your site, RankPilot automates the process -- generating blog content, tracking where your keywords rank, auditing your site for SEO issues, and creating structured data that makes your pages stand out in search results.
@@ -217,3 +219,7 @@ No. RankPilot generates the JSON-LD templates automatically. You just need to co
 
 **How accurate is the keyword ranking data?**
 Ranking data is updated when you click "Refresh Ranks" or when the system runs periodic checks. Positions may vary slightly due to personalization and location-based search results.
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

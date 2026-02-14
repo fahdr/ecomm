@@ -1,5 +1,7 @@
 # Implementation Steps
 
+> Part of [ContentForge](README.md) documentation
+
 This document records the step-by-step implementation of the ContentForge service, from initial scaffolding through to a fully functional, tested microservice with backend API, dashboard, and landing page.
 
 ---
@@ -303,3 +305,7 @@ This document records the step-by-step implementation of the ContentForge servic
 - **4 system templates** seeded at startup
 - **5 content types** generated per job (title, description, meta_description, keywords, bullet_points)
 - **4 pricing strategies** (round_99, round_95, round_00, none)
+
+---
+
+*See also: [README](README.md) · [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

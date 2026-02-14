@@ -1,5 +1,7 @@
 # Project Manager Guide
 
+> Part of [TrendScout](README.md) documentation
+
 **For Project Managers:** TrendScout is an AI-powered product research SaaS product (Feature A1 in the platform roadmap). It discovers trending, high-potential products using multi-source data aggregation and AI-powered scoring. TrendScout is fully scaffolded with authentication, billing, API keys, 158 backend tests, 8 dashboard pages, and 2 landing pages. It can be sold as a standalone SaaS product or integrated with the dropshipping platform as an add-on service.
 
 ---
@@ -169,3 +171,7 @@ TrendScout integrates with the main dropshipping platform through:
 | User data security (source credentials) | Critical -- leaked API keys could compromise user accounts | Low | Credentials stored encrypted; never returned in API responses; has_credentials flag only |
 | Plan limit bypass | Medium -- users could exploit edge cases to exceed limits | Low | Limits enforced at service layer with atomic count checks; tested in unit tests |
 | Celery worker downtime | Medium -- research runs stuck in "pending" state | Medium | Health monitoring; auto-restart; user-facing retry mechanism for stuck runs |
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

@@ -1,5 +1,7 @@
 # RankPilot Project Manager Guide
 
+> Part of [RankPilot](README.md) documentation
+
 ## Overview
 
 RankPilot is an **Automated SEO Engine** -- a standalone SaaS product that helps e-commerce store owners improve their search engine rankings. It is designated as **Feature A3** in the platform roadmap and is the most feature-rich service in the ecosystem.
@@ -191,3 +193,7 @@ This returns current billing period metrics (blog posts created, keywords tracke
 | **Provisioning** | Creating a user account from the platform via API (cross-service integration) |
 | **max_items** | Plan limit for primary resource (blog posts per month) |
 | **max_secondary** | Plan limit for secondary resource (total keywords tracked) |
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

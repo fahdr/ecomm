@@ -1,5 +1,7 @@
 # Project Manager Guide
 
+> Part of [PostPilot](README.md) documentation
+
 **For Project Managers:** PostPilot is Feature A6 in the platform roadmap -- a standalone SaaS product for social media automation. It enables users to connect Instagram, Facebook, and TikTok accounts, create and schedule posts with AI-generated captions, manage a content queue from product data, and track engagement analytics. PostPilot can operate independently or integrate with the dropshipping platform.
 
 ---

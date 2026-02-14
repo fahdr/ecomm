@@ -1,5 +1,7 @@
 # FlowSend -- Implementation Steps
 
+> Part of [FlowSend](README.md) documentation
+
 This document records every implementation step taken to build FlowSend, from initial scaffolding to the final dashboard pages. Each step includes what was built, the specific steps completed, and how to verify correctness.
 
 ---
@@ -420,3 +422,7 @@ A static marketing landing page for FlowSend at `master-landing/`.
 | 12 | Dashboard | 9 feature pages + 2 auth pages | -- |
 | 13 | Landing page | 1 static page | -- |
 | **Total** | | **10+ tables, 35+ endpoints, 11+ pages** | **87 tests** |
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

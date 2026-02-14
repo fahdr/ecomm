@@ -1,5 +1,7 @@
 # End User Guide
 
+> Part of [TrendScout](README.md) documentation
+
 **For End Users:** This guide explains how to use TrendScout to discover winning products for your e-commerce or dropshipping business. TrendScout scans multiple data sources, scores products using AI, and helps you build a curated watchlist of the most promising opportunities.
 
 ---
@@ -205,3 +207,7 @@ Yes. If you remove a product from your watchlist (or dismiss it), you can add it
 - **Enterprise plan:** Dedicated support with priority response
 
 For technical issues or feature requests, contact the support team or file an issue in the project repository.
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

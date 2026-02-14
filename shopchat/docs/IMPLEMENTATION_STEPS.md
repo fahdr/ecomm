@@ -1,5 +1,7 @@
 # Implementation Steps
 
+> Part of [ShopChat](README.md) documentation
+
 This document records the implementation steps taken to build the ShopChat AI Shopping Assistant service, from initial scaffolding through models, services, routes, tests, dashboard pages, and landing page.
 
 ---
@@ -444,3 +446,7 @@ The landing page at `landing/` was configured with:
 | 8 | Dashboard Pages | `chatbots/page.tsx`, `knowledge/page.tsx`, `conversations/page.tsx` |
 | 9 | Service Config | `service.config.ts` |
 | 10 | Landing Page | `landing/` directory |
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [Testing](TESTING.md) · [README](README.md)*

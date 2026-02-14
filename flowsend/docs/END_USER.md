@@ -1,5 +1,7 @@
 # FlowSend -- End User Guide
 
+> Part of [FlowSend](README.md) documentation
+
 ## What Is FlowSend?
 
 FlowSend is your **Smart Email Marketing** platform. It helps you automate your email marketing with visual flow builders, broadcast campaigns, reusable templates, and detailed analytics. Whether you want to send a one-time newsletter or build a multi-step welcome sequence that runs on autopilot, FlowSend handles it all.
@@ -184,3 +186,7 @@ The current version sends to all subscribed contacts. A/B testing and test sends
 
 **How are my API keys secured?**
 API keys are hashed with SHA-256 before storage. The raw key is only shown once when you create it. Store it securely -- it cannot be retrieved again.
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

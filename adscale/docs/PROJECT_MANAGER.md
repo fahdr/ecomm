@@ -1,5 +1,7 @@
 # Project Manager Guide
 
+> Part of [AdScale](README.md) documentation
+
 **For Project Managers:** AdScale is Feature A7 in the dropshipping platform's Phase 2 (Automation & AI). It is an AI Ad Campaign Manager that enables users to manage paid advertising across Google Ads and Meta (Facebook + Instagram) from a single dashboard. The service is fully scaffolded with a working backend, dashboard, and landing page, backed by 164 automated tests.
 
 ---

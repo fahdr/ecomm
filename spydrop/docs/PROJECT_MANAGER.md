@@ -1,5 +1,7 @@
 # Project Manager Guide
 
+> Part of [SpyDrop](README.md) documentation
+
 **For Project Managers:** SpyDrop is the Competitor Intelligence service (Feature A5) in the dropshipping platform ecosystem. It enables users to monitor competitor stores, track product catalogs and price changes, receive automated alerts, and perform reverse source-finding to identify original suppliers.
 
 ---
@@ -156,3 +158,7 @@ SpyDrop integrates with the main dropshipping platform through:
 - Performance optimization for high-volume users
 - Data retention and archival policies
 - Analytics dashboard for competitive insights
+
+---
+
+*See also: [README](README.md) · [Architecture](ARCHITECTURE.md) · [Testing](TESTING.md) · [Implementation Steps](IMPLEMENTATION_STEPS.md)*

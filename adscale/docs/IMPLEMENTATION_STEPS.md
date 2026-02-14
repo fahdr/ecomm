@@ -1,5 +1,7 @@
 # Implementation Steps
 
+> Part of [AdScale](README.md) documentation
+
 This document details how the AdScale service was implemented, step by step, from template scaffolding through models, services, routes, tests, dashboard pages, and landing page. It serves as both a historical record and a reference for building future services using the same architecture.
 
 ---

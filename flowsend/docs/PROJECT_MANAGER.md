@@ -1,5 +1,7 @@
 # FlowSend -- Project Manager Guide
 
+> Part of [FlowSend](README.md) documentation
+
 ## Overview
 
 FlowSend is the **Smart Email Marketing** service in the platform suite (Feature A4). It enables users to manage email contacts, build automated email sequences (flows), send broadcast campaigns, create reusable templates, and track delivery analytics. FlowSend can operate as a standalone SaaS product or as an integrated service within the dropshipping platform.
@@ -155,4 +157,8 @@ The entire dashboard brand (name, tagline, colors, fonts, navigation) is control
 - **Primary color**: Coral Red (`#f43f5e`)
 - **Accent color**: Orange (`#fb923c`)
 - **Heading font**: Satoshi
-- **Body font**: Inter
+- **Body font**: Source Sans 3
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

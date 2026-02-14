@@ -1,5 +1,7 @@
 # Implementation Steps
 
+> Part of [PostPilot](README.md) documentation
+
 This document records the step-by-step implementation of PostPilot -- from initial scaffolding through models, services, API routes, tests, dashboard pages, and landing page. Each step references the actual files created and explains the rationale.
 
 ---

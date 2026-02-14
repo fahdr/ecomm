@@ -1,5 +1,7 @@
 # Project Manager Guide
 
+> Part of [ShopChat](README.md) documentation
+
 **For Project Managers:** ShopChat (Feature A8) is an independently hostable SaaS product that provides an embeddable AI-powered chat widget for e-commerce stores. It can operate standalone or integrate with the dropshipping platform via API provisioning. This document covers the product overview, differentiators, architecture, current status, pricing, integration points, and risk register.
 
 ---
@@ -128,3 +130,7 @@ ShopChat integrates with the main dropshipping platform through:
 4. **Widget Customization UI**: Dashboard page for configuring widget appearance (position, size, colors, branding).
 5. **Analytics Export**: CSV/PDF export of conversation analytics for Enterprise tier.
 6. **Webhook Notifications**: Send webhook events for new conversations, satisfaction ratings, and conversation endings.
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [End User Guide](END_USER.md) · [README](README.md)*

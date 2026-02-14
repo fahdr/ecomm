@@ -1,5 +1,7 @@
 # End User Guide
 
+> Part of [ContentForge](README.md) documentation
+
 **For End Users:** ContentForge transforms raw product data into polished, SEO-ready listings in seconds. Whether you paste a product URL, type in details manually, or upload a CSV file, ContentForge generates optimized titles, descriptions, meta tags, keywords, and bullet points -- all tuned to your preferred tone and style.
 
 ---
@@ -226,3 +228,7 @@ API keys are shown only once at creation for security. Revoke the lost key and c
 - **API Documentation**: Available at `/docs` on your backend URL
 - **Dashboard**: In-app tooltips and labels guide you through each feature
 - **System Status**: The health endpoint at `/api/v1/health` shows service status
+
+---
+
+*See also: [README](README.md) · [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

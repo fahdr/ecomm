@@ -1,5 +1,7 @@
 # RankPilot Implementation Steps
 
+> Part of [RankPilot](README.md) documentation
+
 This document records the implementation history of the RankPilot service, from initial template scaffolding through all domain models, services, API routes, tests, and frontend pages. Each step describes what was built, the specific steps completed, and how to verify the work.
 
 ---
@@ -390,3 +392,7 @@ Static marketing landing page for RankPilot using Next.js 16 static export on po
 | 8 | Backend test suite | conftest.py + 8 test files | 74 total |
 | 9 | Dashboard pages | 9 page.tsx files + components | -- |
 | 10 | Landing page | landing/src/app/page.tsx | -- |
+
+---
+
+*See also: [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

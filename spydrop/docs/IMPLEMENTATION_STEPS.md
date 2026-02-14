@@ -1,6 +1,8 @@
 # Implementation Steps
 
-This document describes how SpyDrop was implemented, step by step, from initial scaffolding to fully functional service with 43 tests and 8 dashboard pages. It serves as both a historical record and a template for implementing similar services.
+> Part of [SpyDrop](README.md) documentation
+
+This document describes how SpyDrop was implemented, step by step, from initial scaffolding to fully functional service with 156 tests and 8 dashboard pages. It serves as both a historical record and a template for implementing similar services.
 
 ---
 
@@ -389,3 +391,7 @@ The landing page at `spydrop/landing/` is a static Next.js site with:
 | 6 | Tests | `test_competitors.py` (17), `test_products.py` (12) |
 | 7 | Dashboard pages | `service.config.ts`, `competitors/page.tsx`, `products/page.tsx` |
 | 8 | Landing page | `landing/` directory |
+
+---
+
+*See also: [README](README.md) · [Architecture](ARCHITECTURE.md) · [Testing](TESTING.md) · [Project Manager](PROJECT_MANAGER.md)*

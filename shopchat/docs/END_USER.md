@@ -1,5 +1,7 @@
 # End User Guide
 
+> Part of [ShopChat](README.md) documentation
+
 **For End Users:** This guide explains how to use ShopChat to add an intelligent AI shopping assistant to your e-commerce store. Learn how to set up chatbots, build a knowledge base, monitor conversations, customize the widget, and track performance -- all through the ShopChat dashboard.
 
 ---
@@ -174,3 +176,7 @@ The Analytics page shows you how your chatbots are performing:
 - **Use descriptive titles**: The AI searches titles and content for matching keywords. "Return Policy - 30 Day Guarantee" is better than just "Returns".
 - **Review conversations regularly**: See what customers are asking and add knowledge base entries for questions the chatbot could not answer well.
 - **Keep your knowledge base current**: Update product information, prices, and policies when they change.
+
+---
+
+*See also: [Setup](SETUP.md) · [Project Manager Guide](PROJECT_MANAGER.md) · [QA Engineer Guide](QA_ENGINEER.md) · [README](README.md)*

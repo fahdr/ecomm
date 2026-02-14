@@ -1,209 +1,117 @@
 # QA Engineer Guide
 
-**For QA Engineers:** This guide covers the full testing strategy for ContentForge, including the test stack, how to run tests, what each test file covers, API endpoint reference, and a verification checklist for manual testing.
+> Part of [ContentForge](README.md) documentation
+
+**For QA Engineers:** This guide covers acceptance criteria, verification checklists, and edge cases for manual testing of ContentForge.
+
+**For test infrastructure and automated testing:** See [Testing Guide](TESTING.md)
+
+**For API endpoint documentation:** See [API Reference](API_REFERENCE.md)
 
 ---
 
-## Test Stack
+## Acceptance Criteria
 
-| Tool | Purpose |
-|------|---------|
-| pytest | Test runner and framework |
-| pytest-asyncio | Async test support for FastAPI |
-| httpx (AsyncClient) | HTTP test client (replaces requests for async) |
-| SQLAlchemy (async) | Direct DB access in test fixtures |
-| PostgreSQL 16 | Test database (same as dev, tables truncated between tests) |
+### Content Generation
 
----
+**AC1:** User can generate content from a product URL
+- Given a valid product URL
+- When user submits to `/content/generate`
+- Then job completes with 5 content types (title, description, meta_description, keywords, bullet_points)
 
-## Running Tests
+**AC2:** User can generate content from manual data entry
+- Given product name, price, category, features
+- When user submits to `/content/generate` with `source_type: "manual"`
+- Then job completes with requested content types
 
-### Run All Backend Tests
+**AC3:** Plan limits are enforced
+- Given a Free tier user with 10 generations in the current month
+- When user attempts an 11th generation
+- Then request returns 403 with "limit" in the error message
 
-```bash
-make test-backend
-```
+**AC4:** Image optimization respects limits
+- Given a Free tier user with 5 images in the current month
+- When user attempts to generate with additional `image_urls`
+- Then request returns 403 with image limit message
 
-### Run by Test File
+**AC5:** Bulk generation works for Pro/Enterprise users
+- Given a Pro tier user
+- When user submits multiple URLs via `/content/generate/bulk`
+- Then all jobs complete successfully
 
-```bash
-cd backend && pytest tests/test_auth.py -v          # Authentication
-cd backend && pytest tests/test_content.py -v        # Content generation
-cd backend && pytest tests/test_templates.py -v      # Template management
-cd backend && pytest tests/test_images.py -v         # Image management
-cd backend && pytest tests/test_billing.py -v        # Billing & subscriptions
-cd backend && pytest tests/test_api_keys.py -v       # API key management
-cd backend && pytest tests/test_health.py -v         # Health check
-```
+### Template Management
 
-### Run a Single Test
+**AC6:** Users can create custom templates
+- Given authenticated user
+- When user submits template with name, tone, style
+- Then template is created with `is_system: false`
 
-```bash
-cd backend && pytest tests/test_content.py::test_create_generation_job_from_url -v
-```
+**AC7:** System templates are read-only
+- Given a system template (Professional, Casual, Luxury, SEO-Focused)
+- When user attempts to PATCH or DELETE
+- Then request returns 403
 
----
+**AC8:** Custom templates can be updated
+- Given a custom template owned by the user
+- When user submits PATCH with updated fields
+- Then only specified fields are updated
 
-## Test Coverage
+### Image Management
 
-| Test File | Tests | Coverage Area |
-|-----------|-------|---------------|
-| `test_auth.py` | 10 | Registration, login, refresh, profile, duplicate email, invalid credentials |
-| `test_content.py` | 13 | Generation lifecycle, plan limits, pagination, bulk generation, user isolation, image jobs |
-| `test_templates.py` | 17 | Custom template CRUD, system template protection, partial updates, user isolation, prompt override |
-| `test_images.py` | 12 | Image listing, pagination, retrieval, deletion, user isolation, cross-job images, job independence |
-| `test_billing.py` | 9 | Plan listing, checkout, duplicate subscription, billing overview, current subscription |
-| `test_api_keys.py` | 5 | Key creation, listing, revocation, API key authentication, invalid key |
-| `test_health.py` | 1 | Health endpoint returns status ok |
-| `test_platform_webhooks.py` | -- | Platform event webhook handling |
-| **Total** | **116** | |
+**AC9:** Images are listed across all jobs
+- Given user has images from multiple generation jobs
+- When user requests `/images/`
+- Then all images are returned in paginated list
 
----
+**AC10:** Deleting an image does not delete the parent job
+- Given a job with images
+- When user deletes an image via `/images/{id}`
+- Then image is deleted but job remains accessible
 
-## Test Structure
+### Billing
 
-### Fixtures (conftest.py)
+**AC11:** Users can upgrade to Pro or Enterprise
+- Given a Free tier user
+- When user submits `/billing/checkout` with tier "pro"
+- Then checkout session is created (or subscription in mock mode)
 
-| Fixture | Type | Description |
-|---------|------|-------------|
-| `event_loop` | Session | Single event loop shared by all tests |
-| `setup_db` | Autouse (function) | Creates tables before test, truncates ALL tables after each test |
-| `db` | Function | Raw `AsyncSession` for direct database operations |
-| `client` | Function | `httpx.AsyncClient` configured for the FastAPI app |
-| `auth_headers` | Function | Pre-authenticated Bearer token headers |
+**AC12:** Users cannot create duplicate subscriptions
+- Given a user with an active subscription
+- When user attempts another checkout
+- Then request returns 400
 
-### Helper Function
+**AC13:** Billing overview reflects current usage
+- Given a user with N generations and M images in the current period
+- When user requests `/billing/overview`
+- Then `usage.generations_used` equals N and `usage.images_used` equals M
 
-```python
-register_and_login(client, email=None) -> dict
-```
+### API Keys
 
-Registers a user and returns `{"Authorization": "Bearer <token>"}` headers. If no email is provided, a random one is generated. Used by virtually every test that requires authentication.
+**AC14:** API keys are created with secure hashing
+- Given an authenticated user
+- When user creates an API key
+- Then raw key is returned once, SHA-256 hash stored in DB
 
-### Test Isolation
-
-- **Database truncation**: All tables are truncated with `CASCADE` after every test via the `setup_db` fixture
-- **Connection cleanup**: Other database connections are terminated before truncation to prevent deadlocks
-- **Mock mode**: Stripe is in mock mode (no real payments). AI content uses mock generation (realistic text without Claude API calls).
-- **Independent tests**: Each test creates its own user(s) and data from scratch
-
----
-
-## API Documentation
-
-The FastAPI auto-generated docs are available at:
-
-- **Swagger UI**: http://localhost:8102/docs
-- **ReDoc**: http://localhost:8102/redoc
-
----
-
-## API Response Format
-
-### Success Responses
-
-**Single resource:**
-```json
-{
-  "id": "uuid",
-  "field": "value",
-  "created_at": "2026-01-15T10:30:00Z"
-}
-```
-
-**Paginated list:**
-```json
-{
-  "items": [...],
-  "total": 42,
-  "page": 1,
-  "per_page": 20
-}
-```
-
-### Error Responses
-
-```json
-{
-  "detail": "Human-readable error message"
-}
-```
-
-Common status codes: 400 (bad request), 401 (not authenticated), 403 (forbidden / plan limit exceeded), 404 (not found), 409 (conflict / duplicate), 422 (validation error).
-
----
-
-## Endpoint Summary
-
-### Auth Endpoints (`/api/v1/auth`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/auth/register` | No | 201 | Register new user, returns JWT tokens |
-| POST | `/auth/login` | No | 200 | Login with email/password, returns JWT tokens |
-| POST | `/auth/refresh` | No | 200 | Refresh access token using refresh token |
-| GET | `/auth/me` | JWT | 200 | Get authenticated user profile |
-| POST | `/auth/forgot-password` | No | 200 | Request password reset (always returns success) |
-| POST | `/auth/provision` | API Key | 201 | Provision user from dropshipping platform |
-
-### Content Generation Endpoints (`/api/v1/content`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/content/generate` | JWT | 201 | Create single generation job (enforces plan limits) |
-| POST | `/content/generate/bulk` | JWT | 201 | Bulk generate from URLs or CSV data |
-| GET | `/content/jobs` | JWT | 200 | List generation jobs (paginated) |
-| GET | `/content/jobs/{job_id}` | JWT | 200 | Get job with all content items and images |
-| DELETE | `/content/jobs/{job_id}` | JWT | 204 | Delete job and all associated content/images |
-| PATCH | `/content/{content_id}` | JWT | 200 | Edit generated content text |
-
-### Template Endpoints (`/api/v1/templates`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/templates/` | JWT | 201 | Create custom template |
-| GET | `/templates/` | JWT | 200 | List system + user templates |
-| GET | `/templates/{template_id}` | JWT | 200 | Get template by ID |
-| PATCH | `/templates/{template_id}` | JWT | 200 | Update custom template (partial) |
-| DELETE | `/templates/{template_id}` | JWT | 204 | Delete custom template |
-
-### Image Endpoints (`/api/v1/images`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| GET | `/images/` | JWT | 200 | List processed images (paginated) |
-| GET | `/images/{image_id}` | JWT | 200 | Get single image details |
-| DELETE | `/images/{image_id}` | JWT | 204 | Delete image record |
-
-### Billing Endpoints (`/api/v1/billing`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| GET | `/billing/plans` | No | 200 | List all plan tiers with pricing |
-| POST | `/billing/checkout` | JWT | 201 | Create Stripe checkout session |
-| POST | `/billing/portal` | JWT | 200 | Create Stripe customer portal session |
-| GET | `/billing/current` | JWT | 200 | Get current subscription (or null) |
-| GET | `/billing/overview` | JWT | 200 | Full billing overview with usage metrics |
-
-### API Key Endpoints (`/api/v1/api-keys`)
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| POST | `/api-keys` | JWT | 201 | Create API key (returns raw key once) |
-| GET | `/api-keys` | JWT | 200 | List API keys (no raw keys) |
-| DELETE | `/api-keys/{key_id}` | JWT | 204 | Revoke (deactivate) API key |
-
-### Other Endpoints
-
-| Method | Path | Auth | Status | Description |
-|--------|------|------|--------|-------------|
-| GET | `/health` | No | 200 | Service health check |
-| GET | `/usage` | JWT or API Key | 200 | Current usage metrics for billing period |
-| POST | `/webhooks/stripe` | Stripe Signature | 200 | Handle Stripe webhook events |
+**AC15:** API keys can authenticate requests
+- Given a valid API key
+- When request includes `X-API-Key: <key>` header
+- Then user is authenticated (e.g., on `/usage` endpoint)
 
 ---
 
 ## Verification Checklist
+
+### Pre-Release Checklist
+
+Before releasing a new version, verify the following:
+
+- [ ] All 116 backend tests pass (`make test-backend`)
+- [ ] Health endpoint returns 200 (`GET /health`)
+- [ ] Swagger docs are accessible (`http://localhost:8102/docs`)
+- [ ] Dashboard loads without console errors
+- [ ] Landing page renders correctly
+
+### Authentication Flow
 
 ### Authentication Flow
 
@@ -275,6 +183,47 @@ Common status codes: 400 (bad request), 401 (not authenticated), 403 (forbidden 
 
 ---
 
+## Edge Cases
+
+### Authentication Edge Cases
+
+- **Expired access token:** Refresh token should still work
+- **Expired refresh token:** User must log in again
+- **Concurrent logins:** Multiple active sessions supported
+- **Password with special characters:** Should be accepted
+- **Email with + notation:** Should be accepted (e.g., `user+test@example.com`)
+
+### Content Generation Edge Cases
+
+- **Empty product URL:** Should return 400
+- **Malformed URL:** Should return 400
+- **Product URL with no product data:** Job may fail gracefully with error message
+- **Generation at exactly midnight UTC (billing period boundary):** Should count toward correct period
+- **Bulk generation with one failed URL:** Other URLs should still complete
+
+### Template Edge Cases
+
+- **Template with no content types:** Should use default (all 5 types)
+- **Template with empty prompt_override:** Should use tone/style defaults
+- **Template name with special characters:** Should be accepted
+- **Deleting a template in use by a job:** Job should still reference template ID (soft reference)
+
+### Image Edge Cases
+
+- **Image URL returns 404:** Image job should fail gracefully
+- **Image URL with no file extension:** Should infer format from content-type header
+- **Very large image (>10MB):** Should process but may take longer
+- **Image URL with redirect:** Should follow redirect
+
+### Billing Edge Cases
+
+- **Checkout on last day of month:** Next billing period should start 1st of next month
+- **Downgrade from Pro to Free:** Should take effect at end of current period
+- **Stripe webhook arrives late:** Idempotent handler should process correctly
+- **Subscription canceled but still in grace period:** User should retain Pro features until `current_period_end`
+
+---
+
 ## Feature Verification
 
 | Feature | Expected Behavior | Endpoint(s) |
@@ -290,3 +239,7 @@ Common status codes: 400 (bad request), 401 (not authenticated), 403 (forbidden 
 | Mock Stripe mode | Checkout creates subscription directly in DB without Stripe | POST `/billing/checkout` |
 | Webhook handling | Processes `customer.subscription.created/updated/deleted` | POST `/webhooks/stripe` |
 | Psychological pricing | round_99 ($X.99), round_95 ($X.95), round_00 ($X.00), none | Pricing service (unit tested) |
+
+---
+
+*See also: [README](README.md) · [Setup](SETUP.md) · [Architecture](ARCHITECTURE.md) · [API Reference](API_REFERENCE.md) · [Testing](TESTING.md)*

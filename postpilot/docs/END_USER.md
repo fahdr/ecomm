@@ -1,5 +1,7 @@
 # End User Guide
 
+> Part of [PostPilot](README.md) documentation
+
 ## What Is PostPilot?
 
 PostPilot is a social media automation tool that helps you manage your business presence across Instagram, Facebook, and TikTok from a single dashboard. Instead of logging into each platform separately, you can create posts, generate AI-powered captions, schedule content in advance, and track how your posts perform -- all in one place.
