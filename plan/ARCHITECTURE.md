@@ -15,7 +15,7 @@
 | Store multi-tenancy| Single Next.js app + subdomain routing | One deployment, cheaper, data-driven per request |
 | AI                | Claude API (anthropic SDK)      | Primary LLM for product analysis, content generation   |
 | File storage      | S3 / Cloudflare R2              | Images, assets, via boto3                              |
-| SaaS services      | 8 standalone FastAPI services   | Each independently hostable; shared code via packages/py-core |
+| SaaS services      | 9 standalone FastAPI services   | Each independently hostable; shared code via packages/py-core |
 | ServiceBridge      | HMAC-signed Celery webhooks     | Platform events auto-dispatched to connected services         |
 | LLM Gateway        | Centralized AI routing          | Single API key management point for all AI providers          |
 
@@ -54,6 +54,7 @@ ecomm/
 ├── packages/                    # Shared packages
 │   ├── py-core/                 # ecomm_core: auth, billing, DB, models, health, testing
 │   ├── py-connectors/           # ecomm_connectors: Shopify, WooCommerce adapters
+│   ├── py-suppliers/            # ecomm_suppliers: AliExpress, CJDropship clients, normalizer
 │   └── ts-ui-kit/               # Shared TypeScript UI components
 │
 ├── trendscout/                  # AI Product Research (Syne / DM Sans)
@@ -88,6 +89,10 @@ ecomm/
 │   ├── backend/                 # port 8108 — 113 tests
 │   ├── dashboard/               # port 3108
 │   └── landing/                 # port 3208
+├── sourcepilot/                 # Automated Supplier Product Import (Outfit / DM Sans)
+│   ├── backend/                 # port 8109 — 130 tests
+│   ├── dashboard/               # port 3109
+│   └── landing/                 # port 3209
 │
 ├── llm-gateway/                 # Centralized AI provider routing — port 8200
 │   └── backend/                 # 42 tests
@@ -383,6 +388,17 @@ Platform adapters for e-commerce integrations:
 - **WooCommerce connector**: REST API v3 integration
 - **Factory**: `get_connector(platform_name)` for dynamic platform selection
 
+### packages/py-suppliers (ecomm_suppliers)
+
+Supplier API client library for product sourcing:
+- **Base client**: `BaseSupplierClient` abstract class with async context manager support
+- **AliExpress client**: 24 realistic demo products across 4 categories
+- **CJDropship client**: 18 demo products with US warehouse fulfillment focus
+- **ProductNormalizer**: Markup calculation, psychological pricing, slug generation
+- **ImageService**: Async download, optimization, thumbnails via Pillow
+- **SupplierFactory**: `create(supplier_name)` for dynamic client selection
+- **Models**: `SupplierProduct`, `SupplierVariant`, `ShippingInfo`, `SupplierRating` (frozen Pydantic, Decimal pricing)
+
 ---
 
 ## Background Tasks (Celery)
@@ -597,7 +613,7 @@ The dropshipping backend integrates with services via:
 
 | Component | Count |
 |---|---|
-| Standalone SaaS services | 8 |
+| Standalone SaaS services | 9 |
 | Dropshipping backend tests | 580 |
 | TrendScout tests | 158 |
 | ContentForge tests | 116 |
@@ -607,11 +623,12 @@ The dropshipping backend integrates with services via:
 | PostPilot tests | 157 |
 | AdScale tests | 164 |
 | ShopChat tests | 113 |
+| SourcePilot tests | 130 |
 | py-core tests | 19 |
 | py-connectors tests | 40 |
 | LLM Gateway tests | 42 |
 | Admin tests | 34 |
-| **Total backend tests** | **~1,895** |
+| **Total backend tests** | **~2,025** |
 | E2E test spec files | 25+ |
 | Celery task functions | 21 (incl. bridge) |
 | ServiceBridge event types | 5 |

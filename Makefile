@@ -39,7 +39,7 @@ ADMIN          := $(ROOT)/admin
 MASTER_LANDING := $(ROOT)/master-landing
 
 # SaaS services list
-SERVICES       := trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat
+SERVICES       := trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat sourcepilot
 
 # SaaS service port mappings (backend / dashboard / landing)
 PORT_trendscout   := 8101 3101 3201
@@ -50,6 +50,7 @@ PORT_spydrop      := 8105 3105 3205
 PORT_postpilot    := 8106 3106 3206
 PORT_adscale      := 8107 3107 3207
 PORT_shopchat     := 8108 3108 3208
+PORT_sourcepilot  := 8109 3109 3209
 
 # Database
 DB_USER        := dropship
@@ -118,7 +119,7 @@ status: ## Show running services and their PIDs
 	done
 	@echo ""
 	@echo "==> Port check:"
-	@-ss -tlnp 2>/dev/null | grep -E ':(8000|8101|8102|8103|8104|8105|8106|8107|8108|8200|8300|3000|3001|3101|3102|3103|3104|3105|3106|3107|3108|3200|3201|3202|3203|3204|3205|3206|3207|3208|3300) ' || echo "  No services listening"
+	@-ss -tlnp 2>/dev/null | grep -E ':(8000|8101|8102|8103|8104|8105|8106|8107|8108|8109|8200|8300|3000|3001|3101|3102|3103|3104|3105|3106|3107|3108|3109|3200|3201|3202|3203|3204|3205|3206|3207|3208|3209|3300) ' || echo "  No services listening"
 
 # ──────────────────────────────────────────────────────────────────
 # Start / Stop — Core Platform
@@ -225,6 +226,7 @@ start-saas: ## Start all 8 SaaS services (backends + dashboards)
 			else if ($$0=="postpilot") print 8106; \
 			else if ($$0=="adscale") print 8107; \
 			else if ($$0=="shopchat") print 8108; \
+			else if ($$0=="sourcepilot") print 8109; \
 		}'); \
 		dash_port=$$(echo $${svc} | awk '{ \
 			if ($$0=="trendscout") print 3101; \
@@ -235,6 +237,7 @@ start-saas: ## Start all 8 SaaS services (backends + dashboards)
 			else if ($$0=="postpilot") print 3106; \
 			else if ($$0=="adscale") print 3107; \
 			else if ($$0=="shopchat") print 3108; \
+			else if ($$0=="sourcepilot") print 3109; \
 		}'); \
 		echo "  Starting $$svc backend on port $$port..."; \
 		cd $(ROOT)/$$svc/backend && nohup uvicorn app.main:app --host 0.0.0.0 --port $$port --reload \
@@ -259,6 +262,7 @@ start-saas-backends: ## Start only SaaS backends (no dashboards)
 			else if ($$0=="postpilot") print 8106; \
 			else if ($$0=="adscale") print 8107; \
 			else if ($$0=="shopchat") print 8108; \
+			else if ($$0=="sourcepilot") print 8109; \
 		}'); \
 		echo "  Starting $$svc backend on port $$port..."; \
 		cd $(ROOT)/$$svc/backend && nohup uvicorn app.main:app --host 0.0.0.0 --port $$port --reload \
@@ -278,6 +282,7 @@ start-svc: ## Start a specific SaaS service (usage: make start-svc S=trendscout)
 		else if ($$0=="postpilot") print 8106; \
 		else if ($$0=="adscale") print 8107; \
 		else if ($$0=="shopchat") print 8108; \
+		else if ($$0=="sourcepilot") print 8109; \
 	}'); \
 	dash_port=$$(echo $(S) | awk '{ \
 		if ($$0=="trendscout") print 3101; \
@@ -288,6 +293,7 @@ start-svc: ## Start a specific SaaS service (usage: make start-svc S=trendscout)
 		else if ($$0=="postpilot") print 3106; \
 		else if ($$0=="adscale") print 3107; \
 		else if ($$0=="shopchat") print 3108; \
+		else if ($$0=="sourcepilot") print 3109; \
 	}'); \
 	land_port=$$(echo $(S) | awk '{ \
 		if ($$0=="trendscout") print 3201; \
@@ -298,6 +304,7 @@ start-svc: ## Start a specific SaaS service (usage: make start-svc S=trendscout)
 		else if ($$0=="postpilot") print 3206; \
 		else if ($$0=="adscale") print 3207; \
 		else if ($$0=="shopchat") print 3208; \
+		else if ($$0=="sourcepilot") print 3209; \
 	}'); \
 	mkdir -p $(LOG_DIR); \
 	echo "==> Starting $(S) backend on port $$port..."; \
@@ -343,6 +350,10 @@ start-adscale: ## Start AdScale (8107/3107/3207)
 .PHONY: start-shopchat
 start-shopchat: ## Start ShopChat (8108/3108/3208)
 	@$(MAKE) start-svc S=shopchat
+
+.PHONY: start-sourcepilot
+start-sourcepilot: ## Start SourcePilot (8109/3109/3209)
+	@$(MAKE) start-svc S=sourcepilot
 
 # ──────────────────────────────────────────────────────────────────
 # Database
@@ -401,7 +412,7 @@ seed-core: ## Seed only core platform (dropshipping)
 
 .PHONY: seed-svc
 seed-svc: ## Seed a specific SaaS service (usage: make seed-svc S=trendscout)
-	@if [ -z "$(S)" ]; then echo "Usage: make seed-svc S=<service>"; echo "  Services: trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat"; exit 1; fi
+	@if [ -z "$(S)" ]; then echo "Usage: make seed-svc S=<service>"; echo "  Services: trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat sourcepilot"; exit 1; fi
 	@echo "==> Seeding $(S)..."
 	@cd $(ROOT) && SEED_SERVICE=$(S) npx tsx $(SCRIPTS)/seed.ts
 	@echo "  $(S) seed complete."
@@ -444,6 +455,10 @@ seed-adscale: ## Seed AdScale demo data
 seed-shopchat: ## Seed ShopChat demo data
 	@cd $(ROOT) && SEED_SERVICE=shopchat npx tsx $(SCRIPTS)/seed.ts
 
+.PHONY: seed-sourcepilot
+seed-sourcepilot: ## Seed SourcePilot demo data
+	@cd $(ROOT) && SEED_SERVICE=sourcepilot npx tsx $(SCRIPTS)/seed.ts
+
 .PHONY: reseed
 reseed: db-truncate seed ## Truncate all data then seed fresh
 
@@ -477,6 +492,10 @@ test-e2e: ## Run Playwright E2E tests in batches (prevents OOM)
 	@echo "--- Batch 3: AdScale + ShopChat + Admin ---"
 	@cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
 		--project=adscale --project=shopchat --project=admin \
+		--workers=1 --reporter=list
+	@echo "--- Batch 4: SourcePilot ---"
+	@cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+		--project=sourcepilot \
 		--workers=1 --reporter=list
 	@echo "  All E2E tests complete."
 
@@ -566,10 +585,17 @@ test-e2e-bg: ## Run E2E tests detached in background (batched, logs to file)
 			--workers=1 --reporter=list >> $$LOG 2>&1; \
 		B3=$$?; \
 		echo "" >> $$LOG; \
+		echo "=== Batch 4: SourcePilot ===" >> $$LOG; \
+		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+			--project=sourcepilot \
+			--workers=1 --reporter=list >> $$LOG 2>&1; \
+		B4=$$?; \
+		echo "" >> $$LOG; \
 		echo "=== Summary ===" >> $$LOG; \
 		echo "Batch 1 (TS/CF/RP): exit $$B1" >> $$LOG; \
 		echo "Batch 2 (FS/SD/PP): exit $$B2" >> $$LOG; \
 		echo "Batch 3 (AS/SC/AD): exit $$B3" >> $$LOG; \
+		echo "Batch 4 (SP):       exit $$B4" >> $$LOG; \
 		echo "Finished: $$(date)" >> $$LOG' \
 		> /dev/null 2>&1 &
 	@echo "  PID: $$!"
@@ -633,6 +659,11 @@ test-all-bg: ## Run all tests sequentially in background (core + services + e2e)
 			--project=adscale --project=shopchat --project=admin \
 			--workers=1 --reporter=list >> $$LOG 2>&1; \
 		E2E3_RC=$$?; \
+		echo "=== E2E Tests (Batch 4: SP) ===" >> $$LOG; \
+		cd $(E2E) && NODE_OPTIONS="$(NODE_TEST_MEM)" npx playwright test \
+			--project=sourcepilot \
+			--workers=1 --reporter=list >> $$LOG 2>&1; \
+		E2E4_RC=$$?; \
 		echo "" >> $$LOG; \
 		echo "=== Summary ===" >> $$LOG; \
 		echo "Core Backend: exit $$CORE_RC" >> $$LOG; \
@@ -641,6 +672,7 @@ test-all-bg: ## Run all tests sequentially in background (core + services + e2e)
 		echo "E2E Batch 1:  exit $$E2E1_RC" >> $$LOG; \
 		echo "E2E Batch 2:  exit $$E2E2_RC" >> $$LOG; \
 		echo "E2E Batch 3:  exit $$E2E3_RC" >> $$LOG; \
+		echo "E2E Batch 4:  exit $$E2E4_RC" >> $$LOG; \
 		echo "Finished: $$(date)" >> $$LOG' \
 		> /dev/null 2>&1 &
 	@echo "  PID: $$!"
