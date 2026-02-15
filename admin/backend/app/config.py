@@ -47,6 +47,8 @@ class Settings(BaseSettings):
 
     service_name: str = "admin"
     service_port: int = 8300
+    environment: str = "development"
+    sentry_dsn: str = ""
     database_url: str = (
         "postgresql+asyncpg://dropship:dropship_dev@db:5432/dropshipping"
     )

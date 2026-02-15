@@ -848,3 +848,13 @@ db-create-tables: ## Create tables in service schemas (alternative to migrations
 	done
 	@echo "  All tables created."
 
+.PHONY: db-create-indexes
+db-create-indexes: ## Create performance indexes on core platform tables
+	@echo "==> Creating performance indexes..."
+	@cd $(BACKEND) && python -c "\
+import asyncio; \
+from app.database import engine; \
+from app.indexes import apply_indexes; \
+asyncio.run(apply_indexes(engine))"
+	@echo "  All indexes created."
+

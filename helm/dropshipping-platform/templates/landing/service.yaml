@@ -1,0 +1,21 @@
+{{/*
+Master Landing Page Service — exposes the landing page as a ClusterIP service.
+*/}}
+{{- if .Values.landing.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-landing
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "landing") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.landing.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "dropshipping.selectorLabels" (dict "root" . "component" "landing") | nindent 4 }}
+{{- end }}

@@ -1,0 +1,227 @@
+# CI Pipeline — Dropshipping Platform + SaaS Suite
+#
+# Runs on every push to main and on pull requests. Executes backend tests
+# for all 12 Python services (core platform, 9 SaaS services, LLM Gateway,
+# Admin) and builds all Next.js frontends.
+#
+# **For Developers:**
+#   The pipeline uses PostgreSQL 16 and Redis 7 service containers.
+#   Python deps are installed from the shared packages (py-core,
+#   py-connectors, py-suppliers) before each service's own deps.
+#
+# **For QA Engineers:**
+#   All 12 backend test suites must pass. All frontend builds must succeed.
+#   Failures block PR merges.
+#
+# **For Project Managers:**
+#   This pipeline is the quality gate. No code reaches main without
+#   passing ~2,000 backend tests and 12 frontend builds.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/dropshipping
+  REDIS_URL: redis://localhost:6379/0
+  JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+  STRIPE_SECRET_KEY: sk_test_fake
+  STRIPE_WEBHOOK_SECRET: whsec_fake
+  PYTHONDONTWRITEBYTECODE: "1"
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+jobs:
+  # ── Backend Tests ────────────────────────────────────────────────────
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dropshipping
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: py-core
+            path: packages/py-core
+          - name: py-connectors
+            path: packages/py-connectors
+          - name: dropshipping
+            path: dropshipping/backend
+          - name: trendscout
+            path: trendscout/backend
+          - name: contentforge
+            path: contentforge/backend
+          - name: rankpilot
+            path: rankpilot/backend
+          - name: flowsend
+            path: flowsend/backend
+          - name: spydrop
+            path: spydrop/backend
+          - name: postpilot
+            path: postpilot/backend
+          - name: adscale
+            path: adscale/backend
+          - name: shopchat
+            path: shopchat/backend
+          - name: sourcepilot
+            path: sourcepilot/backend
+          - name: llm-gateway
+            path: llm-gateway/backend
+          - name: admin
+            path: admin/backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install shared packages
+        run: |
+          pip install --upgrade pip
+          pip install -e packages/py-core[dev] 2>/dev/null || pip install -e packages/py-core
+          pip install -e packages/py-connectors 2>/dev/null || true
+          pip install -e packages/py-suppliers 2>/dev/null || true
+
+      - name: Install service dependencies
+        run: |
+          cd ${{ matrix.service.path }}
+          pip install -e ".[dev]" 2>/dev/null || pip install -e . 2>/dev/null || pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          cd ${{ matrix.service.path }}
+          python -m pytest tests/ -v --tb=short -q --timeout=120
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          REDIS_URL: ${{ env.REDIS_URL }}
+
+  # ── Frontend Builds ──────────────────────────────────────────────────
+  frontend-builds:
+    name: Frontend Builds
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        frontend:
+          - name: dashboard
+            path: dropshipping/dashboard
+          - name: storefront
+            path: dropshipping/storefront
+          - name: admin-dashboard
+            path: admin/dashboard
+          - name: master-landing
+            path: master-landing
+          - name: trendscout-dashboard
+            path: trendscout/dashboard
+          - name: trendscout-landing
+            path: trendscout/landing
+          - name: contentforge-dashboard
+            path: contentforge/dashboard
+          - name: contentforge-landing
+            path: contentforge/landing
+          - name: rankpilot-dashboard
+            path: rankpilot/dashboard
+          - name: rankpilot-landing
+            path: rankpilot/landing
+          - name: flowsend-dashboard
+            path: flowsend/dashboard
+          - name: flowsend-landing
+            path: flowsend/landing
+          - name: spydrop-dashboard
+            path: spydrop/dashboard
+          - name: spydrop-landing
+            path: spydrop/landing
+          - name: postpilot-dashboard
+            path: postpilot/dashboard
+          - name: postpilot-landing
+            path: postpilot/landing
+          - name: adscale-dashboard
+            path: adscale/dashboard
+          - name: adscale-landing
+            path: adscale/landing
+          - name: shopchat-dashboard
+            path: shopchat/dashboard
+          - name: shopchat-landing
+            path: shopchat/landing
+          - name: sourcepilot-dashboard
+            path: sourcepilot/dashboard
+          - name: sourcepilot-landing
+            path: sourcepilot/landing
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: ${{ matrix.frontend.path }}/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd ${{ matrix.frontend.path }}
+          npm ci --prefer-offline 2>/dev/null || npm install
+
+      - name: Build
+        run: |
+          cd ${{ matrix.frontend.path }}
+          npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  # ── Summary Gate ─────────────────────────────────────────────────────
+  ci-pass:
+    name: CI Pass
+    needs: [backend-tests, frontend-builds]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.backend-tests.result }}" != "success" ] || \
+             [ "${{ needs.frontend-builds.result }}" != "success" ]; then
+            echo "CI failed: backend=${{ needs.backend-tests.result }}, frontend=${{ needs.frontend-builds.result }}"
+            exit 1
+          fi
+          echo "All CI checks passed."

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-config
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+data:
+  # PostgreSQL connection (non-secret portion for reference)
+  POSTGRES_HOST: {{ .Values.global.postgresql.host | quote }}
+  POSTGRES_PORT: {{ .Values.global.postgresql.port | quote }}
+  POSTGRES_DB: {{ .Values.global.postgresql.database | quote }}
+
+  # Redis connection
+  REDIS_HOST: {{ .Values.global.redis.host | quote }}
+  REDIS_PORT: {{ .Values.global.redis.port | quote }}
+
+  # JWT config (non-secret portion)
+  JWT_ALGORITHM: {{ .Values.global.secrets.jwtAlgorithm | quote }}
+  JWT_ACCESS_TOKEN_EXPIRE_MINUTES: {{ .Values.global.secrets.jwtAccessTokenExpireMinutes | quote }}
+
+  # Stripe price IDs
+  STRIPE_FREE_PRICE_ID: {{ .Values.global.secrets.stripeFreePrice | quote }}
+  STRIPE_PRO_PRICE_ID: {{ .Values.global.secrets.stripeProPrice | quote }}
+  STRIPE_ENTERPRISE_PRICE_ID: {{ .Values.global.secrets.stripeEnterprisePrice | quote }}
+
+  # Monitoring
+  SENTRY_DSN: {{ .Values.global.secrets.sentryDsn | quote }}
+
+  # Internal service URLs
+  LLM_GATEWAY_URL: {{ include "dropshipping.llmGatewayUrl" . | quote }}
+
+  # Celery
+  CELERY_BROKER_URL: {{ include "dropshipping.celeryBrokerUrl" . | quote }}
+  CELERY_RESULT_BACKEND: {{ include "dropshipping.celeryResultBackend" . | quote }}

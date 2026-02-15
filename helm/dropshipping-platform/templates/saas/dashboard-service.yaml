@@ -1,0 +1,26 @@
+{{/*
+SaaS Dashboard Services — one ClusterIP service per enabled SaaS dashboard.
+*/}}
+{{- $root := . -}}
+{{- range .Values.saas.services }}
+{{- if .enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dropshipping.fullname" $root }}-{{ .name }}-dashboard
+  namespace: {{ include "dropshipping.namespace" $root }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" $root "component" (printf "%s-dashboard" .name)) | nindent 4 }}
+    app.kubernetes.io/service-type: saas
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .dashboardPort }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "dropshipping.selectorLabels" (dict "root" $root "component" (printf "%s-dashboard" .name)) | nindent 4 }}
+{{- end }}
+{{- end }}

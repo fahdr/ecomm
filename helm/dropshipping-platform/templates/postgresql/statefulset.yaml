@@ -1,0 +1,83 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-postgresql
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "postgresql") | nindent 4 }}
+spec:
+  serviceName: {{ include "dropshipping.fullname" . }}-postgresql
+  replicas: {{ .Values.postgresql.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" . "component" "postgresql") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.componentLabels" (dict "root" . "component" "postgresql") | nindent 8 }}
+    spec:
+      {{- include "dropshipping.imagePullSecrets" . | nindent 6 }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: postgresql
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: tcp-postgresql
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.global.postgresql.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "dropshipping.fullname" . }}-secrets
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: {{ .Values.global.postgresql.database | quote }}
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          resources:
+            {{- toYaml .Values.postgresql.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.global.postgresql.user }}
+                - -d
+                - {{ .Values.global.postgresql.database }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - {{ .Values.global.postgresql.user }}
+                - -d
+                - {{ .Values.global.postgresql.database }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.postgresql.storage.storageClassName }}
+        storageClassName: {{ .Values.postgresql.storage.storageClassName | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgresql.storage.size }}
+{{- end }}

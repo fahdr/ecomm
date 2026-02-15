@@ -1,0 +1,26 @@
+{{/*
+SaaS Backend Services — one ClusterIP service per enabled SaaS backend.
+*/}}
+{{- $root := . -}}
+{{- range .Values.saas.services }}
+{{- if .enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dropshipping.fullname" $root }}-{{ .name }}-backend
+  namespace: {{ include "dropshipping.namespace" $root }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" $root "component" (printf "%s-backend" .name)) | nindent 4 }}
+    app.kubernetes.io/service-type: saas
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .backendPort }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "dropshipping.selectorLabels" (dict "root" $root "component" (printf "%s-backend" .name)) | nindent 4 }}
+{{- end }}
+{{- end }}

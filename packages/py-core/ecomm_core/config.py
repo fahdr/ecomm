@@ -27,6 +27,8 @@ class BaseServiceConfig(BaseSettings):
         service_display_name: Human-readable name (e.g., 'TrendScout').
         service_port: Port the backend listens on.
         debug: Enable debug mode with SQL logging.
+        environment: Deployment environment (development, staging, production).
+        sentry_dsn: Sentry Data Source Name for error tracking (empty = disabled).
         database_url: Async PostgreSQL connection string.
         database_url_sync: Sync PostgreSQL connection string (for Alembic).
         redis_url: Redis connection URL for caching.
@@ -55,6 +57,10 @@ class BaseServiceConfig(BaseSettings):
 
     # Debug
     debug: bool = False
+
+    # Environment & Monitoring
+    environment: str = "development"
+    sentry_dsn: str = ""
 
     # Database
     database_url: str = "postgresql+asyncpg://user:pass@localhost:5432/db"

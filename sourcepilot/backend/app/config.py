@@ -84,6 +84,10 @@ class Settings(BaseSettings):
     stripe_billing_success_url: str = "http://localhost:3109/billing?success=true"
     stripe_billing_cancel_url: str = "http://localhost:3109/billing?canceled=true"
 
+    # Monitoring
+    environment: str = "development"
+    sentry_dsn: str = ""
+
     # AI
     anthropic_api_key: str = ""
 

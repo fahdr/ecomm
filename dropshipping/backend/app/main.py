@@ -18,6 +18,11 @@ All versioned endpoints are mounted under the /api/v1 prefix.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from ecomm_core.middleware import RequestLoggingMiddleware
+from ecomm_core.monitoring import init_sentry
+from ecomm_core.rate_limit import setup_rate_limiting
+from ecomm_core.security import SecurityHeadersMiddleware
+
 # --- Infrastructure routers ---
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
@@ -63,6 +68,9 @@ from app.api.inventory import router as inventory_router
 # --- ServiceBridge (Phase 3 - Platform event integration) ---
 from app.api.bridge import router as bridge_router
 
+# --- Onboarding (Phase 7 - Beta launch) ---
+from app.api.onboarding import router as onboarding_router
+
 # --- Data exports ---
 from app.api.exports import router as exports_router
 
@@ -75,7 +83,17 @@ from app.api.customer_addresses import router as customer_addresses_router
 from app.config import settings
 from app.constants.plans import init_price_ids
 
+# ── Sentry error tracking ─────────────────────────────────────────
+init_sentry(
+    service_name=settings.service_name,
+    dsn=settings.sentry_dsn,
+    environment=settings.environment,
+)
+
 app = FastAPI(title=settings.app_name)
+
+# Security headers middleware (must be added before CORS)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,6 +102,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request logging middleware (adds X-Request-ID and structured access logs)
+app.add_middleware(RequestLoggingMiddleware, service_name=settings.service_name)
+
+# Rate limiting (100 requests/minute default)
+setup_rate_limiting(app)
 
 # --- Infrastructure ---
 app.include_router(health_router, prefix="/api/v1")
@@ -140,6 +164,9 @@ app.include_router(inventory_router, prefix="/api/v1")
 
 # --- ServiceBridge (Phase 3) ---
 app.include_router(bridge_router, prefix="/api/v1")
+
+# --- Onboarding (Phase 7 - Beta launch) ---
+app.include_router(onboarding_router, prefix="/api/v1")
 
 # --- Data exports ---
 app.include_router(exports_router, prefix="/api/v1")

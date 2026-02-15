@@ -30,8 +30,18 @@ from ecomm_core.billing.webhooks import create_webhook_router
 from ecomm_core.health import create_health_router
 from ecomm_core.api_keys_router import create_api_keys_router
 from ecomm_core.usage_router import create_usage_router
-from ecomm_core.middleware import setup_cors
+from ecomm_core.middleware import setup_cors, RequestLoggingMiddleware
+from ecomm_core.monitoring import init_sentry
+from ecomm_core.rate_limit import setup_rate_limiting
+from ecomm_core.security import SecurityHeadersMiddleware
 from ecomm_core.billing.service import get_usage
+
+# ── Sentry error tracking ─────────────────────────────────────────
+init_sentry(
+    service_name=settings.service_name,
+    dsn=settings.sentry_dsn,
+    environment=settings.environment,
+)
 
 
 @asynccontextmanager
@@ -52,7 +62,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Security headers middleware (must be added before CORS)
+app.add_middleware(SecurityHeadersMiddleware)
+
 setup_cors(app, settings.cors_origins_list)
+
+# Request logging middleware (adds X-Request-ID and structured access logs)
+app.add_middleware(RequestLoggingMiddleware, service_name=settings.service_name)
+
+# Rate limiting (100 requests/minute default)
+setup_rate_limiting(app)
 
 get_current_user = create_get_current_user(get_db)
 get_current_user_or_api_key = create_get_current_user_or_api_key(get_db)

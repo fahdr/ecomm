@@ -1,0 +1,55 @@
+{{/*
+Admin Dashboard Deployment — Next.js super admin UI.
+Provides the web interface for platform-wide administration.
+*/}}
+{{- if .Values.admin.dashboard.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-admin-dashboard
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "admin-dashboard") | nindent 4 }}
+spec:
+  replicas: {{ .Values.admin.dashboard.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" . "component" "admin-dashboard") | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.componentLabels" (dict "root" . "component" "admin-dashboard") | nindent 8 }}
+    spec:
+      {{- include "dropshipping.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "dropshipping.serviceAccountName" . }}
+      containers:
+        - name: dashboard
+          image: {{ include "dropshipping.image" (dict "root" . "repo" .Values.admin.dashboard.image.repository "defaultRepo" "admin-dashboard" "tag" .Values.admin.dashboard.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.admin.dashboard.port }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: {{ .Values.admin.dashboard.port | quote }}
+            - name: NEXT_PUBLIC_API_URL
+              value: {{ default (printf "https://admin.%s" .Values.global.domain) .Values.admin.dashboard.env.NEXT_PUBLIC_API_URL | quote }}
+            {{- range $key, $val := .Values.admin.dashboard.env }}
+            {{- if ne $key "NEXT_PUBLIC_API_URL" }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.admin.dashboard.resources | nindent 12 }}
+          {{- include "dropshipping.frontendLivenessProbe" . | nindent 10 }}
+          {{- include "dropshipping.frontendReadinessProbe" . | nindent 10 }}
+{{- end }}

@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
 
+    # Monitoring
+    environment: str = "development"
+    sentry_dsn: str = ""
+
     # LLM Gateway (for AI features)
     llm_gateway_url: str = "http://localhost:8200"
     llm_gateway_key: str = "dev-gateway-key"

@@ -1,0 +1,76 @@
+===========================================================================
+  Dropshipping Platform deployed successfully!
+===========================================================================
+
+Release:   {{ .Release.Name }}
+Namespace: {{ include "dropshipping.namespace" . }}
+Domain:    {{ .Values.global.domain }}
+
+---------------------------------------------------------------------------
+  Component Status
+---------------------------------------------------------------------------
+
+Core Platform:
+  Backend:    {{ if .Values.core.backend.enabled }}Enabled ({{ .Values.core.backend.replicas }} replicas){{ else }}Disabled{{ end }}
+  Dashboard:  {{ if .Values.core.dashboard.enabled }}Enabled{{ else }}Disabled{{ end }}
+  Storefront: {{ if .Values.core.storefront.enabled }}Enabled{{ else }}Disabled{{ end }}
+  Celery:     {{ if .Values.core.celery.worker.enabled }}Worker + {{ end }}{{ if .Values.core.celery.beat.enabled }}Beat{{ end }}
+
+SaaS Services:
+{{- range .Values.saas.services }}
+  {{ .displayName }}: {{ if .enabled }}Enabled (backend :{{ .backendPort }} / dashboard :{{ .dashboardPort }}){{ else }}Disabled{{ end }}
+{{- end }}
+
+LLM Gateway:  {{ if .Values.gateway.enabled }}Enabled (:{{ .Values.gateway.port }}){{ else }}Disabled{{ end }}
+Admin:        {{ if .Values.admin.backend.enabled }}Enabled{{ else }}Disabled{{ end }}
+Landing Page: {{ if .Values.landing.enabled }}Enabled{{ else }}Disabled{{ end }}
+
+Infrastructure:
+  PostgreSQL: {{ if .Values.postgresql.enabled }}In-cluster StatefulSet{{ else }}External ({{ .Values.global.postgresql.host }}){{ end }}
+  Redis:      {{ if .Values.redis.enabled }}In-cluster Deployment{{ else }}External ({{ .Values.global.redis.host }}){{ end }}
+
+---------------------------------------------------------------------------
+  Access
+---------------------------------------------------------------------------
+
+{{- if .Values.ingress.enabled }}
+
+Ingress is enabled. Access the platform via:
+
+  Platform:     https://{{ .Values.global.domain }}
+  Admin:        https://admin.{{ .Values.global.domain }}
+  Landing:      https://{{ .Values.global.domain }}
+{{- range .Values.saas.services }}
+{{- if .enabled }}
+  {{ .displayName }}:  https://{{ .name }}.{{ $.Values.global.domain }}
+{{- end }}
+{{- end }}
+
+{{- if not .Values.ingress.tls.enabled }}
+
+  WARNING: TLS is not enabled. Consider enabling it for production use.
+{{- end }}
+
+{{- else }}
+
+Ingress is disabled. Use port-forwarding to access services:
+
+  kubectl port-forward svc/{{ include "dropshipping.fullname" . }}-core-backend {{ .Values.core.backend.port }}:{{ .Values.core.backend.port }} -n {{ include "dropshipping.namespace" . }}
+  kubectl port-forward svc/{{ include "dropshipping.fullname" . }}-core-dashboard {{ .Values.core.dashboard.port }}:{{ .Values.core.dashboard.port }} -n {{ include "dropshipping.namespace" . }}
+
+{{- end }}
+
+---------------------------------------------------------------------------
+  Post-Install Steps
+---------------------------------------------------------------------------
+
+1. Verify all pods are running:
+   kubectl get pods -n {{ include "dropshipping.namespace" . }}
+
+2. Check the init-schemas job completed:
+   kubectl get jobs -n {{ include "dropshipping.namespace" . }}
+
+3. View logs for any service:
+   kubectl logs -f deploy/{{ include "dropshipping.fullname" . }}-core-backend -n {{ include "dropshipping.namespace" . }}
+
+===========================================================================

@@ -40,6 +40,8 @@ class Settings(BaseSettings):
 
     service_name: str = "llm-gateway"
     service_port: int = 8200
+    environment: str = "development"
+    sentry_dsn: str = ""
     database_url: str = "postgresql+asyncpg://dropship:dropship_dev@db:5432/dropshipping"
     redis_url: str = "redis://redis:6379/3"
     service_key: str = "dev-gateway-key"
