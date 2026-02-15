@@ -1,0 +1,159 @@
+{{/*
+Main Ingress — routes all external traffic to the correct services via subdomain.
+Covers core platform, LLM gateway, admin, master landing, and all SaaS services.
+*/}}
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-ingress
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+  annotations:
+    {{- range $key, $val := .Values.ingress.annotations }}
+    {{ $key }}: {{ $val | quote }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - secretName: {{ .Values.ingress.tls.secretName }}
+      hosts:
+        - {{ .Values.global.domain }}
+        - "*.{{ .Values.global.domain }}"
+  {{- end }}
+  rules:
+    # -----------------------------------------------------------------------
+    # Core Platform — API backend
+    # -----------------------------------------------------------------------
+    {{- if .Values.core.backend.enabled }}
+    - host: api.{{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" . }}-core-backend
+                port:
+                  number: {{ .Values.core.backend.port }}
+    {{- end }}
+    # -----------------------------------------------------------------------
+    # Core Platform — Dashboard
+    # -----------------------------------------------------------------------
+    {{- if .Values.core.dashboard.enabled }}
+    - host: dashboard.{{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" . }}-core-dashboard
+                port:
+                  number: {{ .Values.core.dashboard.port }}
+    {{- end }}
+    # -----------------------------------------------------------------------
+    # Core Platform — Storefront (wildcard for tenant subdomains)
+    # -----------------------------------------------------------------------
+    {{- if .Values.core.storefront.enabled }}
+    - host: store.{{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" . }}-core-storefront
+                port:
+                  number: {{ .Values.core.storefront.port }}
+    {{- end }}
+    # -----------------------------------------------------------------------
+    # LLM Gateway
+    # -----------------------------------------------------------------------
+    {{- if .Values.gateway.enabled }}
+    - host: gateway.{{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" . }}-gateway
+                port:
+                  number: {{ .Values.gateway.port }}
+    {{- end }}
+    # -----------------------------------------------------------------------
+    # Admin — Backend API
+    # -----------------------------------------------------------------------
+    {{- if .Values.admin.backend.enabled }}
+    - host: admin.{{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" . }}-admin-backend
+                port:
+                  number: {{ .Values.admin.backend.port }}
+    {{- end }}
+    # -----------------------------------------------------------------------
+    # Admin — Dashboard UI
+    # -----------------------------------------------------------------------
+    {{- if .Values.admin.dashboard.enabled }}
+    - host: admin-ui.{{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" . }}-admin-dashboard
+                port:
+                  number: {{ .Values.admin.dashboard.port }}
+    {{- end }}
+    # -----------------------------------------------------------------------
+    # Master Landing Page (bare domain)
+    # -----------------------------------------------------------------------
+    {{- if .Values.landing.enabled }}
+    - host: {{ .Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" . }}-landing
+                port:
+                  number: {{ .Values.landing.port }}
+    {{- end }}
+    # -----------------------------------------------------------------------
+    # SaaS Services — backend API and dashboard for each service
+    # -----------------------------------------------------------------------
+    {{- range .Values.saas.services }}
+    {{- if .enabled }}
+    - host: {{ .name }}.{{ $.Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" $ }}-{{ .name }}-backend
+                port:
+                  number: {{ .backendPort }}
+    - host: {{ .name }}-app.{{ $.Values.global.domain }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "dropshipping.fullname" $ }}-{{ .name }}-dashboard
+                port:
+                  number: {{ .dashboardPort }}
+    {{- end }}
+    {{- end }}
+{{- end }}

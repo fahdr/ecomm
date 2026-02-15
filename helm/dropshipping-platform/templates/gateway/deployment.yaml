@@ -1,0 +1,58 @@
+{{/*
+LLM Gateway Deployment — centralized AI provider routing service.
+Routes all LLM calls through a single gateway for API key management and rate limiting.
+*/}}
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-gateway
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "gateway") | nindent 4 }}
+spec:
+  replicas: {{ .Values.gateway.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" . "component" "gateway") | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.componentLabels" (dict "root" . "component" "gateway") | nindent 8 }}
+      annotations:
+        checksum/secrets: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "dropshipping.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "dropshipping.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: gateway
+          image: {{ include "dropshipping.image" (dict "root" . "repo" .Values.gateway.image.repository "defaultRepo" "gateway" "tag" .Values.gateway.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.port }}
+              protocol: TCP
+          env:
+            {{- include "dropshipping.backendEnv" (dict "root" . "redisDb" .Values.gateway.redisDb) | nindent 12 }}
+            - name: SERVICE_NAME
+              value: "llm-gateway"
+            - name: SERVICE_PORT
+              value: {{ .Values.gateway.port | quote }}
+            - name: DB_SCHEMA
+              value: "llm_gateway"
+            {{- range $key, $val := .Values.gateway.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          {{- include "dropshipping.livenessProbe" . | nindent 10 }}
+          {{- include "dropshipping.readinessProbe" . | nindent 10 }}
+{{- end }}

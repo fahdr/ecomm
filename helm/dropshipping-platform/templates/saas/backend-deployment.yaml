@@ -1,0 +1,84 @@
+{{/*
+SaaS Backend Deployments — one per enabled service.
+Uses range loop over .Values.saas.services to avoid 9x duplication.
+Each service gets its own Deployment with service-specific ports, schema, and CORS config.
+*/}}
+{{- $root := . -}}
+{{- $defaults := .Values.saas.defaults -}}
+{{- range .Values.saas.services }}
+{{- if .enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dropshipping.fullname" $root }}-{{ .name }}-backend
+  namespace: {{ include "dropshipping.namespace" $root }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" $root "component" (printf "%s-backend" .name)) | nindent 4 }}
+    app.kubernetes.io/service-type: saas
+spec:
+  replicas: {{ default $defaults.backend.replicas .replicas }}
+  selector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" $root "component" (printf "%s-backend" .name)) | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.componentLabels" (dict "root" $root "component" (printf "%s-backend" .name)) | nindent 8 }}
+        app.kubernetes.io/service-type: saas
+      annotations:
+        checksum/secrets: {{ include (print $.Template.BasePath "/secrets.yaml") $root | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") $root | sha256sum }}
+    spec:
+      {{- include "dropshipping.imagePullSecrets" $root | nindent 6 }}
+      serviceAccountName: {{ include "dropshipping.serviceAccountName" $root }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: backend
+          image: {{ include "dropshipping.image" (dict "root" $root "repo" "" "defaultRepo" (printf "%s-backend" .name) "tag" "") }}
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .backendPort }}
+              protocol: TCP
+          env:
+            {{- include "dropshipping.backendEnv" (dict "root" $root "redisDb" (default "0" .redisDb)) | nindent 12 }}
+            - name: SERVICE_NAME
+              value: {{ .name | quote }}
+            - name: SERVICE_DISPLAY_NAME
+              value: {{ .displayName | quote }}
+            - name: SERVICE_PORT
+              value: {{ .backendPort | quote }}
+            - name: DB_SCHEMA
+              value: {{ .schema | quote }}
+            - name: CORS_ORIGINS
+              value: {{ .corsOrigins | quote }}
+            - name: STRIPE_BILLING_SUCCESS_URL
+              value: "https://{{ .name }}.{{ $root.Values.global.domain }}/billing?success=true"
+            - name: STRIPE_BILLING_CANCEL_URL
+              value: "https://{{ .name }}.{{ $root.Values.global.domain }}/billing?canceled=true"
+          resources:
+            {{- toYaml $defaults.backend.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+{{- end }}
+{{- end }}

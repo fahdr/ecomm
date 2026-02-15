@@ -1,0 +1,5 @@
+{{/*
+PVC is managed by the StatefulSet's volumeClaimTemplates.
+This file is a placeholder for documentation purposes.
+If you need a standalone PVC (e.g., for backups), define it here.
+*/}}

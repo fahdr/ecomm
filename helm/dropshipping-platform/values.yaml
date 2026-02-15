@@ -1,0 +1,437 @@
+# =============================================================================
+# Dropshipping Platform — Default Helm Values
+# =============================================================================
+# This file configures the entire monorepo deployment: core platform,
+# 9 SaaS services, LLM Gateway, Admin, master landing, PostgreSQL, and Redis.
+# Override with values-production.yaml for production clusters.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global settings shared by all sub-components
+# ---------------------------------------------------------------------------
+global:
+  # Container registry prefix (e.g., "ghcr.io/myorg" or "123456789.dkr.ecr.us-east-1.amazonaws.com")
+  imageRegistry: "ghcr.io/dropshipping-platform"
+  # Default image tag applied when a component does not specify its own
+  imageTag: "latest"
+  # Image pull policy: Always, IfNotPresent, Never
+  imagePullPolicy: IfNotPresent
+  # Image pull secrets for private registries
+  imagePullSecrets: []
+  #   - name: regcred
+
+  # Base domain for ingress routing (services are routed as subdomains or paths)
+  domain: "platform.local"
+
+  # PostgreSQL connection — used by all backends
+  postgresql:
+    host: "dropshipping-platform-postgresql"
+    port: 5432
+    user: "dropship"
+    password: "dropship_dev"
+    database: "dropshipping"
+
+  # Redis connection — used for caching, Celery broker, and Celery results
+  redis:
+    host: "dropshipping-platform-redis"
+    port: 6379
+
+  # Shared secrets injected into all backend pods
+  secrets:
+    jwtSecretKey: "change-me-in-production"
+    jwtAlgorithm: "HS256"
+    jwtAccessTokenExpireMinutes: "30"
+    stripeSecretKey: ""
+    stripeWebhookSecret: ""
+    stripeFreePrice: ""
+    stripeProPrice: ""
+    stripeEnterprisePrice: ""
+    llmGatewayKey: "dev-gateway-key"
+    platformWebhookSecret: "dev-webhook-secret"
+    sentryDsn: ""
+
+# ---------------------------------------------------------------------------
+# Namespace
+# ---------------------------------------------------------------------------
+namespace:
+  create: true
+  name: "dropshipping"
+
+# ---------------------------------------------------------------------------
+# PostgreSQL (in-cluster StatefulSet)
+# ---------------------------------------------------------------------------
+postgresql:
+  # Set to false to use an external managed database (e.g., RDS, Cloud SQL)
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  storage:
+    size: 20Gi
+    storageClassName: ""
+  # Schemas created by the init job on first deploy
+  schemas:
+    - public
+    - trendscout
+    - contentforge
+    - rankpilot
+    - flowsend
+    - spydrop
+    - postpilot
+    - adscale
+    - shopchat
+    - sourcepilot
+    - llm_gateway
+    - admin
+
+# ---------------------------------------------------------------------------
+# Redis (in-cluster Deployment)
+# ---------------------------------------------------------------------------
+redis:
+  # Set to false to use an external managed Redis (e.g., ElastiCache, Memorystore)
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# ---------------------------------------------------------------------------
+# Core Platform — dropshipping backend + dashboard + storefront
+# ---------------------------------------------------------------------------
+core:
+  backend:
+    enabled: true
+    image:
+      repository: ""  # Falls back to global.imageRegistry/core-backend
+      tag: ""         # Falls back to global.imageTag
+    replicas: 2
+    port: 8000
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    env: {}
+    # Extra environment variables as key-value pairs
+
+  dashboard:
+    enabled: true
+    image:
+      repository: ""
+      tag: ""
+    replicas: 1
+    port: 3000
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    env:
+      NEXT_PUBLIC_API_URL: ""  # Set to backend URL; defaults to ingress path
+
+  storefront:
+    enabled: true
+    image:
+      repository: ""
+      tag: ""
+    replicas: 1
+    port: 3001
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    env:
+      NEXT_PUBLIC_API_URL: ""
+
+  celery:
+    worker:
+      enabled: true
+      replicas: 1
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: "1"
+          memory: 512Mi
+      concurrency: 4
+    beat:
+      enabled: true
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+# ---------------------------------------------------------------------------
+# SaaS Services — iterated via range loop in templates
+# ---------------------------------------------------------------------------
+saas:
+  # Default resource settings for all SaaS backends
+  defaults:
+    backend:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 150m
+          memory: 192Mi
+        limits:
+          cpu: 750m
+          memory: 384Mi
+    dashboard:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+    celeryWorker:
+      replicas: 1
+      concurrency: 2
+      resources:
+        requests:
+          cpu: 150m
+          memory: 192Mi
+        limits:
+          cpu: 750m
+          memory: 384Mi
+    celeryBeat:
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+  # Service definitions — each entry creates backend + dashboard + celery deployments
+  services:
+    - name: trendscout
+      enabled: true
+      backendPort: 8101
+      dashboardPort: 3101
+      schema: trendscout
+      displayName: "TrendScout"
+      corsOrigins: "http://localhost:3101"
+      redisDb: "0"
+
+    - name: contentforge
+      enabled: true
+      backendPort: 8102
+      dashboardPort: 3102
+      schema: contentforge
+      displayName: "ContentForge"
+      corsOrigins: "http://localhost:3102"
+      redisDb: "0"
+
+    - name: rankpilot
+      enabled: true
+      backendPort: 8103
+      dashboardPort: 3103
+      schema: rankpilot
+      displayName: "RankPilot"
+      corsOrigins: "http://localhost:3103"
+      redisDb: "0"
+
+    - name: flowsend
+      enabled: true
+      backendPort: 8104
+      dashboardPort: 3104
+      schema: flowsend
+      displayName: "FlowSend"
+      corsOrigins: "http://localhost:3104"
+      redisDb: "0"
+
+    - name: spydrop
+      enabled: true
+      backendPort: 8105
+      dashboardPort: 3105
+      schema: spydrop
+      displayName: "SpyDrop"
+      corsOrigins: "http://localhost:3105"
+      redisDb: "0"
+
+    - name: postpilot
+      enabled: true
+      backendPort: 8106
+      dashboardPort: 3106
+      schema: postpilot
+      displayName: "PostPilot"
+      corsOrigins: "http://localhost:3106"
+      redisDb: "0"
+
+    - name: adscale
+      enabled: true
+      backendPort: 8107
+      dashboardPort: 3107
+      schema: adscale
+      displayName: "AdScale"
+      corsOrigins: "http://localhost:3107"
+      redisDb: "0"
+
+    - name: shopchat
+      enabled: true
+      backendPort: 8108
+      dashboardPort: 3108
+      schema: shopchat
+      displayName: "ShopChat"
+      corsOrigins: "http://localhost:3108"
+      redisDb: "0"
+
+    - name: sourcepilot
+      enabled: true
+      backendPort: 8109
+      dashboardPort: 3109
+      schema: sourcepilot
+      displayName: "SourcePilot"
+      corsOrigins: "http://localhost:3109"
+      redisDb: "0"
+
+# ---------------------------------------------------------------------------
+# LLM Gateway
+# ---------------------------------------------------------------------------
+gateway:
+  enabled: true
+  image:
+    repository: ""
+    tag: ""
+  replicas: 1
+  port: 8200
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  redisDb: "3"
+  env: {}
+
+# ---------------------------------------------------------------------------
+# Admin — backend + dashboard
+# ---------------------------------------------------------------------------
+admin:
+  backend:
+    enabled: true
+    image:
+      repository: ""
+      tag: ""
+    replicas: 1
+    port: 8300
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    redisDb: "4"
+    env: {}
+
+  dashboard:
+    enabled: true
+    image:
+      repository: ""
+      tag: ""
+    replicas: 1
+    port: 3300
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+    env:
+      NEXT_PUBLIC_API_URL: ""
+
+# ---------------------------------------------------------------------------
+# Master Landing Page
+# ---------------------------------------------------------------------------
+landing:
+  enabled: true
+  image:
+    repository: ""
+    tag: ""
+  replicas: 1
+  port: 3200
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  env: {}
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+  tls:
+    enabled: false
+    secretName: "dropshipping-tls"
+
+# ---------------------------------------------------------------------------
+# Horizontal Pod Autoscaler
+# ---------------------------------------------------------------------------
+hpa:
+  enabled: true
+  # HPA is created for core backend and each enabled SaaS backend
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 80
+
+# ---------------------------------------------------------------------------
+# Network Policies
+# ---------------------------------------------------------------------------
+networkPolicy:
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# Pod Disruption Budgets
+# ---------------------------------------------------------------------------
+pdb:
+  enabled: false
+  minAvailable: 1
+
+# ---------------------------------------------------------------------------
+# Service Account
+# ---------------------------------------------------------------------------
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}

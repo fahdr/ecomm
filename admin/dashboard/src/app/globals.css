@@ -1,0 +1,329 @@
+/**
+ * Global CSS for the Super Admin Dashboard.
+ *
+ * Tailwind CSS v4 import with custom CSS variables for a dark,
+ * ops-dashboard / mission-control aesthetic.
+ *
+ * Color system uses OKLCH for perceptual uniformity:
+ *   - Primary: cyan/teal for active states and highlights
+ *   - Accent: amber for warnings and attention
+ *   - Danger: red for errors and destructive actions
+ *   - Surfaces: deep navy/slate layered backgrounds
+ *
+ * For Developers:
+ *   Use var(--admin-*) tokens throughout components.
+ *   Card and table styles are pre-built below.
+ *
+ * For QA Engineers:
+ *   Verify text contrast in all states. Light text on dark
+ *   backgrounds must meet WCAG AA (4.5:1 minimum).
+ */
+
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Custom theme tokens                                                 */
+/* ------------------------------------------------------------------ */
+
+:root {
+  /* -- Background layers (deep navy to surface) -- */
+  --admin-bg-base: oklch(0.13 0.02 260);
+  --admin-bg-raised: oklch(0.16 0.02 260);
+  --admin-bg-surface: oklch(0.19 0.025 260);
+  --admin-bg-overlay: oklch(0.22 0.025 260);
+
+  /* -- Primary: cyan / teal -- */
+  --admin-primary: oklch(0.72 0.15 195);
+  --admin-primary-dim: oklch(0.52 0.12 195);
+  --admin-primary-glow: oklch(0.72 0.15 195 / 0.15);
+
+  /* -- Accent: amber -- */
+  --admin-accent: oklch(0.78 0.16 80);
+  --admin-accent-dim: oklch(0.58 0.12 80);
+
+  /* -- Danger: red -- */
+  --admin-danger: oklch(0.63 0.22 25);
+  --admin-danger-dim: oklch(0.48 0.16 25);
+
+  /* -- Success: green -- */
+  --admin-success: oklch(0.72 0.18 155);
+  --admin-success-dim: oklch(0.52 0.14 155);
+
+  /* -- Text -- */
+  --admin-text-primary: oklch(0.93 0.01 260);
+  --admin-text-secondary: oklch(0.68 0.02 260);
+  --admin-text-muted: oklch(0.48 0.02 260);
+
+  /* -- Borders -- */
+  --admin-border: oklch(0.26 0.02 260);
+  --admin-border-subtle: oklch(0.22 0.015 260);
+
+  /* -- Sidebar -- */
+  --admin-sidebar-bg: oklch(0.11 0.02 260);
+  --admin-sidebar-hover: oklch(0.18 0.025 260);
+  --admin-sidebar-active: oklch(0.20 0.04 195);
+}
+
+/* ------------------------------------------------------------------ */
+/* Base reset & background                                             */
+/* ------------------------------------------------------------------ */
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--admin-bg-base);
+  color: var(--admin-text-primary);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle grid pattern on the base background */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(oklch(0.20 0.015 260 / 0.3) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(0.20 0.015 260 / 0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Typography                                                          */
+/* ------------------------------------------------------------------ */
+
+.font-data {
+  font-family: var(--font-geist-mono), ui-monospace, "Cascadia Code",
+    "Fira Code", monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ------------------------------------------------------------------ */
+/* Glass-morphism card                                                 */
+/* ------------------------------------------------------------------ */
+
+.admin-card {
+  background: oklch(0.16 0.02 260 / 0.7);
+  border: 1px solid var(--admin-border-subtle);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.admin-card:hover {
+  border-color: var(--admin-primary-dim);
+  box-shadow: 0 0 20px var(--admin-primary-glow);
+}
+
+/* ------------------------------------------------------------------ */
+/* Data table                                                          */
+/* ------------------------------------------------------------------ */
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table thead th {
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--admin-text-muted);
+  border-bottom: 1px solid var(--admin-border);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.admin-table tbody td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--admin-text-secondary);
+  border-bottom: 1px solid var(--admin-border-subtle);
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-table tbody tr:hover {
+  background: oklch(0.19 0.025 260 / 0.5);
+}
+
+/* ------------------------------------------------------------------ */
+/* Sidebar navigation                                                  */
+/* ------------------------------------------------------------------ */
+
+.admin-sidebar {
+  background: var(--admin-sidebar-bg);
+  border-right: 1px solid var(--admin-border-subtle);
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--admin-text-secondary);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.admin-nav-link:hover {
+  background: var(--admin-sidebar-hover);
+  color: var(--admin-text-primary);
+}
+
+.admin-nav-link.active {
+  background: var(--admin-sidebar-active);
+  color: var(--admin-primary);
+}
+
+/* ------------------------------------------------------------------ */
+/* Input fields (dark admin style)                                     */
+/* ------------------------------------------------------------------ */
+
+.admin-input {
+  background: var(--admin-bg-base);
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--admin-text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  outline: none;
+}
+
+.admin-input:focus {
+  border-color: var(--admin-primary);
+  box-shadow: 0 0 0 3px var(--admin-primary-glow);
+}
+
+.admin-input::placeholder {
+  color: var(--admin-text-muted);
+}
+
+/* ------------------------------------------------------------------ */
+/* Buttons                                                             */
+/* ------------------------------------------------------------------ */
+
+.admin-btn-primary {
+  background: var(--admin-primary);
+  color: oklch(0.13 0.02 260);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-btn-primary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 16px var(--admin-primary-glow);
+}
+
+.admin-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-btn-danger {
+  background: var(--admin-danger);
+  color: oklch(0.95 0 0);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+.admin-btn-danger:hover {
+  filter: brightness(1.1);
+}
+
+.admin-btn-ghost {
+  background: transparent;
+  color: var(--admin-text-secondary);
+  font-weight: 500;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-btn-ghost:hover {
+  background: var(--admin-bg-surface);
+  color: var(--admin-text-primary);
+  border-color: var(--admin-border);
+}
+
+/* ------------------------------------------------------------------ */
+/* Scrollbar                                                           */
+/* ------------------------------------------------------------------ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.30 0.02 260);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.40 0.02 260);
+}
+
+/* ------------------------------------------------------------------ */
+/* Utility                                                             */
+/* ------------------------------------------------------------------ */
+
+.text-primary-admin {
+  color: var(--admin-primary);
+}
+
+.text-accent-admin {
+  color: var(--admin-accent);
+}
+
+.text-danger-admin {
+  color: var(--admin-danger);
+}
+
+.text-success-admin {
+  color: var(--admin-success);
+}
+
+.text-muted-admin {
+  color: var(--admin-text-muted);
+}
+
+/* Pulsing live data indicator */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

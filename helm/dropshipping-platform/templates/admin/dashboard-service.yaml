@@ -1,0 +1,21 @@
+{{/*
+Admin Dashboard Service — exposes the admin Next.js UI as a ClusterIP service.
+*/}}
+{{- if .Values.admin.dashboard.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-admin-dashboard
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "admin-dashboard") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.admin.dashboard.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "dropshipping.selectorLabels" (dict "root" . "component" "admin-dashboard") | nindent 4 }}
+{{- end }}

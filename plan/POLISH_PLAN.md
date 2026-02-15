@@ -1,20 +1,22 @@
 # Plan: Make the Dropshipping Platform Shippable
 
-> **STATUS: ALL PHASES COMPLETE (A-G) + Phase 2 Polish COMPLETE (5 Phases) + Refinement COMPLETE**
+> **STATUS: ALL PHASES COMPLETE (A-G) + Phase 2 Polish COMPLETE (5 Phases) + Refinement COMPLETE + Phase 2 Services COMPLETE**
 >
 > All seven original phases have been implemented, tested, and verified. The platform
 > is fully demo-able end-to-end. Phase 2 Polish added 5 additional phases of visual
-> and functional enhancements: Theme Engine v2, Animation & Motion, Storefront Visual,
-> Dashboard Enhancements, and Data & QoL features. A subsequent refinement pass fixed
-> 7 user-facing bugs and expanded test coverage.
+> and functional enhancements. A refinement pass fixed 7 user-facing bugs. Phase 2
+> Services implemented 8 standalone SaaS products (A1-A8) with platform integration.
 >
-> **Key metrics after refinement:**
-> - **336 backend tests passing** (30+ test files)
+> **Key metrics after Phase 2 Services:**
+> - **488 backend tests passing** (35+ test files, including 152 integration tests)
+> - **~543 service feature tests** across 8 standalone services
 > - **190+ e2e tests** (25 spec files across dashboard + storefront)
-> - **34 dashboard pages** building cleanly
+> - **36 dashboard pages** building cleanly (34 original + 2 service pages)
 > - **18 storefront pages** building cleanly
-> - **13 Alembic migrations** (22+ model files, ~37 DB tables)
+> - **14 Alembic migrations** (23+ model files, ~38 DB tables)
 > - **11 preset themes**, 13 block types, motion animations throughout
+> - **8 standalone SaaS products** with own backends, dashboards, landing pages
+> - **Master landing page** (7 components, static export)
 > - **Makefile** with 25+ targets for dev workflow automation
 >
 > ### Refinement Pass (Post-Phase 2 Polish)

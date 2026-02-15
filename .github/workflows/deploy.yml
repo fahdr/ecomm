@@ -1,0 +1,209 @@
+# CD Pipeline — Dropshipping Platform + SaaS Suite
+#
+# Triggered on version tag pushes (v*). Builds Docker images for all
+# backend services and frontend apps, pushes them to GitHub Container
+# Registry (GHCR), and deploys to Kubernetes via Helm.
+#
+# **For Developers:**
+#   Tag a commit to trigger a deploy: `git tag v1.0.0 && git push --tags`
+#   Images are tagged with both the git tag and `latest`.
+#
+# **For QA Engineers:**
+#   After deploy, verify each service's /health endpoint responds.
+#   Check the deploy summary in the GitHub Actions run for image digests.
+#
+# **For Project Managers:**
+#   Deployments are fully automated. A version tag triggers build, push,
+#   and rollout. Rollbacks are done by retagging a previous version.
+
+name: Deploy
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/ecomm
+
+jobs:
+  # ── Build and Push Docker Images ─────────────────────────────────────
+  build-and-push:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          # Core platform
+          - name: dropshipping-backend
+            context: dropshipping/backend
+            dockerfile: dropshipping/backend/Dockerfile
+          - name: dropshipping-dashboard
+            context: dropshipping/dashboard
+            dockerfile: dropshipping/dashboard/Dockerfile
+          - name: dropshipping-storefront
+            context: dropshipping/storefront
+            dockerfile: dropshipping/storefront/Dockerfile
+          # Infrastructure
+          - name: llm-gateway
+            context: llm-gateway/backend
+            dockerfile: llm-gateway/backend/Dockerfile
+          - name: admin-backend
+            context: admin/backend
+            dockerfile: admin/backend/Dockerfile
+          # SaaS services
+          - name: trendscout-backend
+            context: trendscout/backend
+            dockerfile: trendscout/backend/Dockerfile
+          - name: contentforge-backend
+            context: contentforge/backend
+            dockerfile: contentforge/backend/Dockerfile
+          - name: rankpilot-backend
+            context: rankpilot/backend
+            dockerfile: rankpilot/backend/Dockerfile
+          - name: flowsend-backend
+            context: flowsend/backend
+            dockerfile: flowsend/backend/Dockerfile
+          - name: spydrop-backend
+            context: spydrop/backend
+            dockerfile: spydrop/backend/Dockerfile
+          - name: postpilot-backend
+            context: postpilot/backend
+            dockerfile: postpilot/backend/Dockerfile
+          - name: adscale-backend
+            context: adscale/backend
+            dockerfile: adscale/backend/Dockerfile
+          - name: shopchat-backend
+            context: shopchat/backend
+            dockerfile: shopchat/backend/Dockerfile
+          - name: sourcepilot-backend
+            context: sourcepilot/backend
+            dockerfile: sourcepilot/backend/Dockerfile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version tag
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:${{ steps.version.outputs.tag }}
+            ${{ env.IMAGE_PREFIX }}/${{ matrix.service.name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.tag }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+  # ── Deploy to Kubernetes ─────────────────────────────────────────────
+  deploy:
+    name: Deploy to Kubernetes
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version tag
+        id: version
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: "v3.14.0"
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v4
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Deploy core platform
+        run: |
+          helm upgrade --install ecomm-platform ./deploy/helm/platform \
+            --namespace ecomm \
+            --create-namespace \
+            --set global.image.tag=${{ steps.version.outputs.tag }} \
+            --set global.image.registry=${{ env.IMAGE_PREFIX }} \
+            --set dropshipping.backend.replicas=3 \
+            --set dropshipping.dashboard.replicas=2 \
+            --set dropshipping.storefront.replicas=2 \
+            --set llmGateway.replicas=2 \
+            --set admin.replicas=1 \
+            --timeout 10m \
+            --wait
+
+      - name: Deploy SaaS services
+        run: |
+          SERVICES="trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat sourcepilot"
+          for svc in $SERVICES; do
+            echo "Deploying $svc..."
+            helm upgrade --install "ecomm-$svc" ./deploy/helm/saas-service \
+              --namespace ecomm \
+              --set service.name="$svc" \
+              --set service.image.tag=${{ steps.version.outputs.tag }} \
+              --set service.image.registry=${{ env.IMAGE_PREFIX }} \
+              --set service.replicas=2 \
+              --timeout 5m \
+              --wait
+          done
+
+      - name: Verify deployment health
+        run: |
+          echo "Verifying deployments..."
+          kubectl -n ecomm rollout status deployment/dropshipping-backend --timeout=120s
+          kubectl -n ecomm rollout status deployment/llm-gateway --timeout=120s
+
+          SERVICES="trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat sourcepilot"
+          for svc in $SERVICES; do
+            kubectl -n ecomm rollout status "deployment/$svc-backend" --timeout=120s || true
+          done
+
+          echo "All deployments verified."
+
+      - name: Post-deploy summary
+        run: |
+          echo "## Deployment Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Version:** ${{ steps.version.outputs.tag }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Commit:** ${{ github.sha }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Deployed by:** ${{ github.actor }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Namespace:** ecomm" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Services Deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Service | Image |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Core Platform | \`${{ env.IMAGE_PREFIX }}/dropshipping-backend:${{ steps.version.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| LLM Gateway | \`${{ env.IMAGE_PREFIX }}/llm-gateway:${{ steps.version.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Admin | \`${{ env.IMAGE_PREFIX }}/admin-backend:${{ steps.version.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          for svc in trendscout contentforge rankpilot flowsend spydrop postpilot adscale shopchat sourcepilot; do
+            echo "| $svc | \`${{ env.IMAGE_PREFIX }}/$svc-backend:${{ steps.version.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          done

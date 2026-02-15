@@ -1,0 +1,70 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-init-schemas
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "init-schemas") | nindent 4 }}
+  annotations:
+    # Run this job after PostgreSQL is available but before app deployments
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.selectorLabels" (dict "root" . "component" "init-schemas") | nindent 8 }}
+    spec:
+      {{- include "dropshipping.imagePullSecrets" . | nindent 6 }}
+      restartPolicy: OnFailure
+      initContainers:
+        # Wait for PostgreSQL to be ready before running schema creation
+        - name: wait-for-postgres
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL to be ready..."
+              until pg_isready -h {{ .Values.global.postgresql.host }} -p {{ .Values.global.postgresql.port }} -U {{ .Values.global.postgresql.user }}; do
+                echo "PostgreSQL is not ready yet. Retrying in 3s..."
+                sleep 3
+              done
+              echo "PostgreSQL is ready."
+      containers:
+        - name: init-schemas
+          image: "{{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }}"
+          env:
+            - name: PGHOST
+              value: {{ .Values.global.postgresql.host | quote }}
+            - name: PGPORT
+              value: {{ .Values.global.postgresql.port | quote }}
+            - name: PGUSER
+              value: {{ .Values.global.postgresql.user | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "dropshipping.fullname" . }}-secrets
+                  key: postgres-password
+            - name: PGDATABASE
+              value: {{ .Values.global.postgresql.database | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              echo "=== Creating PostgreSQL schemas for service isolation ==="
+              {{- range .Values.postgresql.schemas }}
+              echo "Creating schema: {{ . }}"
+              psql -c "CREATE SCHEMA IF NOT EXISTS {{ . }};" || true
+              {{- end }}
+              echo "=== Granting permissions ==="
+              {{- range .Values.postgresql.schemas }}
+              psql -c "GRANT ALL ON SCHEMA {{ . }} TO {{ $.Values.global.postgresql.user }};" || true
+              {{- end }}
+              echo "=== Schema initialization complete ==="
+              psql -c "\dn" | head -30
+{{- end }}

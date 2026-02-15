@@ -21,8 +21,9 @@ This document outlines the complete architecture, implementation strategy, and b
 7. [Cost Analysis](#cost-analysis)
 8. [Pricing Strategy](#pricing-strategy)
 9. [Implementation Roadmap](#implementation-roadmap)
-10. [Security & Compliance](#security--compliance)
-11. [Scaling Considerations](#scaling-considerations)
+10. [Standalone SaaS Product Suite](#standalone-saas-product-suite-a1-a8)
+11. [Security & Compliance](#security--compliance)
+12. [Scaling Considerations](#scaling-considerations)
 
 ---
 
@@ -1732,6 +1733,48 @@ Net profit: ~$711,500/month (~$8.5M/year)
 - Advanced API access
 - Custom integrations
 - Enterprise SLAs
+
+---
+
+## Standalone SaaS Product Suite (A1-A8)
+
+> **STATUS: IMPLEMENTED.** All 8 automation features have been built as independent,
+> separately hostable products that can be sold individually or bundled with the platform.
+
+The automation features originally planned as a monolithic service have been architected
+as **8 independent SaaS products**, each with its own backend, dashboard, landing page,
+database, billing, and user auth. This enables:
+
+1. **Individual sales**: Each product can be marketed and sold independently
+2. **Platform bundling**: Included at various tiers in platform subscriptions
+3. **Independent hosting**: Zero shared code, zero shared infrastructure
+
+### Products
+
+| # | Product | Tagline | Price (Pro) | Tests |
+|---|---------|---------|-------------|-------|
+| A1 | **TrendScout** | AI-Powered Product Research | $29/mo | 67 |
+| A2 | **ContentForge** | AI Product Content Generator | $19/mo | 45 |
+| A3 | **RankPilot** | Automated SEO Engine | $29/mo | 74 |
+| A4 | **FlowSend** | Smart Email Marketing | $39/mo | 87 |
+| A5 | **SpyDrop** | Competitor Intelligence | $29/mo | 43 |
+| A6 | **PostPilot** | Social Media Automation | $29/mo | 62 |
+| A7 | **AdScale** | AI Ad Campaign Manager | $49/mo | 77 |
+| A8 | **ShopChat** | AI Shopping Assistant | $19/mo | 88 |
+
+**Total standalone revenue potential**: $243/mo per user (all Pro tiers)
+**Platform bundle savings**: Pro plan ($199/mo) includes all 8 at Pro tier (save $264/mo)
+
+### Platform Integration Bundles
+
+| Platform Tier | Price | Included Services | Service Tier |
+|---|---|---|---|
+| Free ($0) | $0 | None | — |
+| Starter ($29) | $29 | TrendScout + ContentForge | Free |
+| Growth ($79) | $79 | All 8 services | Free |
+| Pro ($199) | $199 | All 8 services | Pro |
+
+See `plan/SERVICES.md` for full architecture details and `services/` for implementation.
 
 ---
 

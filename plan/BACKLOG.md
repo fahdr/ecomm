@@ -137,12 +137,14 @@ Per-store customer authentication, order history, and wishlists.
 **Status:** All Phase 1 features (F8-F30) are implemented, plus the full Polish Plan (Phases A-G) and Phase 2 Polish (5 phases). The platform is now demo-able end-to-end with premium visual polish.
 
 **Current totals:**
-- **329 backend tests passing** (28+ test files)
+- **541 backend tests passing** (41+ test files, including 53 Celery task tests)
 - **187+ e2e tests passing** (24 Playwright spec files — empty state + populated data + seed data + phase 2 polish)
-- **34 dashboard pages** building cleanly
+- **36 dashboard pages** building cleanly
 - **18 storefront pages** building cleanly
-- **13 Alembic migrations**, ~37 DB tables
+- **14 Alembic migrations**, ~38 DB tables
 - **11 preset themes**, 13 block types, motion animations throughout
+- **20 Celery task functions** across 6 modules (email, webhook, notification, fraud, order, analytics)
+- **3 Celery Beat scheduled tasks** (daily analytics, notification cleanup, fulfillment checks)
 - Backend API endpoints (FastAPI + SQLAlchemy async)
 - Dashboard UI pages (Next.js + Shadcn/ui)
 - Storefront UI components (Next.js + Tailwind)
@@ -1262,14 +1264,19 @@ Deploy the complete platform to the existing K8s cluster. CI/CD pipeline.
 
 ---
 
-## Phase 2: Automation & AI Features
+## Phase 2: Standalone SaaS Products (A1-A8) ✅
 
-> **Phase 2 scope:** These features are built on the **Automation service** (`automation/`), a standalone
-> FastAPI + Celery service that communicates with the core backend via HTTP API. Phase 2 is implemented
-> after Phase 1 is stable and well-tested. The automation service is designed to be extractable as a
-> separate product in the future. All features below use the `[A]` tag for automation service tasks.
+> **STATUS: COMPLETE.** All 8 automation features have been implemented as **independent, separately
+> hostable SaaS products** in `services/`. Each product has its own FastAPI backend, Next.js dashboard,
+> landing page, database, Stripe billing, user auth, and test suite. The original monolithic
+> `automation/` service design was replaced with this more scalable architecture.
 >
-> See [ARCHITECTURE.md](ARCHITECTURE.md) for the Automation service design principles and separation rules.
+> **Key metrics:** 8 standalone services, ~543 feature tests, 152 platform integration tests,
+> master landing page (7 components), platform integration (ServiceIntegration model, 8 API endpoints,
+> 2 dashboard pages).
+>
+> See [SERVICES.md](SERVICES.md) for the full services architecture and [ARCHITECTURE.md](ARCHITECTURE.md)
+> for how they integrate with the core platform.
 
 ---
 

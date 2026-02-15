@@ -1,0 +1,51 @@
+{{/*
+Master Landing Page Deployment — the suite's public-facing landing page.
+Serves the main marketing/landing site for the platform.
+*/}}
+{{- if .Values.landing.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-landing
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "landing") | nindent 4 }}
+spec:
+  replicas: {{ .Values.landing.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" . "component" "landing") | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.componentLabels" (dict "root" . "component" "landing") | nindent 8 }}
+    spec:
+      {{- include "dropshipping.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "dropshipping.serviceAccountName" . }}
+      containers:
+        - name: landing
+          image: {{ include "dropshipping.image" (dict "root" . "repo" .Values.landing.image.repository "defaultRepo" "landing" "tag" .Values.landing.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.landing.port }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: {{ .Values.landing.port | quote }}
+            {{- range $key, $val := .Values.landing.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.landing.resources | nindent 12 }}
+          {{- include "dropshipping.frontendLivenessProbe" . | nindent 10 }}
+          {{- include "dropshipping.frontendReadinessProbe" . | nindent 10 }}
+{{- end }}

@@ -1,0 +1,70 @@
+{{/*
+SaaS Celery Worker Deployments — one worker deployment per enabled service.
+Workers reuse the backend image but run the Celery worker command.
+*/}}
+{{- $root := . -}}
+{{- $defaults := .Values.saas.defaults -}}
+{{- range .Values.saas.services }}
+{{- if .enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dropshipping.fullname" $root }}-{{ .name }}-celery-worker
+  namespace: {{ include "dropshipping.namespace" $root }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" $root "component" (printf "%s-celery-worker" .name)) | nindent 4 }}
+    app.kubernetes.io/service-type: saas
+spec:
+  replicas: {{ default $defaults.celeryWorker.replicas .celeryWorkerReplicas }}
+  selector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" $root "component" (printf "%s-celery-worker" .name)) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.componentLabels" (dict "root" $root "component" (printf "%s-celery-worker" .name)) | nindent 8 }}
+        app.kubernetes.io/service-type: saas
+      annotations:
+        checksum/secrets: {{ include (print $.Template.BasePath "/secrets.yaml") $root | sha256sum }}
+    spec:
+      {{- include "dropshipping.imagePullSecrets" $root | nindent 6 }}
+      serviceAccountName: {{ include "dropshipping.serviceAccountName" $root }}
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: celery-worker
+          image: {{ include "dropshipping.image" (dict "root" $root "repo" "" "defaultRepo" (printf "%s-backend" .name) "tag" "") }}
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          command:
+            - celery
+            - -A
+            - app.celery_app
+            - worker
+            - --loglevel=info
+            - --concurrency={{ default $defaults.celeryWorker.concurrency .celeryWorkerConcurrency }}
+            - -Q
+            - {{ .name }}
+          env:
+            {{- include "dropshipping.backendEnv" (dict "root" $root "redisDb" (default "0" .redisDb)) | nindent 12 }}
+            - name: SERVICE_NAME
+              value: {{ .name | quote }}
+            - name: DB_SCHEMA
+              value: {{ .schema | quote }}
+          resources:
+            {{- toYaml $defaults.celeryWorker.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - app.celery_app
+                - inspect
+                - ping
+                - --timeout
+                - "10"
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            timeoutSeconds: 15
+            failureThreshold: 3
+{{- end }}
+{{- end }}

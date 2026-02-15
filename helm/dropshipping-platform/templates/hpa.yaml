@@ -1,0 +1,74 @@
+{{/*
+Horizontal Pod Autoscalers — auto-scales core backend and each SaaS backend
+based on CPU and memory utilization thresholds.
+*/}}
+{{- if .Values.hpa.enabled }}
+# -------------------------------------------------------------------------
+# Core Backend HPA
+# -------------------------------------------------------------------------
+{{- if .Values.core.backend.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-core-backend
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "core-backend") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "dropshipping.fullname" . }}-core-backend
+  minReplicas: {{ .Values.hpa.minReplicas }}
+  maxReplicas: {{ .Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.targetMemoryUtilizationPercentage }}
+{{- end }}
+# -------------------------------------------------------------------------
+# SaaS Backend HPAs — one per enabled service
+# -------------------------------------------------------------------------
+{{- range .Values.saas.services }}
+{{- if .enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "dropshipping.fullname" $ }}-{{ .name }}-backend
+  namespace: {{ include "dropshipping.namespace" $ }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" $ "component" (printf "%s-backend" .name)) | nindent 4 }}
+    app.kubernetes.io/service-type: saas
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "dropshipping.fullname" $ }}-{{ .name }}-backend
+  minReplicas: {{ $.Values.hpa.minReplicas }}
+  maxReplicas: {{ $.Values.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $.Values.hpa.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ $.Values.hpa.targetMemoryUtilizationPercentage }}
+{{- end }}
+{{- end }}
+{{- end }}

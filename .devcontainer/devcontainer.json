@@ -1,5 +1,5 @@
 {
-  "name": "Dropshipping Platform",
+  "name": "Dropshipping Platform + SaaS Suite",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspaces/ecomm",
@@ -11,17 +11,50 @@
   },
 
   "forwardPorts": [
-    8000,
-    3000,
-    3001,
-    5432,
-    6379,
-    5555
+    8000, 3000, 3001,
+    8200, 8300, 3300, 3200,
+    8101, 8102, 8103, 8104, 8105, 8106, 8107, 8108,
+    3101, 3102, 3103, 3104, 3105, 3106, 3107, 3108,
+    3201, 3202, 3203, 3204, 3205, 3206, 3207, 3208,
+    "db:5432", 6379, 5555
   ],
   "portsAttributes": {
     "8000": { "label": "Backend API (FastAPI)" },
     "3000": { "label": "Dashboard (Next.js)" },
     "3001": { "label": "Storefront (Next.js)" },
+
+    "8200": { "label": "LLM Gateway API" },
+    "8300": { "label": "Admin API" },
+    "3300": { "label": "Admin Dashboard" },
+    "3200": { "label": "Master Landing Page" },
+
+    "8101": { "label": "TrendScout API" },
+    "8102": { "label": "ContentForge API" },
+    "8103": { "label": "RankPilot API" },
+    "8104": { "label": "FlowSend API" },
+    "8105": { "label": "SpyDrop API" },
+    "8106": { "label": "PostPilot API" },
+    "8107": { "label": "AdScale API" },
+    "8108": { "label": "ShopChat API" },
+
+    "3101": { "label": "TrendScout Dashboard" },
+    "3102": { "label": "ContentForge Dashboard" },
+    "3103": { "label": "RankPilot Dashboard" },
+    "3104": { "label": "FlowSend Dashboard" },
+    "3105": { "label": "SpyDrop Dashboard" },
+    "3106": { "label": "PostPilot Dashboard" },
+    "3107": { "label": "AdScale Dashboard" },
+    "3108": { "label": "ShopChat Dashboard" },
+
+    "3201": { "label": "TrendScout Landing" },
+    "3202": { "label": "ContentForge Landing" },
+    "3203": { "label": "RankPilot Landing" },
+    "3204": { "label": "FlowSend Landing" },
+    "3205": { "label": "SpyDrop Landing" },
+    "3206": { "label": "PostPilot Landing" },
+    "3207": { "label": "AdScale Landing" },
+    "3208": { "label": "ShopChat Landing" },
+
     "5432": { "label": "PostgreSQL" },
     "6379": { "label": "Redis" },
     "5555": { "label": "Flower (Celery Monitor)" }
@@ -44,7 +77,7 @@
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.testing.pytestEnabled": true,
-        "python.testing.pytestArgs": ["backend/tests"],
+        "python.testing.pytestArgs": ["dropshipping/backend/tests"],
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff",
           "editor.formatOnSave": true
@@ -61,7 +94,7 @@
           {
             "name": "Local Dev DB",
             "driver": "PostgreSQL",
-            "server": "localhost",
+            "server": "db",
             "port": 5432,
             "database": "dropshipping",
             "username": "dropship",

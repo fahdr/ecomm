@@ -1,0 +1,17 @@
+apiVersion: v2
+name: dropshipping-platform
+description: >-
+  Helm chart for the Dropshipping Platform monorepo.
+  Deploys the core platform, 9 SaaS services, LLM Gateway, Admin dashboard,
+  master landing page, PostgreSQL, Redis, and Celery workers.
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - dropshipping
+  - ecommerce
+  - saas
+  - platform
+maintainers:
+  - name: Platform Team
+    email: platform@example.com

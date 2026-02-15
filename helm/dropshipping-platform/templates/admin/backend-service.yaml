@@ -1,0 +1,21 @@
+{{/*
+Admin Backend Service — exposes the admin API as a ClusterIP service.
+*/}}
+{{- if .Values.admin.backend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-admin-backend
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "admin-backend") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.admin.backend.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "dropshipping.selectorLabels" (dict "root" . "component" "admin-backend") | nindent 4 }}
+{{- end }}

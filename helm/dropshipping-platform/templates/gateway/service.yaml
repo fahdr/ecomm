@@ -1,0 +1,22 @@
+{{/*
+LLM Gateway Service — exposes the gateway backend as a ClusterIP service.
+Internal services connect to this endpoint for all LLM requests.
+*/}}
+{{- if .Values.gateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-gateway
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "gateway") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.gateway.port }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "dropshipping.selectorLabels" (dict "root" . "component" "gateway") | nindent 4 }}
+{{- end }}

@@ -1,0 +1,60 @@
+{{/*
+Admin Backend Deployment — super admin API service.
+Provides cross-platform management, user administration, and system monitoring.
+*/}}
+{{- if .Values.admin.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-admin-backend
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "admin-backend") | nindent 4 }}
+spec:
+  replicas: {{ .Values.admin.backend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" . "component" "admin-backend") | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.componentLabels" (dict "root" . "component" "admin-backend") | nindent 8 }}
+      annotations:
+        checksum/secrets: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      {{- include "dropshipping.imagePullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "dropshipping.serviceAccountName" . }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: backend
+          image: {{ include "dropshipping.image" (dict "root" . "repo" .Values.admin.backend.image.repository "defaultRepo" "admin-backend" "tag" .Values.admin.backend.image.tag) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.admin.backend.port }}
+              protocol: TCP
+          env:
+            {{- include "dropshipping.backendEnv" (dict "root" . "redisDb" .Values.admin.backend.redisDb) | nindent 12 }}
+            - name: SERVICE_NAME
+              value: "admin"
+            - name: SERVICE_PORT
+              value: {{ .Values.admin.backend.port | quote }}
+            - name: DB_SCHEMA
+              value: "admin"
+            - name: CORS_ORIGINS
+              value: "https://admin-ui.{{ .Values.global.domain }}"
+            {{- range $key, $val := .Values.admin.backend.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.admin.backend.resources | nindent 12 }}
+          {{- include "dropshipping.livenessProbe" . | nindent 10 }}
+          {{- include "dropshipping.readinessProbe" . | nindent 10 }}
+{{- end }}

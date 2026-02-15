@@ -1,0 +1,286 @@
+# =============================================================================
+# Production Overrides
+# =============================================================================
+# Usage: helm install dropshipping . -f values.yaml -f values-production.yaml
+# =============================================================================
+
+global:
+  imageRegistry: "ghcr.io/dropshipping-platform"
+  imageTag: "v1.0.0"
+  imagePullPolicy: Always
+  imagePullSecrets:
+    - name: ghcr-credentials
+
+  domain: "dropshipping.com"
+
+  # In production, point to a managed database (e.g., RDS, Cloud SQL)
+  postgresql:
+    host: "prod-db.cluster-xxxx.us-east-1.rds.amazonaws.com"
+    port: 5432
+    user: "dropship_prod"
+    password: ""  # Use ExternalSecrets or sealed-secrets in real deployments
+    database: "dropshipping"
+
+  # In production, point to managed Redis (e.g., ElastiCache, Memorystore)
+  redis:
+    host: "prod-redis.xxxx.cache.amazonaws.com"
+    port: 6379
+
+  secrets:
+    jwtSecretKey: ""       # Populate via ExternalSecrets
+    stripeSecretKey: ""    # Populate via ExternalSecrets
+    stripeWebhookSecret: ""
+    stripeFreePrice: ""
+    stripeProPrice: ""
+    stripeEnterprisePrice: ""
+    llmGatewayKey: ""      # Populate via ExternalSecrets
+    platformWebhookSecret: ""
+    sentryDsn: ""
+
+# Disable in-cluster databases in production — use managed services
+postgresql:
+  enabled: false
+
+redis:
+  enabled: false
+
+# Core platform — higher replicas and resources for production
+core:
+  backend:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: "2"
+        memory: 1Gi
+
+  dashboard:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+
+  storefront:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+
+  celery:
+    worker:
+      replicas: 2
+      concurrency: 8
+      resources:
+        requests:
+          cpu: 500m
+          memory: 512Mi
+        limits:
+          cpu: "2"
+          memory: 1Gi
+    beat:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+# SaaS service production defaults
+saas:
+  defaults:
+    backend:
+      replicas: 2
+      resources:
+        requests:
+          cpu: 300m
+          memory: 384Mi
+        limits:
+          cpu: "1"
+          memory: 768Mi
+    dashboard:
+      replicas: 2
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    celeryWorker:
+      replicas: 2
+      concurrency: 4
+      resources:
+        requests:
+          cpu: 300m
+          memory: 384Mi
+        limits:
+          cpu: "1"
+          memory: 768Mi
+
+  # Override CORS for production domain
+  services:
+    - name: trendscout
+      enabled: true
+      backendPort: 8101
+      dashboardPort: 3101
+      schema: trendscout
+      displayName: "TrendScout"
+      corsOrigins: "https://trendscout.dropshipping.com"
+      redisDb: "0"
+
+    - name: contentforge
+      enabled: true
+      backendPort: 8102
+      dashboardPort: 3102
+      schema: contentforge
+      displayName: "ContentForge"
+      corsOrigins: "https://contentforge.dropshipping.com"
+      redisDb: "0"
+
+    - name: rankpilot
+      enabled: true
+      backendPort: 8103
+      dashboardPort: 3103
+      schema: rankpilot
+      displayName: "RankPilot"
+      corsOrigins: "https://rankpilot.dropshipping.com"
+      redisDb: "0"
+
+    - name: flowsend
+      enabled: true
+      backendPort: 8104
+      dashboardPort: 3104
+      schema: flowsend
+      displayName: "FlowSend"
+      corsOrigins: "https://flowsend.dropshipping.com"
+      redisDb: "0"
+
+    - name: spydrop
+      enabled: true
+      backendPort: 8105
+      dashboardPort: 3105
+      schema: spydrop
+      displayName: "SpyDrop"
+      corsOrigins: "https://spydrop.dropshipping.com"
+      redisDb: "0"
+
+    - name: postpilot
+      enabled: true
+      backendPort: 8106
+      dashboardPort: 3106
+      schema: postpilot
+      displayName: "PostPilot"
+      corsOrigins: "https://postpilot.dropshipping.com"
+      redisDb: "0"
+
+    - name: adscale
+      enabled: true
+      backendPort: 8107
+      dashboardPort: 3107
+      schema: adscale
+      displayName: "AdScale"
+      corsOrigins: "https://adscale.dropshipping.com"
+      redisDb: "0"
+
+    - name: shopchat
+      enabled: true
+      backendPort: 8108
+      dashboardPort: 3108
+      schema: shopchat
+      displayName: "ShopChat"
+      corsOrigins: "https://shopchat.dropshipping.com"
+      redisDb: "0"
+
+    - name: sourcepilot
+      enabled: true
+      backendPort: 8109
+      dashboardPort: 3109
+      schema: sourcepilot
+      displayName: "SourcePilot"
+      corsOrigins: "https://sourcepilot.dropshipping.com"
+      redisDb: "0"
+
+# LLM Gateway — higher resources for production AI workloads
+gateway:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi
+
+# Admin
+admin:
+  backend:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+
+  dashboard:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# Landing
+landing:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Ingress — enable TLS in production
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  tls:
+    enabled: true
+    secretName: "dropshipping-tls"
+
+# HPA — enabled with production thresholds
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+# Network policies enabled
+networkPolicy:
+  enabled: true
+
+# PDB enabled for production availability
+pdb:
+  enabled: true
+  minAvailable: 1

@@ -1,0 +1,69 @@
+{{/*
+SaaS Dashboard Deployments — one Next.js dashboard per enabled service.
+*/}}
+{{- $root := . -}}
+{{- $defaults := .Values.saas.defaults -}}
+{{- range .Values.saas.services }}
+{{- if .enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dropshipping.fullname" $root }}-{{ .name }}-dashboard
+  namespace: {{ include "dropshipping.namespace" $root }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" $root "component" (printf "%s-dashboard" .name)) | nindent 4 }}
+    app.kubernetes.io/service-type: saas
+spec:
+  replicas: {{ default $defaults.dashboard.replicas .dashboardReplicas }}
+  selector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" $root "component" (printf "%s-dashboard" .name)) | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "dropshipping.componentLabels" (dict "root" $root "component" (printf "%s-dashboard" .name)) | nindent 8 }}
+        app.kubernetes.io/service-type: saas
+    spec:
+      {{- include "dropshipping.imagePullSecrets" $root | nindent 6 }}
+      serviceAccountName: {{ include "dropshipping.serviceAccountName" $root }}
+      containers:
+        - name: dashboard
+          image: {{ include "dropshipping.image" (dict "root" $root "repo" "" "defaultRepo" (printf "%s-dashboard" .name) "tag" "") }}
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .dashboardPort }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: {{ .dashboardPort | quote }}
+            - name: NEXT_PUBLIC_API_URL
+              value: "https://{{ .name }}-api.{{ $root.Values.global.domain }}"
+          resources:
+            {{- toYaml $defaults.dashboard.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+{{- end }}
+{{- end }}

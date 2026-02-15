@@ -11,6 +11,10 @@ build/
 node_modules/
 .next/
 out/
+next-env.d.ts
+
+# Lock files — track root-level, ignore service dashboards
+# (dashboard lock files are regenerated from package.json)
 
 # Environment
 .env
@@ -39,7 +43,19 @@ core
 e2e/playwright-report/
 e2e/test-results/
 test-results/
-storefront/test-results/
+
+# Backup files
+*.bak
+
+# Temp session docs (generated during dev, not for repo)
+e2e/AUTH_TEST_STATUS.md
+e2e/CONTINUATION_SESSION_SUMMARY.md
+e2e/E2E_SETUP_SUMMARY.md
+e2e/FINAL_SUMMARY.md
+e2e/QUICK_START.md
+e2e/TEST_STATUS_REPORT.md
+e2e/TEST_SUMMARY.md
+e2e/tests/create-remaining-tests.sh
 
 # Claude Code
 .claude/

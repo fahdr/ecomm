@@ -15,177 +15,94 @@
 | Store multi-tenancy| Single Next.js app + subdomain routing | One deployment, cheaper, data-driven per request |
 | AI                | Claude API (anthropic SDK)      | Primary LLM for product analysis, content generation   |
 | File storage      | S3 / Cloudflare R2              | Images, assets, via boto3                              |
-| Automation service | Separate Python/FastAPI service | Decoupled from core backend for independent scaling and future extraction as standalone product |
+| SaaS services      | 9 standalone FastAPI services   | Each independently hostable; shared code via packages/py-core |
+| ServiceBridge      | HMAC-signed Celery webhooks     | Platform events auto-dispatched to connected services         |
+| LLM Gateway        | Centralized AI routing          | Single API key management point for all AI providers          |
 
 ---
 
-## Project Structure
+## Project Structure (Phase 3 Monorepo)
 
 ```
-dropshipping-platform/
-├── backend/                     # Python (FastAPI)
-│   ├── app/
-│   │   ├── main.py              # FastAPI app entry point
-│   │   ├── config.py            # Settings (pydantic-settings)
-│   │   ├── database.py          # SQLAlchemy engine + session
-│   │   ├── models/              # SQLAlchemy models
-│   │   │   ├── user.py
-│   │   │   ├── store.py
-│   │   │   ├── product.py
-│   │   │   ├── subscription.py
-│   │   │   └── order.py
-│   │   ├── schemas/             # Pydantic request/response schemas
-│   │   ├── api/                 # FastAPI routers
-│   │   │   ├── auth.py
-│   │   │   ├── stores.py
-│   │   │   ├── products.py
-│   │   │   ├── subscriptions.py
-│   │   │   └── webhooks.py
-│   │   ├── services/            # Business logic (core backend only)
-│   │   │   ├── auth_service.py
-│   │   │   ├── store_service.py
-│   │   │   ├── product_service.py
-│   │   │   └── stripe_service.py
-│   │   ├── tasks/               # Celery tasks (core backend only)
-│   │   │   ├── celery_app.py    # Celery instance + config
-│   │   │   └── store_tasks.py   # Store-related background tasks
-│   │   └── utils/               # Shared utilities
-│   ├── alembic/                 # Database migrations
-│   │   └── versions/
-│   ├── tests/
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── pyproject.toml
+ecomm/
+├── dropshipping/                # Core dropshipping platform
+│   ├── backend/                 # Python (FastAPI) — port 8000
+│   │   ├── app/
+│   │   │   ├── main.py          # FastAPI app entry point
+│   │   │   ├── config.py        # Settings (pydantic-settings)
+│   │   │   ├── database.py      # SQLAlchemy engine + session
+│   │   │   ├── models/          # 20+ SQLAlchemy models
+│   │   │   ├── schemas/         # Pydantic request/response schemas
+│   │   │   ├── api/             # FastAPI routers (30+ endpoints)
+│   │   │   │   ├── bridge.py    # ServiceBridge activity/dispatch API
+│   │   │   │   ├── products.py  # fires platform events on CRUD
+│   │   │   │   ├── orders.py    # fires order.shipped events
+│   │   │   │   └── ...
+│   │   │   ├── services/        # Business logic
+│   │   │   │   ├── bridge_service.py  # HMAC signing, event queries
+│   │   │   │   └── ...
+│   │   │   ├── tasks/           # Celery tasks (21 task functions)
+│   │   │   │   ├── bridge_tasks.py    # Platform event dispatch to services
+│   │   │   │   ├── celery_app.py
+│   │   │   │   └── ...
+│   │   │   └── utils/
+│   │   ├── alembic/             # Database migrations
+│   │   └── tests/               # 580 tests
+│   ├── dashboard/               # Next.js admin dashboard — port 3000
+│   └── storefront/              # Next.js customer storefront — port 3001
 │
-├── dashboard/                   # Next.js (Admin Dashboard)
-│   ├── src/
-│   │   ├── app/                 # App Router pages
-│   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx         # Dashboard home
-│   │   │   ├── login/
-│   │   │   ├── register/
-│   │   │   ├── stores/
-│   │   │   ├── products/
-│   │   │   ├── analytics/
-│   │   │   └── settings/
-│   │   ├── components/          # Reusable UI components
-│   │   │   ├── ui/              # Shadcn/ui components
-│   │   │   ├── layout/          # Sidebar, header, etc.
-│   │   │   └── features/        # Feature-specific components
-│   │   ├── lib/                 # Utilities
-│   │   │   ├── api.ts           # API client (fetch wrapper)
-│   │   │   └── auth.ts          # JWT token management
-│   │   └── hooks/               # Custom React hooks
-│   ├── package.json
-│   ├── Dockerfile
-│   └── next.config.js
+├── packages/                    # Shared packages
+│   ├── py-core/                 # ecomm_core: auth, billing, DB, models, health, testing
+│   ├── py-connectors/           # ecomm_connectors: Shopify, WooCommerce adapters
+│   ├── py-suppliers/            # ecomm_suppliers: AliExpress, CJDropship clients, normalizer
+│   └── ts-ui-kit/               # Shared TypeScript UI components
 │
-├── storefront/                  # Next.js (Customer-Facing Stores)
-│   ├── src/
-│   │   ├── app/                 # App Router pages
-│   │   │   ├── layout.tsx
-│   │   │   ├── page.tsx         # Store homepage
-│   │   │   ├── products/
-│   │   │   ├── cart/
-│   │   │   ├── checkout/
-│   │   │   └── blog/
-│   │   ├── components/
-│   │   ├── lib/
-│   │   │   ├── api.ts           # Backend API client
-│   │   │   └── store-context.ts # Current store (from subdomain)
-│   │   └── middleware.ts        # Subdomain → store_id resolution
-│   ├── package.json
-│   ├── Dockerfile
-│   └── next.config.js
+├── trendscout/                  # AI Product Research (Syne / DM Sans)
+│   ├── backend/                 # port 8101 — 158 tests
+│   ├── dashboard/               # port 3101
+│   └── landing/                 # port 3201
+├── contentforge/                # AI Content Generator (Clash Display / Satoshi)
+│   ├── backend/                 # port 8102 — 116 tests
+│   ├── dashboard/               # port 3102
+│   └── landing/                 # port 3202
+├── rankpilot/                   # Automated SEO Engine (General Sans / Nunito Sans)
+│   ├── backend/                 # port 8103 — 165 tests
+│   ├── dashboard/               # port 3103
+│   └── landing/                 # port 3203
+├── flowsend/                    # Smart Email Marketing (Satoshi / Source Sans 3)
+│   ├── backend/                 # port 8104 — 151 tests
+│   ├── dashboard/               # port 3104
+│   └── landing/                 # port 3204
+├── spydrop/                     # Competitor Intelligence (Geist / Geist)
+│   ├── backend/                 # port 8105 — 156 tests
+│   ├── dashboard/               # port 3105
+│   └── landing/                 # port 3205
+├── postpilot/                   # Social Media Automation (Plus Jakarta Sans / Quicksand)
+│   ├── backend/                 # port 8106 — 157 tests
+│   ├── dashboard/               # port 3106
+│   └── landing/                 # port 3206
+├── adscale/                     # AI Ad Campaign Manager (Anybody / Manrope)
+│   ├── backend/                 # port 8107 — 164 tests
+│   ├── dashboard/               # port 3107
+│   └── landing/                 # port 3207
+├── shopchat/                    # AI Shopping Assistant (Outfit / Lexend)
+│   ├── backend/                 # port 8108 — 113 tests
+│   ├── dashboard/               # port 3108
+│   └── landing/                 # port 3208
+├── sourcepilot/                 # Automated Supplier Product Import (Outfit / DM Sans)
+│   ├── backend/                 # port 8109 — 130 tests
+│   ├── dashboard/               # port 3109
+│   └── landing/                 # port 3209
 │
-├── automation/                  # Python (Automation Service — Phase 2: Features A1-A8)
-│   │                            # Standalone service: can be extracted as a
-│   │                            # separate product in the future.
-│   ├── app/
-│   │   ├── main.py              # FastAPI app entry point (port 8001)
-│   │   ├── config.py            # Settings (pydantic-settings)
-│   │   ├── database.py          # SQLAlchemy engine + session (own DB or shared)
-│   │   ├── models/              # SQLAlchemy models (automation-specific)
-│   │   │   ├── watchlist_item.py    # Product research results
-│   │   │   ├── blog_post.py         # AI-generated blog posts
-│   │   │   ├── email_flow.py        # Email automation flows
-│   │   │   ├── email_event.py       # Email event tracking
-│   │   │   ├── competitor.py        # Competitor monitoring
-│   │   │   ├── social_post.py       # Social media posts
-│   │   │   └── ad_campaign.py       # Ad campaign tracking
-│   │   ├── schemas/             # Pydantic request/response schemas
-│   │   ├── api/                 # FastAPI routers
-│   │   │   ├── research.py      # Product research endpoints
-│   │   │   ├── import_.py       # Product import endpoints
-│   │   │   ├── seo.py           # SEO automation endpoints
-│   │   │   ├── email.py         # Email automation endpoints
-│   │   │   ├── competitors.py   # Competitor monitoring endpoints
-│   │   │   ├── social.py        # Social media automation endpoints
-│   │   │   └── ads.py           # Ad campaign management endpoints
-│   │   ├── services/            # Business logic
-│   │   │   ├── research_service.py      # AliExpress, Reddit, Trends
-│   │   │   ├── ai_service.py            # Claude API for content generation
-│   │   │   ├── import_service.py        # Product import pipeline
-│   │   │   ├── seo_service.py           # Sitemap, schema, blog generation
-│   │   │   ├── email_service.py         # SendGrid integration
-│   │   │   ├── image_service.py         # Image download + optimization
-│   │   │   ├── competitor_service.py    # Competitor scraping + analysis
-│   │   │   ├── social_service.py        # Social media posting (Meta, TikTok)
-│   │   │   └── ads_service.py           # Google/Meta ads management
-│   │   ├── tasks/               # Celery tasks
-│   │   │   ├── celery_app.py    # Own Celery instance + config
-│   │   │   ├── research_tasks.py    # Daily product research
-│   │   │   ├── import_tasks.py      # Product import pipeline
-│   │   │   ├── seo_tasks.py         # Weekly SEO optimization
-│   │   │   ├── email_tasks.py       # Email flow execution
-│   │   │   ├── competitor_tasks.py  # Daily competitor scanning
-│   │   │   ├── social_tasks.py      # Social media scheduling/posting
-│   │   │   └── ads_tasks.py         # Ad performance sync + optimization
-│   │   └── utils/               # Shared utilities
-│   ├── alembic/                 # Own database migrations
-│   │   └── versions/
-│   ├── tests/
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── pyproject.toml
-│
-├── k8s/                         # Kubernetes manifests
-│   ├── base/                    # Shared resources
-│   │   ├── namespace.yaml
-│   │   ├── postgres.yaml
-│   │   ├── redis.yaml
-│   │   └── secrets.yaml
-│   ├── backend/
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   └── hpa.yaml
-│   ├── celery/
-│   │   ├── worker-deployment.yaml
-│   │   ├── beat-deployment.yaml
-│   │   └── flower-deployment.yaml
-│   ├── automation/
-│   │   ├── deployment.yaml          # Automation API
-│   │   ├── service.yaml
-│   │   ├── worker-deployment.yaml   # Automation Celery workers
-│   │   └── beat-deployment.yaml     # Automation Celery Beat
-│   ├── dashboard/
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   └── ingress.yaml
-│   ├── storefront/
-│   │   ├── deployment.yaml
-│   │   ├── service.yaml
-│   │   └── ingress.yaml         # Wildcard subdomain routing
-│   └── kustomization.yaml
-│
-├── docker-compose.yml           # Local development
-├── .github/
-│   └── workflows/
-│       ├── backend.yml          # pytest + deploy
-│       ├── automation.yml       # pytest + deploy (automation service)
-│       ├── dashboard.yml        # build + deploy
-│       └── storefront.yml       # build + deploy
-└── plan/                        # This planning directory
+├── llm-gateway/                 # Centralized AI provider routing — port 8200
+│   └── backend/                 # 42 tests
+├── admin/                       # Super admin dashboard — port 8300
+│   ├── backend/                 # 34 tests
+│   └── dashboard/
+├── master-landing/              # Suite-wide marketing landing page
+├── _template/                   # Service scaffold for new services
+├── e2e/                         # Playwright end-to-end tests (62 spec files)
+└── plan/                        # Architecture docs, backlog
 ```
 
 ---
@@ -260,55 +177,47 @@ dropshipping-platform/
 | A8: AI Shopping Assistant | `chat_conversations` |
 | F29: A/B Testing | `ab_tests`, `ab_test_assignments`, `ab_test_conversions` |
 
-## Data Model (Automation Service)
+## ServiceBridge — Platform Event Integration
+
+The ServiceBridge connects the dropshipping platform to all 8 SaaS services via
+HMAC-signed HTTP webhooks dispatched through Celery background tasks.
+
+### Event Flow
 
 ```
-                          ┌──────────┐
-                          │  Store    │  (referenced by store_id, owned by backend)
-                          └──────────┘
-                    ┌─────────┼──────────┬──────────────┐
-           has many │         │          │              │
-                    ▼         ▼          ▼              ▼
-      ┌────────────────┐ ┌───────────┐ ┌────────────┐ ┌────────────┐
-      │ WatchlistItem   │ │ BlogPost  │ │ Competitor  │ │ SocialPost │
-      │ (research       │ │ (SEO      │ │ (monitor    │ │ (social    │
-      │  results)       │ │  content) │ │  rivals)    │ │  marketing)│
-      └────────────────┘ └───────────┘ └────────────┘ └────────────┘
-                                            │
-                                   has many │
-                                            ▼
-                                   ┌──────────────────┐
-                                   │ CompetitorProduct │
-                                   └──────────────────┘
-
-                          ┌──────────┐
-                          │  Store    │
-                          └──────────┘
-                    ┌─────────┼──────────┐
-           has many │         │          │
-                    ▼         ▼          ▼
-            ┌───────────────┐ ┌──────────┐ ┌────────────┐
-            │ EmailFlow      │ │AdCampaign│ │ AdAccount  │
-            │ EmailCampaign  │ └──────────┘ └────────────┘
-            │ EmailUnsubscribe│
-            └───────────────┘
-                   │
-          has many │
-                   ▼
-            ┌────────────┐
-            │ EmailEvent  │
-            └────────────┘
+Product CRUD / Order Events / Customer Registration
+  └─→ fire_platform_event() [lazy import]
+        └─→ dispatch_platform_event.delay() [Celery task]
+              ├─→ Query ServiceIntegration for connected services
+              ├─→ Filter by EVENT_SERVICE_MAP
+              ├─→ POST to each service with HMAC-SHA256 signature
+              └─→ Record BridgeDelivery for each attempt
 ```
 
-**Automation tables:** `watchlist_items`, `blog_posts`, `email_flows`, `email_campaigns`,
-`email_events`, `email_unsubscribes`, `competitors`, `competitor_products`, `social_posts`,
-`ad_campaigns`, `ad_accounts`
+### Event → Service Mapping
 
-> **Service boundary:** The automation service references `store_id` and `user_id`
-> from the core backend but does NOT own those tables. It communicates with the
-> backend via its internal HTTP API to fetch store/product data. This keeps the
-> services decoupled so the automation service can be extracted as a standalone
-> product in the future.
+| Event | Target Services |
+|-------|----------------|
+| `product.created` | ContentForge, RankPilot, TrendScout, PostPilot, AdScale, ShopChat |
+| `product.updated` | ContentForge, RankPilot, ShopChat |
+| `order.created` | FlowSend, SpyDrop |
+| `order.shipped` | FlowSend |
+| `customer.created` | FlowSend |
+
+### Key Files
+
+- `dropshipping/backend/app/tasks/bridge_tasks.py` — Celery task with EVENT_SERVICE_MAP
+- `dropshipping/backend/app/services/bridge_service.py` — HMAC signing, activity queries
+- `dropshipping/backend/app/api/bridge.py` — REST API for dashboard (5 endpoints)
+- `dropshipping/backend/app/models/bridge_delivery.py` — Delivery tracking model
+- Each service: `{service}/backend/app/api/webhooks.py` — Platform event receiver
+
+### Dashboard UI
+
+- **Service Activity page** (`/stores/[id]/services/activity`): Full activity log with KPIs, filters, pagination
+- **Store overview widget**: Recent service activity card on store dashboard
+- **Product/Order detail panels**: Per-resource service status grid (8 services)
+- **Services hub health indicators**: Last event status, failure count badges
 
 ---
 
@@ -421,103 +330,128 @@ Environment variables are pre-configured in `docker-compose.yml`:
 ```bash
 # Inside the devcontainer — run each in a separate terminal:
 
-# Backend API
-cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Dropshipping Backend API
+cd dropshipping/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# Automation Service API
-cd automation && uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
-
-# Dashboard
-cd dashboard && npm run dev          # → localhost:3000
+# Dropshipping Dashboard
+cd dropshipping/dashboard && npm run dev       # → localhost:3000
 
 # Storefront
-cd storefront && npm run dev -- -p 3001  # → localhost:3001
+cd dropshipping/storefront && npm run dev -- -p 3001  # → localhost:3001
 
-# Backend Celery worker
-cd backend && celery -A app.tasks.celery_app worker --loglevel=info
+# Celery worker
+cd dropshipping/backend && celery -A app.tasks.celery_app worker --loglevel=info
 
-# Backend Celery Beat (scheduler)
-cd backend && celery -A app.tasks.celery_app beat --loglevel=info
+# LLM Gateway
+cd llm-gateway/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8200
 
-# Automation Celery worker
-cd automation && celery -A app.tasks.celery_app worker --loglevel=info -Q automation
-
-# Automation Celery Beat (scheduler)
-cd automation && celery -A app.tasks.celery_app beat --loglevel=info
-
-# Flower (task monitor) — optional, monitors both backends
-cd backend && celery -A app.tasks.celery_app flower --port=5555
+# SaaS Services (each in its own terminal)
+cd trendscout/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8101
+cd contentforge/backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8102
+# ... etc. See Makefile for shortcuts.
 ```
 
 ### Ports
 | Port | Service                      |
 | ---- | ---------------------------- |
-| 8000 | Backend (FastAPI)             |
-| 8001 | Automation Service (FastAPI)  |
-| 3000 | Dashboard (Next.js)           |
+| 8000 | Dropshipping Backend (FastAPI) |
+| 3000 | Dropshipping Dashboard (Next.js) |
 | 3001 | Storefront (Next.js)          |
+| 8101-8108 | SaaS Services (FastAPI)  |
+| 3101-3108 | SaaS Dashboards (Next.js) |
+| 3201-3208 | SaaS Landing Pages (Next.js) |
+| 8200 | LLM Gateway (FastAPI)         |
+| 8300 | Admin Dashboard (FastAPI)     |
 | 5432 | PostgreSQL                    |
 | 6379 | Redis                         |
-| 5555 | Flower                        |
 
 ---
 
-## Automation Service — Design Principles
+## Shared Packages
 
-**Goal:** The automation service (Phase 2: Features A1-A8) is
-designed as an independent, self-contained service that can be extracted into a
-standalone product in the future without requiring changes to the core platform.
-Phase 2 is implemented after Phase 1 (core platform features) is stable.
+### packages/py-core (ecomm_core)
 
-### Separation Rules
+Provides consistent cross-service infrastructure:
+- **Auth**: JWT token creation/validation, `get_current_user` dependency
+- **Billing**: Stripe subscription router, webhook handler, billing service
+- **DB**: SQLAlchemy engine factory, session management, migration helpers
+- **Models**: Base model, User, Subscription, API Key models
+- **Health**: Standardized `/health` endpoint
+- **Testing**: Schema-based test isolation fixtures, test helpers
+- **Config**: `BaseServiceConfig` with common settings (incl. `platform_webhook_secret`)
 
-1. **Own codebase:** Lives in `/automation/` with its own `pyproject.toml`,
-   `requirements.txt`, `Dockerfile`, and Alembic migrations.
+### packages/py-connectors (ecomm_connectors)
 
-2. **Own database tables:** Automation-specific models (`WatchlistItem`,
-   `BlogPost`, `EmailFlow`, `EmailEvent`) are defined and migrated independently.
-   In local dev they share the same PostgreSQL instance; in production they can
-   use a separate database.
+Platform adapters for e-commerce integrations:
+- **Base adapter**: Abstract interface for platform operations
+- **Shopify connector**: Product sync, order import, inventory management
+- **WooCommerce connector**: REST API v3 integration
+- **Factory**: `get_connector(platform_name)` for dynamic platform selection
 
-3. **No direct imports from backend:** The automation service MUST NOT import
-   code from `backend/`. Shared concepts (e.g. store ID, user ID) are passed
-   via API calls or message payloads, not Python imports.
+### packages/py-suppliers (ecomm_suppliers)
 
-4. **Communication via HTTP API:** The automation service calls the core
-   backend's REST API to fetch store, product, and user data. It authenticates
-   using the user's JWT (forwarded from the dashboard) or a service-to-service
-   token.
+Supplier API client library for product sourcing:
+- **Base client**: `BaseSupplierClient` abstract class with async context manager support
+- **AliExpress client**: 24 realistic demo products across 4 categories
+- **CJDropship client**: 18 demo products with US warehouse fulfillment focus
+- **ProductNormalizer**: Markup calculation, psychological pricing, slug generation
+- **ImageService**: Async download, optimization, thumbnails via Pillow
+- **SupplierFactory**: `create(supplier_name)` for dynamic client selection
+- **Models**: `SupplierProduct`, `SupplierVariant`, `ShippingInfo`, `SupplierRating` (frozen Pydantic, Decimal pricing)
 
-5. **Own Celery instance:** The automation service runs its own Celery workers
-   and Beat scheduler, using a dedicated Redis queue (`-Q automation`). This
-   prevents automation tasks from competing with core backend tasks.
+---
 
-6. **Dashboard integration:** The dashboard (Next.js) calls the automation
-   service API directly for automation-specific pages (research results, SEO
-   overview, email flow builder). The dashboard's API client is configured
-   with both backend and automation service base URLs.
+## Background Tasks (Celery)
 
-### Extracting as a Standalone Product
+The platform uses Celery with Redis as the message broker for background task processing.
+Tasks are defined in `backend/app/tasks/` and cover all asynchronous operations.
 
-To extract the automation service as a separate product:
+### Task Modules
 
-1. Deploy `automation/` independently with its own infrastructure.
-2. Replace internal backend API calls with the public API (add auth).
-3. Provide its own user management or integrate with an OAuth provider.
-4. The core dropshipping platform continues to work without the automation
-   service — it simply loses the automation features.
+| Module | Tasks | Purpose |
+|--------|-------|---------|
+| `email_tasks.py` | 9 tasks | Transactional emails (order confirmation, shipping, delivery, refund, welcome, password reset, gift card, team invite, low stock) |
+| `webhook_tasks.py` | 1 task | HTTP webhook delivery with HMAC-SHA256 signing, failure tracking, auto-disable after 10 failures |
+| `bridge_tasks.py` | 1 task | ServiceBridge: dispatch platform events to connected SaaS services with HMAC signing |
+| `notification_tasks.py` | 4 tasks | In-app dashboard notifications (order events, reviews, low stock, fraud alerts) |
+| `fraud_tasks.py` | 1 task | Automated fraud risk scoring (5 heuristic signals, 0-100 score, auto-flag high/critical) |
+| `order_tasks.py` | 3 tasks | Post-payment orchestration, auto-fulfillment via suppliers, fulfillment status checks |
+| `analytics_tasks.py` | 2 tasks | Daily revenue aggregation, notification cleanup (90-day read notifications) |
 
-### What Each Feature Owns
+**Total: 21 task functions across 7 modules.**
 
-| Feature | Service Scope | Key Models | Celery Tasks |
-| ------- | ------------- | ---------- | ------------ |
-| A1: Product Research Automation | Research endpoints + AI scoring | `WatchlistItem` | `daily_product_research`, `run_all_stores_research` |
-| A2: AI Product Import | Import pipeline + AI content | (creates products via backend API) | `import_product` |
-| A3: SEO Automation | Sitemap, schema, blog | `BlogPost` | `weekly_seo_optimization` |
-| A4: Marketing Email Automation | Email flows, campaigns, abandoned cart | `EmailFlow`, `EmailCampaign`, `EmailEvent`, `EmailUnsubscribe` | `evaluate_flow_triggers`, `execute_flow_step`, `send_broadcast` |
-| A5: Competitor Monitoring | Competitor store scraping + alerts | `Competitor`, `CompetitorProduct` | `daily_competitor_scan` |
-| A6: Social Media Automation | Auto-post products to social platforms | `SocialPost` | `schedule_social_posts`, `post_to_social` |
-| A7: Ad Campaign Management | Google/Meta ad automation | `AdCampaign`, `AdAccount` | `sync_ad_performance`, `optimize_campaigns` |
+### Infrastructure
+
+- **Sync DB access:** Tasks use `SyncSessionFactory` (`backend/app/tasks/db.py`) with `psycopg2` driver since Celery workers run synchronously
+- **Celery Beat schedule:** 3 periodic tasks — daily analytics (2 AM), notification cleanup (3 AM), fulfillment checks (every 30 min)
+- **JSON serialization:** All UUIDs passed as strings to `.delay()`, converted back inside tasks
+- **Retry policy:** Most tasks use `max_retries=3` with 30-60s backoff
+
+### Event Flow
+
+```
+Stripe Webhook (checkout.session.completed)
+  └─→ process_paid_order.delay(order_id)
+        ├─→ run_fraud_check(order_id)           [sync — needs result]
+        ├─→ send_order_confirmation.delay()       [async]
+        ├─→ dispatch_webhook_event.delay()        [async]
+        ├─→ create_order_notification.delay()     [async]
+        ├─→ send_low_stock_alert.delay()          [if variant <= 5 units]
+        └─→ auto_fulfill_order.delay()            [if not fraud-flagged]
+              ├─→ send_order_shipped.delay()
+              ├─→ dispatch_webhook_event.delay("order.shipped")
+              └─→ create_order_notification.delay("order_shipped")
+```
+
+### Integration Points
+
+Tasks are dispatched from these API endpoints:
+- `POST /api/v1/webhooks/stripe` → `process_paid_order.delay()`
+- `POST /stores/{id}/orders/{id}/fulfill` → shipped email + webhook + notification
+- `POST /stores/{id}/orders/{id}/deliver` → delivered email + webhook + notification
+- `POST /stores/{id}/customers/register` → `send_welcome_email.delay()`
+- `POST /stores/{id}/customers/forgot-password` → `send_password_reset.delay()`
+- `POST /stores/{id}/refunds` → refund email + webhook
 
 ---
 
@@ -525,16 +459,21 @@ To extract the automation service as a separate product:
 
 ### Backend Unit/Integration Tests
 
-Backend tests use `pytest` with `httpx.AsyncClient` for API testing. Tests are located in `backend/tests/`.
+Backend tests use `pytest` with `httpx.AsyncClient` for API testing. Tests are located in `dropshipping/backend/tests/` and each service's `backend/tests/`.
 
 **Key patterns:**
 - Async test functions with `@pytest.mark.asyncio`
 - `conftest.py` provides `client` (AsyncClient) and `db` (async session) fixtures
+- **Schema-based test isolation**: Each service uses dedicated PostgreSQL schema (e.g. `trendscout_test`, `dropshipping_test`)
+- Raw asyncpg for schema creation/termination (not SQLAlchemy — more robust)
+- `search_path` set via SQLAlchemy `connect` event listener
 - DB cleanup via `TRUNCATE TABLE ... CASCADE` per test (not `drop_all`/`create_all`)
 - `NullPool` for test engine to avoid async connection-sharing issues
 - Tests create their own data via API calls (register user → create store → create resource)
 
-**Test files (28+ files, 329 tests):** `test_health.py`, `test_auth.py`, `test_public.py`, `test_products.py`, `test_stores.py`, `test_subscriptions.py`, `test_orders.py`, `test_customers.py`, `test_discounts.py`, `test_categories.py`, `test_suppliers.py`, `test_reviews.py`, `test_analytics.py`, `test_refunds.py`, `test_themes.py`, `test_tax.py`, `test_search.py`, `test_upsells.py`, `test_segments.py`, `test_gift_cards.py`, `test_currency.py`, `test_domains.py`, `test_store_webhooks.py`, `test_teams.py`, `test_notifications.py`, `test_bulk.py`, `test_fraud.py`, `test_ab_tests.py`
+**Dropshipping test files (44+ files, 580 tests):** Includes `test_bridge_api.py`, `test_bridge_service.py`, `test_bridge_tasks.py` (39 ServiceBridge tests) plus all existing feature tests.
+
+**8 standalone services** each have their own test suites (~1,180 tests total). Each service uses schema-based test isolation in the shared PostgreSQL database.
 
 ### E2E Tests (Playwright)
 
@@ -552,7 +491,7 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 - `createProductAPI()`, `createOrderAPI()`, `createCategoryAPI()`, etc. — resource creation helpers
 - `createRefundAPI()`, `createReviewAPI()` — complex resource creation (requires order/product chain)
 
-**E2E test files (187+ tests across 24 spec files):**
+**E2E test files (62 spec files across 12 projects):**
 
 | File | Covers |
 |------|--------|
@@ -574,12 +513,21 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 | `dashboard/billing.spec.ts` | Billing page, subscription |
 | `dashboard/seed-data.spec.ts` | Seed data verification (24 tests) |
 | `dashboard/phase2-polish.spec.ts` | KPIs, order notes, CSV export, command palette, inventory alerts |
+| `dashboard/service-bridge.spec.ts` | ServiceBridge API, activity page, services hub, product service status |
 | `storefront/browse.spec.ts` | Product browsing, homepage |
 | `storefront/cart-checkout.spec.ts` | Cart, checkout, payment |
 | `storefront/categories-search.spec.ts` | Storefront category nav + search |
 | `storefront/customer-accounts.spec.ts` | Customer auth, orders, wishlist |
 | `storefront/policies.spec.ts` | Policy pages |
 | `storefront/seed-data.spec.ts` | Seed data verification (12 tests) |
+| `sourcepilot/auth.spec.ts` | Registration, login, logout, redirects |
+| `sourcepilot/imports.spec.ts` | Import creation, listing, cancel, retry, bulk |
+| `sourcepilot/suppliers.spec.ts` | Supplier account CRUD, platform badges |
+| `sourcepilot/connections.spec.ts` | Store connection CRUD, set default |
+| `sourcepilot/price-watch.spec.ts` | Price watch CRUD, sync, multi-source |
+| `sourcepilot/products.spec.ts` | Product search, preview, source filters |
+| `sourcepilot/dashboard.spec.ts` | Dashboard KPIs, quick actions, nav |
+| `sourcepilot/billing.spec.ts` | Billing page, API keys, plan info |
 
 ### Common Frontend Bug Patterns (Caught by E2E Tests)
 
@@ -620,3 +568,78 @@ E2E tests use Playwright and are located in `e2e/tests/`. They test the full sta
 - **Order notes**: Internal memo field on orders (auto-save textarea in dashboard)
 - **Inventory alerts**: Low-stock warning cards on store overview (variants with < 5 units)
 - **Seed enhancements**: Order notes on demo orders, Cyberpunk theme assignment
+
+---
+
+## Phase 3: Monorepo with Shared Packages (Current)
+
+Phase 3 restructured the 8 SaaS services into a flat monorepo with shared packages,
+replacing the old `services/` subdirectory with root-level service directories and
+introducing `packages/py-core` and `packages/py-connectors` for shared code.
+
+### Products
+
+| # | Name | Tagline | Fonts | Backend | Tests |
+|---|------|---------|-------|---------|-------|
+| A1 | **TrendScout** | AI-Powered Product Research | Syne / DM Sans | :8101 | 158 |
+| A2 | **ContentForge** | AI Product Content Generator | Clash Display / Satoshi | :8102 | 116 |
+| A3 | **RankPilot** | Automated SEO Engine | General Sans / Nunito Sans | :8103 | 165 |
+| A4 | **FlowSend** | Smart Email Marketing | Satoshi / Source Sans 3 | :8104 | 151 |
+| A5 | **SpyDrop** | Competitor Intelligence | Geist / Geist | :8105 | 156 |
+| A6 | **PostPilot** | Social Media Automation | Plus Jakarta Sans / Quicksand | :8106 | 157 |
+| A7 | **AdScale** | AI Ad Campaign Manager | Anybody / Manrope | :8107 | 164 |
+| A8 | **ShopChat** | AI Shopping Assistant | Outfit / Lexend | :8108 | 113 |
+| A9 | **SourcePilot** | Automated Supplier Import | Outfit / DM Sans | :8109 | 130 |
+
+### Architecture Principles
+
+1. **Shared Packages**: Common auth, billing, DB logic in `packages/py-core` (`ecomm_core`)
+2. **Platform Connectors**: Shopify/WooCommerce adapters in `packages/py-connectors` (`ecomm_connectors`)
+3. **Config-Driven UI**: Dashboard and landing page customized via `service.config.ts` / `landing.config.ts`
+4. **Scaffolded from Template**: New services created from `_template/` scaffold
+5. **ServiceBridge**: Platform events (product/order/customer) auto-dispatched to connected services
+6. **Distinctive Typography**: Each service uses unique fonts (no Inter/Roboto/Arial/Space Grotesk)
+
+### Per-Service Stack
+
+Each service is a complete SaaS application:
+- **Backend**: FastAPI + SQLAlchemy 2.0 async + Celery + Alembic + `ecomm_core`
+- **Dashboard**: Next.js 16 (App Router) + Tailwind + config-driven branding
+- **Landing Page**: Next.js 16 (static export) with CSS animations
+- **Platform Events**: `POST /api/v1/webhooks/platform-events` receiver with HMAC verification
+
+### Platform Integration
+
+The dropshipping backend integrates with services via:
+- `ServiceIntegration` model tracking provisioned accounts per user
+- `POST /api/v1/auth/provision` endpoint in each service for user provisioning
+- `GET /api/v1/usage` endpoint for usage metrics
+- **ServiceBridge**: Automatic event dispatch via Celery (product/order/customer lifecycle)
+- Dashboard sidebar "AI & Automation" section with Service Activity page
+- LLM Gateway for centralized AI provider routing
+
+### Metrics
+
+| Component | Count |
+|---|---|
+| Standalone SaaS services | 9 |
+| Dropshipping backend tests | 580 |
+| TrendScout tests | 158 |
+| ContentForge tests | 116 |
+| RankPilot tests | 165 |
+| FlowSend tests | 151 |
+| SpyDrop tests | 156 |
+| PostPilot tests | 157 |
+| AdScale tests | 164 |
+| ShopChat tests | 113 |
+| SourcePilot tests | 130 |
+| py-core tests | 19 |
+| py-connectors tests | 40 |
+| LLM Gateway tests | 42 |
+| Admin tests | 34 |
+| **Total backend tests** | **~2,025** |
+| E2E test spec files | 62 |
+| Celery task functions | 21 (incl. bridge) |
+| ServiceBridge event types | 5 |
+
+See [SERVICES.md](SERVICES.md) for full service architecture details.

@@ -1,0 +1,18 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-postgresql
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.componentLabels" (dict "root" . "component" "postgresql") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: tcp-postgresql
+      port: {{ .Values.global.postgresql.port }}
+      targetPort: tcp-postgresql
+      protocol: TCP
+  selector:
+    {{- include "dropshipping.selectorLabels" (dict "root" . "component" "postgresql") | nindent 4 }}
+{{- end }}

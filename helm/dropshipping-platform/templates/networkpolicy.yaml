@@ -1,0 +1,240 @@
+{{/*
+Network Policies — restricts pod-to-pod communication.
+
+Rules:
+  1. Backends can reach PostgreSQL (port 5432) and Redis (port 6379).
+  2. Dashboards/frontends can reach their corresponding backend.
+  3. Ingress controller can reach all services.
+  4. All other traffic is denied by default.
+*/}}
+{{- if .Values.networkPolicy.enabled }}
+# =========================================================================
+# Default deny — block all ingress traffic unless explicitly allowed
+# =========================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-default-deny
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# =========================================================================
+# Allow ingress controller to reach all services
+# =========================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-allow-ingress-controller
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: http
+---
+# =========================================================================
+# Allow backends to reach PostgreSQL
+# =========================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-allow-backends-to-postgresql
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: postgresql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - core-backend
+                  - gateway
+                  - admin-backend
+                  {{- range .Values.saas.services }}
+                  {{- if .enabled }}
+                  - {{ .name }}-backend
+                  {{- end }}
+                  {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.global.postgresql.port }}
+---
+# =========================================================================
+# Allow backends to reach Redis
+# =========================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-allow-backends-to-redis
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - core-backend
+                  - gateway
+                  - admin-backend
+                  {{- range .Values.saas.services }}
+                  {{- if .enabled }}
+                  - {{ .name }}-backend
+                  {{- end }}
+                  {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.global.redis.port }}
+---
+# =========================================================================
+# Allow core dashboard to reach core backend
+# =========================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-allow-core-dashboard-to-backend
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" . "component" "core-backend") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "dropshipping.selectorLabels" (dict "root" . "component" "core-dashboard") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.core.backend.port }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "dropshipping.selectorLabels" (dict "root" . "component" "core-storefront") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.core.backend.port }}
+---
+# =========================================================================
+# Allow admin dashboard to reach admin backend
+# =========================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-allow-admin-dashboard-to-backend
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" . "component" "admin-backend") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "dropshipping.selectorLabels" (dict "root" . "component" "admin-dashboard") | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.admin.backend.port }}
+---
+# =========================================================================
+# Allow all backends to reach LLM Gateway
+# =========================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dropshipping.fullname" . }}-allow-backends-to-gateway
+  namespace: {{ include "dropshipping.namespace" . }}
+  labels:
+    {{- include "dropshipping.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" . "component" "gateway") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - core-backend
+                  - admin-backend
+                  {{- range .Values.saas.services }}
+                  {{- if .enabled }}
+                  - {{ .name }}-backend
+                  {{- end }}
+                  {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.gateway.port }}
+---
+# =========================================================================
+# Allow SaaS dashboards to reach their respective backends
+# =========================================================================
+{{- $root := . -}}
+{{- range .Values.saas.services }}
+{{- if .enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "dropshipping.fullname" $root }}-allow-{{ .name }}-dashboard-to-backend
+  namespace: {{ include "dropshipping.namespace" $root }}
+  labels:
+    {{- include "dropshipping.labels" $root | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "dropshipping.selectorLabels" (dict "root" $root "component" (printf "%s-backend" .name)) | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "dropshipping.selectorLabels" (dict "root" $root "component" (printf "%s-dashboard" .name)) | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .backendPort }}
+{{- end }}
+{{- end }}
+{{- end }}

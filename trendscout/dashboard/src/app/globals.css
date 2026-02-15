@@ -1,0 +1,264 @@
+/**
+ * Global stylesheet for the service dashboard.
+ *
+ * Uses Tailwind CSS v4 with the @theme inline directive. All color tokens
+ * are defined in OKLCH for perceptual uniformity and wide-gamut display support.
+ *
+ * The color values here are the DEFAULT template palette. When a new service
+ * is scaffolded, the primary/accent OKLCH values are injected from
+ * service.config.ts via CSS custom properties set in layout.tsx.
+ *
+ * **For Developers:**
+ *   - Colors follow the shadcn/ui naming convention (primary, secondary, muted, etc.)
+ *   - The --svc-primary-* and --svc-accent-* variables are overridden at runtime
+ *     via inline styles in layout.tsx, enabling per-service theming without rebuild.
+ *   - .bg-dot-pattern / .bg-gradient-mesh are utility classes for page backgrounds.
+ *   - Animation keyframes are defined at the bottom for use with motion components.
+ *
+ * **For QA Engineers:**
+ *   - Verify both light and dark mode render correctly (toggle in sidebar).
+ *   - Check that text maintains WCAG AA contrast ratios in both modes.
+ *   - Test on wide-gamut displays (P3) to confirm OKLCH colors render vividly.
+ *
+ * **For End Users:**
+ *   - The dashboard automatically respects your system dark/light preference.
+ *   - You can also toggle the theme manually from the sidebar.
+ */
+
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Theme Token Mapping ─── */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-heading);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* Animation durations as design tokens */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+
+  --animate-fade-in: fade-in var(--duration-normal) ease-out;
+  --animate-fade-in-up: fade-in-up var(--duration-normal) ease-out;
+  --animate-fade-in-down: fade-in-down var(--duration-normal) ease-out;
+  --animate-scale-in: scale-in var(--duration-normal) ease-out;
+  --animate-slide-in-right: slide-in-right var(--duration-normal) ease-out;
+  --animate-pulse-subtle: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ─── Light Mode ─── */
+:root {
+  --radius: 0.625rem;
+
+  /* Surfaces */
+  --background: oklch(0.985 0.002 80);
+  --foreground: oklch(0.185 0.015 270);
+  --card: oklch(0.98 0.003 80);
+  --card-foreground: oklch(0.185 0.015 270);
+  --popover: oklch(0.98 0.003 80);
+  --popover-foreground: oklch(0.185 0.015 270);
+
+  /* Primary — driven by service config */
+  --primary: var(--svc-primary, oklch(0.55 0.15 195));
+  --primary-foreground: oklch(0.985 0.002 80);
+
+  /* Secondary */
+  --secondary: oklch(0.955 0.005 80);
+  --secondary-foreground: oklch(0.185 0.015 270);
+
+  /* Muted */
+  --muted: oklch(0.92 0.005 80);
+  --muted-foreground: oklch(0.48 0.01 270);
+
+  /* Accent — driven by service config */
+  --accent: var(--svc-accent, oklch(0.75 0.15 75));
+  --accent-foreground: oklch(0.185 0.015 270);
+
+  /* Destructive */
+  --destructive: oklch(0.60 0.20 25);
+
+  /* Borders & Inputs */
+  --border: oklch(0.90 0.005 80);
+  --input: oklch(0.90 0.005 80);
+  --ring: var(--svc-primary, oklch(0.55 0.15 195));
+}
+
+/* ─── Dark Mode ─── */
+.dark {
+  /* Surfaces — deep charcoal with blue undertone */
+  --background: oklch(0.14 0.015 270);
+  --foreground: oklch(0.93 0.005 270);
+  --card: oklch(0.18 0.015 270);
+  --card-foreground: oklch(0.93 0.005 270);
+  --popover: oklch(0.18 0.015 270);
+  --popover-foreground: oklch(0.93 0.005 270);
+
+  /* Primary — brighter in dark mode for contrast */
+  --primary: var(--svc-primary-dark, oklch(0.72 0.15 195));
+  --primary-foreground: oklch(0.14 0.015 270);
+
+  /* Secondary */
+  --secondary: oklch(0.22 0.01 270);
+  --secondary-foreground: oklch(0.93 0.005 270);
+
+  /* Muted */
+  --muted: oklch(0.22 0.01 270);
+  --muted-foreground: oklch(0.65 0.01 270);
+
+  /* Accent — brighter in dark mode */
+  --accent: var(--svc-accent-dark, oklch(0.82 0.15 75));
+  --accent-foreground: oklch(0.14 0.015 270);
+
+  /* Destructive */
+  --destructive: oklch(0.70 0.20 25);
+
+  /* Borders & Inputs */
+  --border: oklch(0.25 0.015 270);
+  --input: oklch(0.25 0.015 270);
+  --ring: var(--svc-primary-dark, oklch(0.72 0.15 195));
+}
+
+/* ─── Base Layer ─── */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  }
+
+  /* Smooth theme transitions */
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+
+  /* Disable transitions where instant updates are needed */
+  [data-no-transition],
+  [data-no-transition] * {
+    transition: none !important;
+  }
+
+  /* Heading font utility */
+  h1, h2, h3, h4, h5, h6,
+  .font-heading {
+    font-family: var(--font-heading), ui-serif, Georgia, serif;
+    font-weight: 700;
+  }
+}
+
+/* ─── Background Patterns ─── */
+
+/** Subtle dot grid for dashboard content areas. */
+.bg-dot-pattern {
+  background-image: radial-gradient(circle, oklch(0.84 0.005 80) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.dark .bg-dot-pattern {
+  background-image: radial-gradient(circle, oklch(0.22 0.015 270) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/** Multi-layer gradient mesh for auth pages and hero sections. */
+.bg-gradient-mesh {
+  background:
+    radial-gradient(ellipse at 15% 45%, var(--svc-primary, oklch(0.55 0.15 195 / 0.12)) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 25%, var(--svc-accent, oklch(0.75 0.15 75 / 0.10)) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 85%, oklch(0.60 0.06 280 / 0.07) 0%, transparent 50%),
+    var(--background);
+}
+
+.dark .bg-gradient-mesh {
+  background:
+    radial-gradient(ellipse at 15% 45%, var(--svc-primary-dark, oklch(0.72 0.15 195 / 0.18)) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 25%, var(--svc-accent-dark, oklch(0.82 0.15 75 / 0.14)) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 85%, oklch(0.60 0.08 280 / 0.09) 0%, transparent 50%),
+    var(--background);
+}
+
+/** Glass card effect for elevated surfaces. */
+.glass-card {
+  background: oklch(0.98 0.003 80 / 0.70);
+  backdrop-filter: blur(12px);
+  border: 1px solid oklch(0.90 0.005 80 / 0.50);
+}
+
+.dark .glass-card {
+  background: oklch(0.18 0.015 270 / 0.60);
+  border: 1px solid oklch(0.25 0.015 270 / 0.40);
+}
+
+/* ─── Animation Keyframes ─── */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
