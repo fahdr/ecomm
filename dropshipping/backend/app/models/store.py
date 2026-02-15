@@ -37,6 +37,23 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
+class StoreType(str, enum.Enum):
+    """Type of store determining feature availability.
+
+    Attributes:
+        dropshipping: Traditional dropshipping store — products sourced from
+            suppliers and shipped directly to customers. No inventory management.
+        ecommerce: Standard ecommerce store — own inventory, warehouses,
+            and fulfillment. Full inventory management and whitelabeling.
+        hybrid: Combination of dropshipping and ecommerce — some products
+            sourced from suppliers, others from own warehouses.
+    """
+
+    dropshipping = "dropshipping"
+    ecommerce = "ecommerce"
+    hybrid = "hybrid"
+
+
 class StoreStatus(str, enum.Enum):
     """Possible statuses for a store.
 
@@ -93,6 +110,10 @@ class Store(Base):
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     favicon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     custom_css: Mapped[str | None] = mapped_column(Text, nullable=True)
+    store_type: Mapped[StoreType] = mapped_column(
+        Enum(StoreType), default=StoreType.dropshipping,
+        server_default="dropshipping", nullable=False
+    )
     status: Mapped[StoreStatus] = mapped_column(
         Enum(StoreStatus), default=StoreStatus.active, nullable=False
     )

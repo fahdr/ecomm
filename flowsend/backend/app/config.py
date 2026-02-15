@@ -44,7 +44,7 @@ class Settings(BaseServiceConfig):
     anthropic_api_key: str = ""
 
     # Email sending
-    email_sender_mode: str = "console"  # "console" or "smtp"
+    email_sender_mode: str = "console"  # "console", "smtp", "ses", "sendgrid"
     smtp_host: str = "localhost"
     smtp_port: int = 587
     smtp_username: str = ""
@@ -52,6 +52,28 @@ class Settings(BaseServiceConfig):
     smtp_use_tls: bool = True
     email_from_address: str = "noreply@flowsend.app"
     email_from_name: str = "FlowSend"
+
+    # AWS SES email provider
+    ses_region: str = "us-east-1"
+    ses_access_key_id: str = ""
+    ses_secret_access_key: str = ""
+    ses_configuration_set: str = ""
+
+    # SendGrid email provider
+    sendgrid_api_key: str = ""
+
+    # SMS sending
+    sms_provider_mode: str = "console"  # "console", "twilio", "sns"
+
+    # Twilio SMS provider
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
+
+    # AWS SNS SMS provider
+    sns_region: str = "us-east-1"
+    sns_access_key_id: str = ""
+    sns_secret_access_key: str = ""
 
     # Store connection defaults
     store_api_timeout: float = 30.0

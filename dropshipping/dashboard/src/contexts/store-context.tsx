@@ -30,6 +30,8 @@ export interface StoreData {
   niche: string;
   /** Current store status. */
   status: "active" | "paused" | "deleted";
+  /** Store type determining feature availability (inventory, warehouses). */
+  store_type?: "dropshipping" | "ecommerce" | "hybrid";
 }
 
 interface StoreContextValue {

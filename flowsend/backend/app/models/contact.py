@@ -72,11 +72,14 @@ class Contact(Base):
         ARRAY(String), default=list, nullable=False
     )
     custom_fields: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    phone_number: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     is_subscribed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    sms_subscribed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     subscribed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sms_unsubscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

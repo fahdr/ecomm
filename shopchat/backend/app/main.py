@@ -82,3 +82,8 @@ app.include_router(personality_router, prefix="/api/v1")
 app.include_router(widget_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(platform_webhooks_router, prefix="/api/v1")
+
+# ── AI suggestions ────────────────────────────────────────────────
+from app.api.suggestions import router as suggestions_router
+
+app.include_router(suggestions_router, prefix="/api/v1")

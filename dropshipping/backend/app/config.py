@@ -65,8 +65,31 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
 
+    # LLM Gateway (for AI features)
+    llm_gateway_url: str = "http://localhost:8200"
+    llm_gateway_key: str = "dev-gateway-key"
+    service_name: str = "dropshipping"
+
     # Platform Bridge (inter-service event delivery)
     platform_webhook_secret: str = "dev-platform-bridge-secret"
+
+    # DNS Management (Feature 6)
+    dns_provider_mode: str = "mock"  # mock, cloudflare, route53, google
+    cloudflare_api_token: str = ""
+    route53_access_key_id: str = ""
+    route53_secret_access_key: str = ""
+    route53_region: str = "us-east-1"
+    google_dns_project_id: str = ""
+    google_dns_credentials_json: str = ""
+    platform_ip_address: str = "192.0.2.1"  # Platform's public IP for A records
+    platform_cname_target: str = "proxy.platform.app"  # Platform's CNAME target
+
+    # Domain Purchasing (Feature 7)
+    domain_provider_mode: str = "mock"  # mock, resellerclub, squarespace
+    resellerclub_api_key: str = ""
+    resellerclub_reseller_id: str = ""
+    squarespace_api_key: str = ""
+    platform_nameservers: str = "ns1.platform.app,ns2.platform.app"
 
 
 settings = Settings()

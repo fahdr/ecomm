@@ -87,3 +87,8 @@ app.include_router(suppliers_router, prefix="/api/v1")
 app.include_router(products_router, prefix="/api/v1")
 app.include_router(connections_router, prefix="/api/v1")
 app.include_router(price_watch_router, prefix="/api/v1")
+
+# ── AI suggestions ────────────────────────────────────────────────
+from app.api.suggestions import router as suggestions_router
+
+app.include_router(suggestions_router, prefix="/api/v1")

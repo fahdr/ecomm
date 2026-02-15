@@ -12,6 +12,8 @@ from app.models.campaign import Campaign, EmailEvent
 from app.models.contact import Contact, ContactList
 from app.models.email_template import EmailTemplate
 from app.models.flow import Flow, FlowExecution
+from app.models.sms_event import SmsEvent
+from app.models.sms_template import SmsTemplate
 from app.models.store_connection import StoreConnection
 from app.models.subscription import Subscription
 from app.models.user import User
@@ -28,5 +30,7 @@ __all__ = [
     "FlowExecution",
     "Campaign",
     "EmailEvent",
+    "SmsTemplate",
+    "SmsEvent",
     "StoreConnection",
 ]

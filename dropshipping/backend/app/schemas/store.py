@@ -22,7 +22,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models.store import StoreStatus
+from app.models.store import StoreStatus, StoreType
 
 
 class CreateStoreRequest(BaseModel):
@@ -37,6 +37,7 @@ class CreateStoreRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="Store display name")
     niche: str = Field(..., min_length=1, max_length=100, description="Product niche")
     description: str | None = Field(None, description="Optional store description")
+    store_type: StoreType = Field(default=StoreType.dropshipping, description="Store type: dropshipping, ecommerce, or hybrid")
 
 
 class UpdateStoreRequest(BaseModel):
@@ -55,6 +56,16 @@ class UpdateStoreRequest(BaseModel):
     niche: str | None = Field(None, min_length=1, max_length=100)
     description: str | None = None
     status: StoreStatus | None = None
+
+
+class CloneStoreRequest(BaseModel):
+    """Schema for cloning an existing store.
+
+    Attributes:
+        new_name: Optional name override. Defaults to ``{original_name} (Copy)``.
+    """
+
+    new_name: str | None = Field(None, min_length=1, max_length=255, description="Optional name for the cloned store")
 
 
 class StoreResponse(BaseModel):
@@ -80,6 +91,21 @@ class StoreResponse(BaseModel):
     slug: str
     niche: str
     description: str | None
+    store_type: StoreType
     status: StoreStatus
     created_at: datetime
     updated_at: datetime
+
+
+class CloneStoreResponse(BaseModel):
+    """Schema for the clone operation result.
+
+    Attributes:
+        store: The newly created cloned store.
+        source_store_id: The ID of the store that was cloned.
+    """
+
+    model_config = {"from_attributes": True}
+
+    store: StoreResponse
+    source_store_id: uuid.UUID

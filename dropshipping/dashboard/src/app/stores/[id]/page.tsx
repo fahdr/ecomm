@@ -75,6 +75,7 @@ import {
   ExternalLink,
   Palette,
   Plus,
+  Copy,
 } from "lucide-react";
 import { InventoryAlerts } from "@/components/inventory-alerts";
 import {
@@ -147,6 +148,11 @@ export default function StoreSettingsPage() {
   // Delete state.
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+
+  // Clone state.
+  const [cloning, setCloning] = useState(false);
+  const [cloneDialogOpen, setCloneDialogOpen] = useState(false);
+  const [cloneName, setCloneName] = useState("");
 
   // Analytics KPI state.
   const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
@@ -256,6 +262,23 @@ export default function StoreSettingsPage() {
     router.push("/stores");
   }
 
+  /**
+   * Handle the clone confirmation.
+   *
+   * Sends a POST request to clone the store and redirects to the new store.
+   */
+  async function handleClone() {
+    setCloning(true);
+    const result = await api.post<{ store: Store }>(`/api/v1/stores/${storeId}/clone`, {
+      new_name: cloneName || null,
+    });
+    if (result.data) {
+      router.push(`/stores/${result.data.store.id}`);
+    }
+    setCloning(false);
+    setCloneDialogOpen(false);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -297,6 +320,10 @@ export default function StoreSettingsPage() {
                     Add Product
                   </Button>
                 </Link>
+                <Button variant="outline" size="sm" className="gap-1" onClick={() => { setCloneName(store?.name ? `${store.name} (Copy)` : ""); setCloneDialogOpen(true); }}>
+                  <Copy className="h-3.5 w-3.5" />
+                  Clone Store
+                </Button>
                 <Link href={`/stores/${storeId}/themes`}>
                   <Button variant="outline" size="sm" className="gap-1">
                     <Palette className="h-3.5 w-3.5" />
@@ -495,6 +522,33 @@ export default function StoreSettingsPage() {
             </Dialog>
           </CardContent>
         </Card>
+
+        {/* Clone Store Dialog */}
+        <Dialog open={cloneDialogOpen} onOpenChange={setCloneDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Clone Store</DialogTitle>
+              <DialogDescription>
+                Create a copy of this store with all products, themes, discounts, and settings. Orders and customer data will not be copied.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="clone-name">New Store Name</Label>
+              <Input
+                id="clone-name"
+                value={cloneName}
+                onChange={(e) => setCloneName(e.target.value)}
+                placeholder="My Store (Copy)"
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCloneDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleClone} disabled={cloning}>
+                {cloning ? "Cloning..." : "Clone Store"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </PageTransition>
   );

@@ -39,7 +39,7 @@ Service integration models:
 
 # Core models
 from app.models.user import User  # noqa: F401
-from app.models.store import Store, StoreStatus  # noqa: F401
+from app.models.store import Store, StoreStatus, StoreType  # noqa: F401
 from app.models.product import Product, ProductStatus, ProductVariant  # noqa: F401
 from app.models.order import Order, OrderItem, OrderStatus  # noqa: F401
 from app.models.subscription import Subscription, SubscriptionStatus  # noqa: F401
@@ -88,8 +88,13 @@ from app.models.gift_card import (  # noqa: F401
     TransactionType,
 )
 
-# F22 - Custom Domains
-from app.models.domain import CustomDomain, DomainStatus  # noqa: F401
+# F22 - Custom Domains + DNS Management + Domain Purchasing
+from app.models.domain import (  # noqa: F401
+    CustomDomain,
+    DomainStatus,
+    DnsRecordEntry,
+    DnsRecordType,
+)
 
 # F23 - Store Webhooks
 from app.models.webhook import (  # noqa: F401
@@ -121,6 +126,14 @@ from app.models.service_integration import (  # noqa: F401
     ServiceIntegration,
     ServiceName,
     ServiceTier,
+)
+
+# Inventory Management (Ecommerce Mode)
+from app.models.inventory import (  # noqa: F401
+    Warehouse,
+    InventoryLevel,
+    InventoryAdjustment,
+    AdjustmentReason,
 )
 
 # ServiceBridge delivery tracking (Phase 3 - Platform event integration)

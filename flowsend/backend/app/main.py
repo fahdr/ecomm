@@ -71,6 +71,7 @@ from app.api.templates import router as templates_router
 from app.api.flows import router as flows_router
 from app.api.analytics import router as analytics_router
 from app.api.connections import router as connections_router
+from app.api.sms import router as sms_router
 from app.api.webhooks import router as platform_webhooks_router
 
 app.include_router(contacts_router, prefix="/api/v1")
@@ -79,4 +80,10 @@ app.include_router(templates_router, prefix="/api/v1")
 app.include_router(flows_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(connections_router, prefix="/api/v1")
+app.include_router(sms_router, prefix="/api/v1")
 app.include_router(platform_webhooks_router, prefix="/api/v1")
+
+# ── AI suggestions ────────────────────────────────────────────────
+from app.api.suggestions import router as suggestions_router
+
+app.include_router(suggestions_router, prefix="/api/v1")

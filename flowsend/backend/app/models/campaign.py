@@ -29,7 +29,7 @@ For End Users:
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -86,6 +86,8 @@ class Campaign(Base):
         nullable=True,
     )
     subject: Mapped[str] = mapped_column(String(500), nullable=False)
+    channel: Mapped[str] = mapped_column(String(10), default="email", nullable=False)
+    sms_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="draft", nullable=False)
     scheduled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -157,6 +159,12 @@ class EmailEvent(Base):
         nullable=False,
     )
     event_type: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
+    provider_message_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    error_code: Mapped[str | None] = mapped_column(
+        String(100), nullable=True
+    )
     extra_metadata: Mapped[dict | None] = mapped_column("metadata", JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

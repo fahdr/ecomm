@@ -211,10 +211,21 @@ def get_email_sender() -> AbstractEmailSender:
     to return:
     - "console" (default): Returns ConsoleEmailSender (logs to stdout).
     - "smtp": Returns SmtpEmailSender (real SMTP delivery).
+    - "ses": Returns SesEmailSender (AWS SES delivery).
+    - "sendgrid": Returns SendGridEmailSender (SendGrid API delivery).
 
     Returns:
         An AbstractEmailSender instance ready for use.
     """
-    if settings.email_sender_mode == "smtp":
+    mode = settings.email_sender_mode
+    if mode == "smtp":
         return SmtpEmailSender()
+    elif mode == "ses":
+        from app.services.ses_email_sender import SesEmailSender
+
+        return SesEmailSender()
+    elif mode == "sendgrid":
+        from app.services.sendgrid_email_sender import SendGridEmailSender
+
+        return SendGridEmailSender()
     return ConsoleEmailSender()

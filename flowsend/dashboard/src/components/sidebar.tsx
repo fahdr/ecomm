@@ -51,6 +51,10 @@ import {
   Shield,
   Database,
   FileText,
+  MessageSquare,
+  MessageSquareText,
+  GitBranch,
+  LayoutTemplate,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -76,6 +80,10 @@ const iconMap: Record<string, LucideIcon> = {
   Shield,
   Database,
   FileText,
+  MessageSquare,
+  MessageSquareText,
+  GitBranch,
+  LayoutTemplate,
 };
 
 /** localStorage key for persisting sidebar collapsed state. */
@@ -143,13 +151,23 @@ export function Sidebar() {
 
   /**
    * Check if a navigation href matches the current route.
+   * Uses longest-prefix matching to handle nested routes correctly:
+   * e.g. when on /sms/templates, /sms/templates is active but /sms is not.
    *
    * @param href - The navigation item's href.
    * @returns True if the route is active.
    */
   function isActive(href: string): boolean {
     if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
+    if (!pathname.startsWith(href)) return false;
+    /* Check if a more specific sibling nav item matches the current pathname */
+    const moreSpecific = serviceConfig.navigation.some(
+      (item) =>
+        item.href !== href &&
+        item.href.startsWith(href) &&
+        pathname.startsWith(item.href)
+    );
+    return !moreSpecific;
   }
 
   return (

@@ -46,6 +46,8 @@ from app.api.notifications import router as notifications_router
 from app.api.search import router as search_router
 from app.api.store_webhooks import router as store_webhooks_router
 from app.api.domains import router as domains_router
+from app.api.dns import router as dns_router
+from app.api.domain_purchase import router as domain_purchase_router
 from app.api.ab_tests import router as ab_tests_router
 from app.api.fraud import router as fraud_router
 from app.api.bulk import router as bulk_router
@@ -54,6 +56,9 @@ from app.api.themes import router as themes_router, meta_router as themes_meta_r
 
 # --- Service integrations (Phase 2 - Automation & AI microservices A1-A8) ---
 from app.api.services import router as services_router
+
+# --- Inventory Management (Ecommerce Mode) ---
+from app.api.inventory import router as inventory_router
 
 # --- ServiceBridge (Phase 3 - Platform event integration) ---
 from app.api.bridge import router as bridge_router
@@ -114,6 +119,8 @@ app.include_router(bulk_router, prefix="/api/v1")
 app.include_router(teams_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(domains_router, prefix="/api/v1")
+app.include_router(dns_router, prefix="/api/v1")
+app.include_router(domain_purchase_router, prefix="/api/v1")
 app.include_router(store_webhooks_router, prefix="/api/v1")
 
 # --- Phase 1: Advanced features ---
@@ -128,11 +135,19 @@ app.include_router(themes_meta_router, prefix="/api/v1")
 # --- Service integrations (Phase 2) ---
 app.include_router(services_router, prefix="/api/v1")
 
+# --- Inventory Management (Ecommerce Mode) ---
+app.include_router(inventory_router, prefix="/api/v1")
+
 # --- ServiceBridge (Phase 3) ---
 app.include_router(bridge_router, prefix="/api/v1")
 
 # --- Data exports ---
 app.include_router(exports_router, prefix="/api/v1")
+
+# --- AI features ---
+from app.api.ai_features import router as ai_features_router
+
+app.include_router(ai_features_router, prefix="/api/v1")
 
 # --- Customer accounts (public storefront auth) ---
 app.include_router(customer_auth_router, prefix="/api/v1")

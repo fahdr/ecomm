@@ -94,6 +94,8 @@ export const serviceConfig: ServiceConfig = {
     { label: "Flows", href: "/flows", icon: "GitBranch" },
     { label: "Campaigns", href: "/campaigns", icon: "Megaphone" },
     { label: "Contacts", href: "/contacts", icon: "Users" },
+    { label: "SMS Campaigns", href: "/sms", icon: "MessageSquare" },
+    { label: "SMS Templates", href: "/sms/templates", icon: "MessageSquareText" },
     { label: "Templates", href: "/templates", icon: "LayoutTemplate" },
     { label: "Analytics", href: "/analytics", icon: "BarChart3" },
     { label: "API Keys", href: "/api-keys", icon: "Key" },

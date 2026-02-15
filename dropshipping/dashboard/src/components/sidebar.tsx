@@ -62,6 +62,8 @@ import {
   DollarSign,
   Zap,
   Activity,
+  Boxes,
+  Warehouse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -86,11 +88,15 @@ interface NavGroup {
  * Returns the store-mode navigation groups.
  *
  * @param storeId - The current store's UUID.
+ * @param storeType - The store type (dropshipping, ecommerce, hybrid).
+ *   Inventory links are only shown for ecommerce and hybrid stores.
  * @returns Array of navigation groups for store management.
  */
-function getStoreNavGroups(storeId: string): NavGroup[] {
+function getStoreNavGroups(storeId: string, storeType?: string): NavGroup[] {
   const base = `/stores/${storeId}`;
-  return [
+  const hasInventory = storeType === "ecommerce" || storeType === "hybrid";
+
+  const groups: NavGroup[] = [
     {
       title: "Commerce",
       items: [
@@ -102,6 +108,20 @@ function getStoreNavGroups(storeId: string): NavGroup[] {
         { label: "Upsells", href: `${base}/upsells`, icon: TrendingUp },
       ],
     },
+  ];
+
+  // Inventory group only for ecommerce/hybrid stores
+  if (hasInventory) {
+    groups.push({
+      title: "Inventory",
+      items: [
+        { label: "Inventory", href: `${base}/inventory`, icon: Boxes },
+        { label: "Warehouses", href: `${base}/warehouses`, icon: Warehouse },
+      ],
+    });
+  }
+
+  groups.push(
     {
       title: "Customers",
       items: [
@@ -145,7 +165,9 @@ function getStoreNavGroups(storeId: string): NavGroup[] {
         { label: "Webhooks", href: `${base}/webhooks`, icon: Webhook },
       ],
     },
-  ];
+  );
+
+  return groups;
 }
 
 /**
@@ -178,6 +200,7 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     Commerce: true,
+    Inventory: true,
     Customers: true,
     Marketing: true,
     Operations: true,
@@ -243,7 +266,7 @@ export function Sidebar() {
     return false;
   }
 
-  const storeNavGroups = isStoreMode && store ? getStoreNavGroups(store.id) : [];
+  const storeNavGroups = isStoreMode && store ? getStoreNavGroups(store.id, store.store_type) : [];
   const platformNavItems = getPlatformNavItems().map((item) => {
     if (item.label === "Notifications" && unreadNotifications > 0) {
       return { ...item, badge: unreadNotifications };

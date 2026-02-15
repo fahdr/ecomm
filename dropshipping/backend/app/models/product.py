@@ -37,6 +37,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum,
     ForeignKey,
@@ -177,8 +178,19 @@ class ProductVariant(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     sku: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    barcode: Mapped[str | None] = mapped_column(String(100), nullable=True)
     price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     inventory_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    weight: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    weight_unit: Mapped[str] = mapped_column(
+        String(10), default="kg", server_default="kg", nullable=False
+    )
+    track_inventory: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
+    allow_backorder: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -190,3 +202,9 @@ class ProductVariant(Base):
     )
 
     product = relationship("Product", back_populates="variants")
+    inventory_levels = relationship(
+        "InventoryLevel",
+        back_populates="variant",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )

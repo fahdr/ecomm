@@ -28,7 +28,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import check_store_limit, get_current_user
 from app.database import get_db
 from app.models.user import User
-from app.schemas.store import CreateStoreRequest, StoreResponse, UpdateStoreRequest
+from app.schemas.store import (
+    CloneStoreRequest,
+    CloneStoreResponse,
+    CreateStoreRequest,
+    StoreResponse,
+    UpdateStoreRequest,
+)
+from app.services.clone_service import clone_store
 from app.services.store_service import (
     create_store,
     delete_store,
@@ -67,6 +74,7 @@ async def create_store_endpoint(
         name=request.name,
         niche=request.niche,
         description=request.description,
+        store_type=request.store_type,
     )
     return StoreResponse.model_validate(store)
 
@@ -175,3 +183,54 @@ async def delete_store_endpoint(
     except ValueError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
     return StoreResponse.model_validate(store)
+
+
+@router.post(
+    "/{store_id}/clone",
+    response_model=CloneStoreResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def clone_store_endpoint(
+    store_id: uuid.UUID,
+    request: CloneStoreRequest,
+    current_user: User = Depends(check_store_limit),
+    db: AsyncSession = Depends(get_db),
+) -> CloneStoreResponse:
+    """Clone an existing store with all its products, themes, and settings.
+
+    Creates a deep copy of the source store including products, variants,
+    themes, discounts, categories, tax rules, and suppliers. Orders,
+    reviews, customers, and analytics are NOT cloned.
+
+    Plan enforcement: the ``check_store_limit`` dependency verifies
+    the user has not exceeded their plan's store limit.
+
+    Args:
+        store_id: The UUID of the store to clone.
+        request: Optional name override for the cloned store.
+        current_user: The authenticated user (verified within plan limits).
+        db: Async database session injected by FastAPI.
+
+    Returns:
+        CloneStoreResponse with the new store and the source store ID.
+
+    Raises:
+        HTTPException: 404 if the source store is not found or belongs to
+            another user.
+    """
+    try:
+        new_store = await clone_store(
+            db,
+            user_id=current_user.id,
+            source_store_id=store_id,
+            new_name=request.new_name,
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Store not found",
+        )
+    return CloneStoreResponse(
+        store=StoreResponse.model_validate(new_store),
+        source_store_id=store_id,
+    )

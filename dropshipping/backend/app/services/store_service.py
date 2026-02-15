@@ -20,7 +20,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.store import Store, StoreStatus
+from app.models.store import Store, StoreStatus, StoreType
 from app.services.theme_service import seed_preset_themes
 from app.utils.slug import generate_unique_slug
 
@@ -31,10 +31,13 @@ async def create_store(
     name: str,
     niche: str,
     description: str | None = None,
+    store_type: StoreType = StoreType.dropshipping,
 ) -> Store:
     """Create a new store for a user.
 
     Generates a unique slug from the store name and persists the store.
+    For ecommerce and hybrid stores, automatically creates a default
+    warehouse.
 
     Args:
         db: Async database session.
@@ -42,6 +45,7 @@ async def create_store(
         name: Display name of the store.
         niche: Product niche or category.
         description: Optional description text.
+        store_type: Type of store (dropshipping, ecommerce, or hybrid).
 
     Returns:
         The newly created Store ORM instance.
@@ -53,12 +57,19 @@ async def create_store(
         slug=slug,
         niche=niche,
         description=description,
+        store_type=store_type,
     )
     db.add(store)
     await db.flush()
 
     # Seed preset themes so the store has a default appearance.
     await seed_preset_themes(db, store.id)
+
+    # Auto-create a default warehouse for ecommerce/hybrid stores.
+    if store_type in (StoreType.ecommerce, StoreType.hybrid):
+        from app.services.inventory_service import create_default_warehouse
+
+        await create_default_warehouse(db, store.id)
 
     return store
 
